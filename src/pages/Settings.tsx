@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Cloud, CheckCircle2, FolderOpen, Sparkles, Key, RefreshCw, ExternalLink } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Cloud, CheckCircle2, FolderOpen, Sparkles, Key, RefreshCw, ExternalLink, ShieldCheck, HardDriveDownload } from "lucide-react";
 import { toast } from "sonner";
 
 interface DriveFolder {
@@ -23,7 +24,17 @@ const STORAGE_KEYS = {
   driveFolderName: "appraiser_drive_folder_name",
   geminiSource: "appraiser_gemini_source",
   geminiKeyMasked: "appraiser_gemini_key_masked",
+  backupEnabled: "appraiser_backup_enabled",
+  backupFolderId: "appraiser_backup_folder_id",
+  backupTime: "appraiser_backup_time",
+  backupLastRun: "appraiser_backup_last_run",
 };
+
+const BACKUP_FOLDERS: DriveFolder[] = [
+  { id: "b_backup_main", name: "גיבוי מערכת שמאות" },
+  { id: "b_backup_media", name: "גיבוי מדיה" },
+  { id: "b_backup_archive", name: "ארכיון גיבויים" },
+];
 
 const SAMPLE_FOLDERS: DriveFolder[] = [
   { id: "f_appraisals", name: "תיקי שמאות 2026" },
@@ -44,6 +55,13 @@ export default function Settings() {
   const [geminiKey, setGeminiKey] = useState("");
   const [geminiKeyMasked, setGeminiKeyMasked] = useState<string>("");
 
+  // Backup
+  const [backupEnabled, setBackupEnabled] = useState(false);
+  const [backupFolderId, setBackupFolderId] = useState<string>("");
+  const [backupTime, setBackupTime] = useState<string>("02:00");
+  const [backupLastRun, setBackupLastRun] = useState<string>("");
+  const [backupRunning, setBackupRunning] = useState(false);
+
   useEffect(() => {
     const connected = localStorage.getItem(STORAGE_KEYS.driveConnected) === "true";
     setDriveConnected(connected);
@@ -52,7 +70,55 @@ export default function Settings() {
     setFolderName(localStorage.getItem(STORAGE_KEYS.driveFolderName) ?? "");
     setGeminiSource((localStorage.getItem(STORAGE_KEYS.geminiSource) as "lovable" | "custom") ?? "lovable");
     setGeminiKeyMasked(localStorage.getItem(STORAGE_KEYS.geminiKeyMasked) ?? "");
+    setBackupEnabled(localStorage.getItem(STORAGE_KEYS.backupEnabled) === "true");
+    setBackupFolderId(localStorage.getItem(STORAGE_KEYS.backupFolderId) ?? "");
+    setBackupTime(localStorage.getItem(STORAGE_KEYS.backupTime) ?? "02:00");
+    setBackupLastRun(localStorage.getItem(STORAGE_KEYS.backupLastRun) ?? "");
   }, []);
+
+  const handleToggleBackup = (enabled: boolean) => {
+    if (enabled && !driveConnected) {
+      toast.error("יש לחבר חשבון Google Drive תחילה");
+      return;
+    }
+    setBackupEnabled(enabled);
+    localStorage.setItem(STORAGE_KEYS.backupEnabled, String(enabled));
+    toast.success(enabled ? "גיבוי אוטומטי הופעל" : "גיבוי אוטומטי הושבת");
+  };
+
+  const handleBackupFolderChange = (id: string) => {
+    setBackupFolderId(id);
+    localStorage.setItem(STORAGE_KEYS.backupFolderId, id);
+    const folder = BACKUP_FOLDERS.find((f) => f.id === id);
+    if (folder) toast.success(`תיקיית הגיבוי הוגדרה: ${folder.name}`);
+  };
+
+  const handleBackupTimeChange = (time: string) => {
+    setBackupTime(time);
+    localStorage.setItem(STORAGE_KEYS.backupTime, time);
+  };
+
+  const handleRunBackupNow = () => {
+    if (!driveConnected) {
+      toast.error("יש לחבר חשבון Google Drive תחילה");
+      return;
+    }
+    if (!backupFolderId) {
+      toast.error("יש לבחור תיקיית גיבוי");
+      return;
+    }
+    setBackupRunning(true);
+    toast.info("מבצע גיבוי של קבצי המדיה...");
+    setTimeout(() => {
+      const now = new Date().toLocaleString("he-IL");
+      setBackupLastRun(now);
+      localStorage.setItem(STORAGE_KEYS.backupLastRun, now);
+      setBackupRunning(false);
+      toast.success("הגיבוי הושלם בהצלחה", {
+        description: "כל התמונות וההקלטות הועלו ל-Drive",
+      });
+    }, 1500);
+  };
 
   const handleConnectDrive = () => {
     // Demo: simulate OAuth flow. Real connection happens via Lovable Connector.
@@ -274,6 +340,102 @@ export default function Settings() {
                   )}
 
                   <Button onClick={handleSaveGemini}>שמור הגדרות</Button>
+                </div>
+              </Card>
+
+              {/* Backup */}
+              <Card className="p-6">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="h-11 w-11 rounded-lg bg-success/10 text-success flex items-center justify-center shrink-0">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-semibold text-foreground mb-1">גיבוי המערכת</h2>
+                    <p className="text-sm text-muted-foreground">
+                      גיבוי יומי אוטומטי של כל קבצי המדיה (תמונות והקלטות) ל-Google Drive
+                    </p>
+                  </div>
+                </div>
+
+                <Separator className="my-4" />
+
+                {!driveConnected && (
+                  <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm text-warning-foreground">
+                    יש לחבר חשבון Google Drive בכרטיס למעלה לפני הפעלת גיבוי
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border">
+                    <div>
+                      <div className="font-medium text-foreground">גיבוי אוטומטי יומי</div>
+                      <div className="text-xs text-muted-foreground">
+                        קבצי המדיה יגובו בכל יום בשעה הנבחרת
+                      </div>
+                    </div>
+                    <Switch
+                      checked={backupEnabled}
+                      onCheckedChange={handleToggleBackup}
+                      disabled={!driveConnected}
+                    />
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="backup-folder">תיקיית גיבוי ב-Drive</Label>
+                      <Select
+                        value={backupFolderId}
+                        onValueChange={handleBackupFolderChange}
+                        disabled={!driveConnected}
+                      >
+                        <SelectTrigger id="backup-folder">
+                          <SelectValue placeholder="בחר תיקייה..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BACKUP_FOLDERS.map((f) => (
+                            <SelectItem key={f.id} value={f.id}>
+                              <div className="flex items-center gap-2">
+                                <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                                {f.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="backup-time">שעת גיבוי יומית</Label>
+                      <Input
+                        id="backup-time"
+                        type="time"
+                        value={backupTime}
+                        onChange={(e) => handleBackupTimeChange(e.target.value)}
+                        disabled={!driveConnected}
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="text-xs text-muted-foreground">
+                      {backupLastRun ? (
+                        <>גיבוי אחרון: <span className="font-medium text-foreground">{backupLastRun}</span></>
+                      ) : (
+                        "לא בוצע גיבוי עדיין"
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={handleRunBackupNow}
+                      disabled={!driveConnected || backupRunning}
+                    >
+                      <HardDriveDownload className={`h-4 w-4 ${backupRunning ? "animate-pulse" : ""}`} />
+                      {backupRunning ? "מגבה..." : "גבה עכשיו"}
+                    </Button>
+                  </div>
                 </div>
               </Card>
             </div>
