@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import Settings from "./pages/Settings.tsx";
 import Clients from "./pages/Clients.tsx";
+import ReportTemplates from "./pages/ReportTemplates.tsx";
 import Auth from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
@@ -23,6 +24,7 @@ const App = () => (
           {/* DEMO MODE: Auth disabled. To restore, wrap with <ProtectedRoute>...</ProtectedRoute> */}
           <Route path="/" element={<Index />} />
           <Route path="/clients" element={<Clients />} />
+          <Route path="/templates" element={<ReportTemplates />} />
           <Route path="/settings" element={<Settings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
