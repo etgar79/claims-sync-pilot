@@ -1,14 +1,20 @@
+import { useState } from "react";
 import { AppraisalCase, Recording } from "@/data/sampleCases";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Calendar, MapPin, User, Phone, ExternalLink, Mic, Image as ImageIcon, FileText, Play, Loader2, CheckCircle2, Clock, Mail, FolderOpen, Cloud } from "lucide-react";
+import { Calendar, MapPin, User, Phone, ExternalLink, Mic, Image as ImageIcon, FileText, Play, Loader2, CheckCircle2, Clock, Mail, FolderOpen, Cloud, Sparkles, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface CaseDetailProps {
   appraisalCase: AppraisalCase;
+  aiSummary?: string;
+  aiSummaryGeneratedAt?: string;
+  onSummaryUpdated?: () => void;
 }
 
 const transcriptStatusConfig = {
