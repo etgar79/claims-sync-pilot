@@ -73,8 +73,8 @@ const Index = () => {
             <StatCard icon={ImageIcon} label="סך תמונות" value={stats.totalPhotos.toString()} color="accent" />
             <StatCard
               icon={TrendingUp}
-              label="שווי הערכות פתוחות"
-              value={`₪${(stats.totalValue / 1000000).toFixed(1)}M`}
+              label="תיקים פתוחים"
+              value={stats.openCases.toString()}
               color="success"
             />
           </div>
