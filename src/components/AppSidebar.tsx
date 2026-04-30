@@ -1,10 +1,11 @@
-import { LayoutDashboard, FolderOpen, Mic, Image as ImageIcon, Settings, Cloud, Search } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Mic, Image as ImageIcon, Settings, Cloud, Search, Users } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader } from "@/components/ui/sidebar";
 import { NavLink, useLocation } from "react-router-dom";
 
 const mainItems = [
   { title: "דשבורד", url: "/", icon: LayoutDashboard },
   { title: "כל התיקים", url: "/cases", icon: FolderOpen },
+  { title: "לקוחות", url: "/clients", icon: Users },
   { title: "הקלטות לתמלול", url: "/recordings", icon: Mic },
   { title: "תמונות", url: "/photos", icon: ImageIcon },
   { title: "חיפוש", url: "/search", icon: Search },

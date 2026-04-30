@@ -3,9 +3,10 @@ import { AppraisalCase, Recording } from "@/data/sampleCases";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Calendar, MapPin, User, Phone, ExternalLink, Mic, Image as ImageIcon, FileText, Play, Loader2, CheckCircle2, Clock, Mail, FolderOpen, Cloud, Sparkles, RefreshCw } from "lucide-react";
+import { Calendar, MapPin, User, Phone, ExternalLink, Mic, Image as ImageIcon, FileText, Play, Loader2, CheckCircle2, Clock, Mail, FolderOpen, Cloud, Sparkles, RefreshCw, Pencil, Save, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -173,7 +174,9 @@ export function CaseDetail({ appraisalCase, aiSummary, aiSummaryGeneratedAt, onS
             {appraisalCase.recordings.length === 0 ? (
               <EmptyState icon={Mic} message="אין הקלטות בתיק זה" />
             ) : (
-              appraisalCase.recordings.map((rec) => <RecordingCard key={rec.id} recording={rec} />)
+              appraisalCase.recordings.map((rec) => (
+                <RecordingCard key={rec.id} recording={rec} onUpdated={onSummaryUpdated} />
+              ))
             )}
           </TabsContent>
 
@@ -227,9 +230,28 @@ export function CaseDetail({ appraisalCase, aiSummary, aiSummaryGeneratedAt, onS
   );
 }
 
-function RecordingCard({ recording }: { recording: Recording }) {
+function RecordingCard({ recording, onUpdated }: { recording: Recording; onUpdated?: () => void }) {
   const status = transcriptStatusConfig[recording.transcriptStatus];
   const StatusIcon = status.icon;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(recording.transcript ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("recordings")
+      .update({ transcript: draft, transcript_status: "completed" })
+      .eq("id", recording.id);
+    setSaving(false);
+    if (error) {
+      toast.error("שגיאה בשמירת התמלול");
+      return;
+    }
+    toast.success("התמלול נשמר");
+    setEditing(false);
+    onUpdated?.();
+  };
 
   return (
     <Card className="p-4">
@@ -253,19 +275,53 @@ function RecordingCard({ recording }: { recording: Recording }) {
         </div>
       </div>
 
-      {recording.transcript && (
-        <div className="mt-3 p-3 bg-muted/50 rounded-md border border-border">
-          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-            {recording.transcript}
-          </p>
+      {editing ? (
+        <div className="mt-3 space-y-2">
+          <Textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={8}
+            className="text-sm leading-relaxed"
+            placeholder="הקלד או ערוך את התמלול כאן..."
+          />
+          <div className="flex items-center gap-2 justify-end">
+            <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setDraft(recording.transcript ?? ""); }} disabled={saving}>
+              <X className="h-3.5 w-3.5 ml-1" />
+              ביטול
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="h-3.5 w-3.5 ml-1 animate-spin" /> : <Save className="h-3.5 w-3.5 ml-1" />}
+              שמור תמלול
+            </Button>
+          </div>
         </div>
-      )}
-
-      {recording.transcriptStatus === "pending" && (
-        <Button size="sm" variant="default" className="mt-3">
-          <Mic className="h-3.5 w-3.5 ml-2" />
-          תמלל עכשיו
-        </Button>
+      ) : recording.transcript ? (
+        <div className="mt-3">
+          <div className="p-3 bg-muted/50 rounded-md border border-border">
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+              {recording.transcript}
+            </p>
+          </div>
+          <div className="flex justify-end mt-2">
+            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+              <Pencil className="h-3.5 w-3.5 ml-1" />
+              ערוך תמלול
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 mt-3">
+          {recording.transcriptStatus === "pending" && (
+            <Button size="sm" variant="default">
+              <Mic className="h-3.5 w-3.5 ml-2" />
+              תמלל עכשיו
+            </Button>
+          )}
+          <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+            <Pencil className="h-3.5 w-3.5 ml-1" />
+            הוסף תמלול ידני
+          </Button>
+        </div>
       )}
     </Card>
   );
