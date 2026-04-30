@@ -342,6 +342,102 @@ export default function Settings() {
                   <Button onClick={handleSaveGemini}>שמור הגדרות</Button>
                 </div>
               </Card>
+
+              {/* Backup */}
+              <Card className="p-6">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="h-11 w-11 rounded-lg bg-success/10 text-success flex items-center justify-center shrink-0">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-semibold text-foreground mb-1">גיבוי המערכת</h2>
+                    <p className="text-sm text-muted-foreground">
+                      גיבוי יומי אוטומטי של כל קבצי המדיה (תמונות והקלטות) ל-Google Drive
+                    </p>
+                  </div>
+                </div>
+
+                <Separator className="my-4" />
+
+                {!driveConnected && (
+                  <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm text-warning-foreground">
+                    יש לחבר חשבון Google Drive בכרטיס למעלה לפני הפעלת גיבוי
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border">
+                    <div>
+                      <div className="font-medium text-foreground">גיבוי אוטומטי יומי</div>
+                      <div className="text-xs text-muted-foreground">
+                        קבצי המדיה יגובו בכל יום בשעה הנבחרת
+                      </div>
+                    </div>
+                    <Switch
+                      checked={backupEnabled}
+                      onCheckedChange={handleToggleBackup}
+                      disabled={!driveConnected}
+                    />
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="backup-folder">תיקיית גיבוי ב-Drive</Label>
+                      <Select
+                        value={backupFolderId}
+                        onValueChange={handleBackupFolderChange}
+                        disabled={!driveConnected}
+                      >
+                        <SelectTrigger id="backup-folder">
+                          <SelectValue placeholder="בחר תיקייה..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BACKUP_FOLDERS.map((f) => (
+                            <SelectItem key={f.id} value={f.id}>
+                              <div className="flex items-center gap-2">
+                                <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                                {f.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="backup-time">שעת גיבוי יומית</Label>
+                      <Input
+                        id="backup-time"
+                        type="time"
+                        value={backupTime}
+                        onChange={(e) => handleBackupTimeChange(e.target.value)}
+                        disabled={!driveConnected}
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="text-xs text-muted-foreground">
+                      {backupLastRun ? (
+                        <>גיבוי אחרון: <span className="font-medium text-foreground">{backupLastRun}</span></>
+                      ) : (
+                        "לא בוצע גיבוי עדיין"
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={handleRunBackupNow}
+                      disabled={!driveConnected || backupRunning}
+                    >
+                      <HardDriveDownload className={`h-4 w-4 ${backupRunning ? "animate-pulse" : ""}`} />
+                      {backupRunning ? "מגבה..." : "גבה עכשיו"}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
             </div>
           </div>
         </SidebarInset>
