@@ -1,0 +1,162 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !userData.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { caseId } = await req.json();
+    if (!caseId || typeof caseId !== "string") {
+      return new Response(JSON.stringify({ error: "caseId is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Fetch case + related data (RLS enforces ownership)
+    const { data: appraisalCase, error: caseErr } = await supabase
+      .from("cases")
+      .select("*")
+      .eq("id", caseId)
+      .maybeSingle();
+
+    if (caseErr || !appraisalCase) {
+      return new Response(JSON.stringify({ error: "Case not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const [recordingsRes, notesRes, photosRes] = await Promise.all([
+      supabase.from("recordings").select("*").eq("case_id", caseId),
+      supabase.from("notes").select("*").eq("case_id", caseId),
+      supabase.from("photos").select("*").eq("case_id", caseId),
+    ]);
+
+    const recordings = recordingsRes.data ?? [];
+    const notes = notesRes.data ?? [];
+    const photos = photosRes.data ?? [];
+
+    // Build prompt
+    const transcripts = recordings
+      .filter((r: any) => r.transcript)
+      .map((r: any, i: number) => `הקלטה ${i + 1} (${r.filename}, ${r.duration ?? ""}):\n${r.transcript}`)
+      .join("\n\n");
+
+    const notesText = notes.map((n: any, i: number) => `הערה ${i + 1}: ${n.content}`).join("\n");
+    const photoCaptions = photos
+      .filter((p: any) => p.caption)
+      .map((p: any) => `- ${p.caption}`)
+      .join("\n");
+
+    const userPrompt = `פרטי התיק:
+- מספר תיק: ${appraisalCase.case_number}
+- כותרת: ${appraisalCase.title}
+- לקוח: ${appraisalCase.client_name}
+- כתובת: ${appraisalCase.address ?? "לא צוינה"}
+- סוג: ${appraisalCase.type}
+- סטטוס: ${appraisalCase.status}
+${appraisalCase.estimated_value ? `- הערכת שווי: ₪${Number(appraisalCase.estimated_value).toLocaleString("he-IL")}` : ""}
+
+${transcripts ? `תמלולי הקלטות:\n${transcripts}\n` : ""}
+${notesText ? `הערות:\n${notesText}\n` : ""}
+${photoCaptions ? `תמונות בתיק:\n${photoCaptions}\n` : ""}
+
+צור סיכום שמאי תמציתי ומקצועי בעברית של התיק. כלול: מצב הנכס/הרכוש, ממצאים עיקריים, נקודות שדורשות תשומת לב, והמלצות. השתמש בכותרות וברשימות.`;
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content:
+              "אתה עוזר לשמאי מקצועי. צור סיכומים תמציתיים, מובנים ומקצועיים בעברית. השתמש בפורמט Markdown.",
+          },
+          { role: "user", content: userPrompt },
+        ],
+      }),
+    });
+
+    if (!aiResp.ok) {
+      if (aiResp.status === 429) {
+        return new Response(JSON.stringify({ error: "חרגת ממגבלת הבקשות. נסה שוב בעוד מספר דקות." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (aiResp.status === 402) {
+        return new Response(JSON.stringify({ error: "נדרשת טעינת קרדיטים ל-Lovable AI." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const t = await aiResp.text();
+      console.error("AI gateway error:", aiResp.status, t);
+      return new Response(JSON.stringify({ error: "שגיאה ביצירת הסיכום" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const aiData = await aiResp.json();
+    const summary = aiData.choices?.[0]?.message?.content ?? "";
+
+    // Save summary to case
+    const { error: updateErr } = await supabase
+      .from("cases")
+      .update({
+        ai_summary: summary,
+        ai_summary_generated_at: new Date().toISOString(),
+      })
+      .eq("id", caseId);
+
+    if (updateErr) {
+      console.error("Update error:", updateErr);
+    }
+
+    return new Response(JSON.stringify({ summary }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error("summarize-case error:", e);
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
