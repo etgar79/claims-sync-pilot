@@ -111,9 +111,13 @@ export function CaseDetail({ appraisalCase, aiSummary, aiSummaryGeneratedAt, onS
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="recordings" className="flex-1 flex flex-col overflow-hidden">
+      <Tabs defaultValue="summary" className="flex-1 flex flex-col overflow-hidden">
         <div className="border-b border-border bg-card px-6">
           <TabsList className="bg-transparent h-12 p-0 gap-2">
+            <TabsTrigger value="summary" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <Sparkles className="h-4 w-4 ml-2" />
+              סיכום AI
+            </TabsTrigger>
             <TabsTrigger value="recordings" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <Mic className="h-4 w-4 ml-2" />
               הקלטות ({appraisalCase.recordings.length})
@@ -130,6 +134,41 @@ export function CaseDetail({ appraisalCase, aiSummary, aiSummaryGeneratedAt, onS
         </div>
 
         <ScrollArea className="flex-1">
+          <TabsContent value="summary" className="p-6 m-0 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  סיכום אוטומטי בעזרת AI
+                </h3>
+                {aiSummaryGeneratedAt && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    נוצר: {new Date(aiSummaryGeneratedAt).toLocaleString("he-IL")}
+                  </p>
+                )}
+              </div>
+              <Button onClick={handleGenerateSummary} disabled={generating} size="sm">
+                {generating ? (
+                  <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                ) : aiSummary ? (
+                  <RefreshCw className="h-4 w-4 ml-2" />
+                ) : (
+                  <Sparkles className="h-4 w-4 ml-2" />
+                )}
+                {aiSummary ? "צור מחדש" : "צור סיכום"}
+              </Button>
+            </div>
+            {aiSummary ? (
+              <Card className="p-5">
+                <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                  {aiSummary}
+                </div>
+              </Card>
+            ) : (
+              <EmptyState icon={Sparkles} message='לחץ על "צור סיכום" כדי לקבל סיכום אוטומטי של התיק' />
+            )}
+          </TabsContent>
+
           <TabsContent value="recordings" className="p-6 m-0 space-y-3">
             {appraisalCase.recordings.length === 0 ? (
               <EmptyState icon={Mic} message="אין הקלטות בתיק זה" />
