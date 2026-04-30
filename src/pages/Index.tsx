@@ -40,11 +40,8 @@ const Index = () => {
       0
     );
     const totalPhotos = SAMPLE_CASES.reduce((sum, c) => sum + c.photos.length, 0);
-    const totalValue = SAMPLE_CASES.filter((c) => c.status !== "completed").reduce(
-      (sum, c) => sum + (c.estimatedValue ?? 0),
-      0
-    );
-    return { active, pendingTranscripts, totalPhotos, totalValue };
+    const openCases = SAMPLE_CASES.filter((c) => c.status === "active" || c.status === "pending").length;
+    return { active, pendingTranscripts, totalPhotos, openCases };
   }, []);
 
   return (
