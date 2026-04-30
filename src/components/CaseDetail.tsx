@@ -10,6 +10,7 @@ import { Calendar, MapPin, User, Phone, ExternalLink, Mic, Image as ImageIcon, F
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { GenerateReportDialog } from "./GenerateReportDialog";
 
 interface CaseDetailProps {
   appraisalCase: AppraisalCase;
@@ -65,15 +66,18 @@ export function CaseDetail({ appraisalCase, aiSummary, aiSummaryGeneratedAt, onS
             </div>
             <h1 className="text-2xl font-bold text-foreground">{appraisalCase.title}</h1>
           </div>
-          {appraisalCase.driveFolderUrl && (
-            <Button variant="outline" size="sm" asChild>
-              <a href={appraisalCase.driveFolderUrl} target="_blank" rel="noopener noreferrer">
-                <Cloud className="h-4 w-4 ml-2" />
-                פתח ב-Drive
-                <ExternalLink className="h-3 w-3 mr-2" />
-              </a>
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <GenerateReportDialog appraisalCase={appraisalCase} aiSummary={aiSummary} />
+            {appraisalCase.driveFolderUrl && (
+              <Button variant="outline" size="sm" asChild>
+                <a href={appraisalCase.driveFolderUrl} target="_blank" rel="noopener noreferrer">
+                  <Cloud className="h-4 w-4 ml-2" />
+                  פתח ב-Drive
+                  <ExternalLink className="h-3 w-3 mr-2" />
+                </a>
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
