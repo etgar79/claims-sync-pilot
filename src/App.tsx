@@ -22,6 +22,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           {/* DEMO MODE: Auth disabled. To restore, wrap with <ProtectedRoute>...</ProtectedRoute> */}
           <Route path="/" element={<Index />} />
+          <Route path="/clients" element={<Clients />} />
           <Route path="/settings" element={<Settings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
