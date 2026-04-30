@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Cloud, CheckCircle2, FolderOpen, Sparkles, Key, RefreshCw, ExternalLink } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Cloud, CheckCircle2, FolderOpen, Sparkles, Key, RefreshCw, ExternalLink, ShieldCheck, HardDriveDownload } from "lucide-react";
 import { toast } from "sonner";
 
 interface DriveFolder {
