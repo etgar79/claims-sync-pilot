@@ -14,7 +14,210 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cases: {
+        Row: {
+          address: string | null
+          ai_summary: string | null
+          ai_summary_generated_at: string | null
+          case_number: string
+          client_name: string
+          client_phone: string | null
+          created_at: string
+          drive_folder_url: string | null
+          estimated_value: number | null
+          id: string
+          inspection_date: string | null
+          status: string
+          tags: string[] | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          ai_summary?: string | null
+          ai_summary_generated_at?: string | null
+          case_number: string
+          client_name: string
+          client_phone?: string | null
+          created_at?: string
+          drive_folder_url?: string | null
+          estimated_value?: number | null
+          id?: string
+          inspection_date?: string | null
+          status?: string
+          tags?: string[] | null
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          ai_summary?: string | null
+          ai_summary_generated_at?: string | null
+          case_number?: string
+          client_name?: string
+          client_phone?: string | null
+          created_at?: string
+          drive_folder_url?: string | null
+          estimated_value?: number | null
+          id?: string
+          inspection_date?: string | null
+          status?: string
+          tags?: string[] | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notes: {
+        Row: {
+          case_id: string
+          content: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          case_id: string
+          content: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          case_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photos: {
+        Row: {
+          caption: string | null
+          case_id: string
+          created_at: string
+          id: string
+          source: string
+          uploaded_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          case_id: string
+          created_at?: string
+          id?: string
+          source?: string
+          uploaded_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          case_id?: string
+          created_at?: string
+          id?: string
+          source?: string
+          uploaded_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photos_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recordings: {
+        Row: {
+          case_id: string
+          created_at: string
+          drive_url: string | null
+          duration: string | null
+          filename: string
+          id: string
+          recorded_at: string
+          transcript: string | null
+          transcript_status: string
+          user_id: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          drive_url?: string | null
+          duration?: string | null
+          filename: string
+          id?: string
+          recorded_at?: string
+          transcript?: string | null
+          transcript_status?: string
+          user_id: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          drive_url?: string | null
+          duration?: string | null
+          filename?: string
+          id?: string
+          recorded_at?: string
+          transcript?: string | null
+          transcript_status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recordings_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

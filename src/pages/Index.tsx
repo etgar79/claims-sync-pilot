@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { CaseCard } from "@/components/CaseCard";
@@ -8,16 +8,41 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SAMPLE_CASES, CaseStatus } from "@/data/sampleCases";
-import { Search, Plus, FolderOpen, Mic, Image as ImageIcon, TrendingUp, Cloud } from "lucide-react";
+import { CaseStatus } from "@/data/sampleCases";
+import { Search, Plus, FolderOpen, Mic, Image as ImageIcon, TrendingUp, Cloud, Loader2, LogOut } from "lucide-react";
+import { useCases } from "@/hooks/useCases";
+import { supabase } from "@/integrations/supabase/client";
+import { seedSampleCases } from "@/lib/seedSampleCases";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<CaseStatus | "all">("all");
-  const [selectedId, setSelectedId] = useState<string>(SAMPLE_CASES[0].id);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { cases, loading, reload } = useCases();
+  const navigate = useNavigate();
+
+  // Seed sample data on first load if user has no cases
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) return;
+      const seeded = await seedSampleCases(data.user.id);
+      if (seeded) {
+        toast.success("נטענו תיקי דוגמה לחשבון שלך");
+        reload();
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId && cases.length > 0) setSelectedId(cases[0].id);
+  }, [cases, selectedId]);
 
   const filteredCases = useMemo(() => {
-    return SAMPLE_CASES.filter((c) => {
+    return cases.filter((c) => {
       const matchSearch =
         !search ||
         c.title.includes(search) ||
@@ -28,21 +53,25 @@ const Index = () => {
       const matchStatus = statusFilter === "all" || c.status === statusFilter;
       return matchSearch && matchStatus;
     });
-  }, [search, statusFilter]);
+  }, [cases, search, statusFilter]);
 
-  const selectedCase = SAMPLE_CASES.find((c) => c.id === selectedId) ?? SAMPLE_CASES[0];
+  const selectedCase = cases.find((c) => c.id === selectedId) ?? cases[0];
 
-  // Stats
   const stats = useMemo(() => {
-    const active = SAMPLE_CASES.filter((c) => c.status === "active").length;
-    const pendingTranscripts = SAMPLE_CASES.reduce(
+    const active = cases.filter((c) => c.status === "active").length;
+    const pendingTranscripts = cases.reduce(
       (sum, c) => sum + c.recordings.filter((r) => r.transcriptStatus === "pending" || r.transcriptStatus === "processing").length,
       0
     );
-    const totalPhotos = SAMPLE_CASES.reduce((sum, c) => sum + c.photos.length, 0);
-    const openCases = SAMPLE_CASES.filter((c) => c.status === "active" || c.status === "pending").length;
+    const totalPhotos = cases.reduce((sum, c) => sum + c.photos.length, 0);
+    const openCases = cases.filter((c) => c.status === "active" || c.status === "pending").length;
     return { active, pendingTranscripts, totalPhotos, openCases };
-  }, []);
+  }, [cases]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
 
   return (
     <SidebarProvider defaultOpen>
@@ -50,7 +79,6 @@ const Index = () => {
         <AppSidebar />
 
         <SidebarInset className="flex flex-col">
-          {/* Top bar */}
           <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-4 shrink-0">
             <SidebarTrigger />
             <div className="flex-1">
@@ -64,24 +92,20 @@ const Index = () => {
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">תיק חדש</span>
             </Button>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">יציאה</span>
+            </Button>
           </header>
 
-          {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gradient-to-b from-muted/30 to-transparent">
             <StatCard icon={FolderOpen} label="תיקים פעילים" value={stats.active.toString()} color="primary" />
             <StatCard icon={Mic} label="ממתין לתמלול" value={stats.pendingTranscripts.toString()} color="warning" />
             <StatCard icon={ImageIcon} label="סך תמונות" value={stats.totalPhotos.toString()} color="accent" />
-            <StatCard
-              icon={TrendingUp}
-              label="תיקים פתוחים"
-              value={stats.openCases.toString()}
-              color="success"
-            />
+            <StatCard icon={TrendingUp} label="תיקים פתוחים" value={stats.openCases.toString()} color="success" />
           </div>
 
-          {/* Main content - two columns */}
           <div className="flex-1 flex overflow-hidden border-t border-border">
-            {/* Left: case list */}
             <div className="w-full lg:w-[400px] xl:w-[440px] border-l border-border bg-card flex flex-col shrink-0">
               <div className="p-4 border-b border-border space-y-3">
                 <div className="relative">
@@ -109,7 +133,12 @@ const Index = () => {
 
               <ScrollArea className="flex-1">
                 <div className="p-4 space-y-3">
-                  {filteredCases.length === 0 ? (
+                  {loading ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin" />
+                      <p>טוען תיקים...</p>
+                    </div>
+                  ) : filteredCases.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <FolderOpen className="h-12 w-12 mx-auto mb-3 opacity-30" />
                       <p>לא נמצאו תיקים</p>
@@ -128,9 +157,15 @@ const Index = () => {
               </ScrollArea>
             </div>
 
-            {/* Right: case detail */}
             <div className="flex-1 hidden lg:block overflow-hidden bg-background">
-              <CaseDetail appraisalCase={selectedCase} />
+              {selectedCase && (
+                <CaseDetail
+                  appraisalCase={selectedCase}
+                  aiSummary={selectedCase.aiSummary}
+                  aiSummaryGeneratedAt={selectedCase.aiSummaryGeneratedAt}
+                  onSummaryUpdated={reload}
+                />
+              )}
             </div>
           </div>
         </SidebarInset>
