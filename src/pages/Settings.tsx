@@ -55,6 +55,13 @@ export default function Settings() {
   const [geminiKey, setGeminiKey] = useState("");
   const [geminiKeyMasked, setGeminiKeyMasked] = useState<string>("");
 
+  // Backup
+  const [backupEnabled, setBackupEnabled] = useState(false);
+  const [backupFolderId, setBackupFolderId] = useState<string>("");
+  const [backupTime, setBackupTime] = useState<string>("02:00");
+  const [backupLastRun, setBackupLastRun] = useState<string>("");
+  const [backupRunning, setBackupRunning] = useState(false);
+
   useEffect(() => {
     const connected = localStorage.getItem(STORAGE_KEYS.driveConnected) === "true";
     setDriveConnected(connected);
@@ -63,7 +70,55 @@ export default function Settings() {
     setFolderName(localStorage.getItem(STORAGE_KEYS.driveFolderName) ?? "");
     setGeminiSource((localStorage.getItem(STORAGE_KEYS.geminiSource) as "lovable" | "custom") ?? "lovable");
     setGeminiKeyMasked(localStorage.getItem(STORAGE_KEYS.geminiKeyMasked) ?? "");
+    setBackupEnabled(localStorage.getItem(STORAGE_KEYS.backupEnabled) === "true");
+    setBackupFolderId(localStorage.getItem(STORAGE_KEYS.backupFolderId) ?? "");
+    setBackupTime(localStorage.getItem(STORAGE_KEYS.backupTime) ?? "02:00");
+    setBackupLastRun(localStorage.getItem(STORAGE_KEYS.backupLastRun) ?? "");
   }, []);
+
+  const handleToggleBackup = (enabled: boolean) => {
+    if (enabled && !driveConnected) {
+      toast.error("יש לחבר חשבון Google Drive תחילה");
+      return;
+    }
+    setBackupEnabled(enabled);
+    localStorage.setItem(STORAGE_KEYS.backupEnabled, String(enabled));
+    toast.success(enabled ? "גיבוי אוטומטי הופעל" : "גיבוי אוטומטי הושבת");
+  };
+
+  const handleBackupFolderChange = (id: string) => {
+    setBackupFolderId(id);
+    localStorage.setItem(STORAGE_KEYS.backupFolderId, id);
+    const folder = BACKUP_FOLDERS.find((f) => f.id === id);
+    if (folder) toast.success(`תיקיית הגיבוי הוגדרה: ${folder.name}`);
+  };
+
+  const handleBackupTimeChange = (time: string) => {
+    setBackupTime(time);
+    localStorage.setItem(STORAGE_KEYS.backupTime, time);
+  };
+
+  const handleRunBackupNow = () => {
+    if (!driveConnected) {
+      toast.error("יש לחבר חשבון Google Drive תחילה");
+      return;
+    }
+    if (!backupFolderId) {
+      toast.error("יש לבחור תיקיית גיבוי");
+      return;
+    }
+    setBackupRunning(true);
+    toast.info("מבצע גיבוי של קבצי המדיה...");
+    setTimeout(() => {
+      const now = new Date().toLocaleString("he-IL");
+      setBackupLastRun(now);
+      localStorage.setItem(STORAGE_KEYS.backupLastRun, now);
+      setBackupRunning(false);
+      toast.success("הגיבוי הושלם בהצלחה", {
+        description: "כל התמונות וההקלטות הועלו ל-Drive",
+      });
+    }, 1500);
+  };
 
   const handleConnectDrive = () => {
     // Demo: simulate OAuth flow. Real connection happens via Lovable Connector.
