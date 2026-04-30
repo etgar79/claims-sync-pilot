@@ -40,11 +40,8 @@ const Index = () => {
       0
     );
     const totalPhotos = SAMPLE_CASES.reduce((sum, c) => sum + c.photos.length, 0);
-    const totalValue = SAMPLE_CASES.filter((c) => c.status !== "completed").reduce(
-      (sum, c) => sum + (c.estimatedValue ?? 0),
-      0
-    );
-    return { active, pendingTranscripts, totalPhotos, totalValue };
+    const openCases = SAMPLE_CASES.filter((c) => c.status === "active" || c.status === "pending").length;
+    return { active, pendingTranscripts, totalPhotos, openCases };
   }, []);
 
   return (
@@ -76,8 +73,8 @@ const Index = () => {
             <StatCard icon={ImageIcon} label="סך תמונות" value={stats.totalPhotos.toString()} color="accent" />
             <StatCard
               icon={TrendingUp}
-              label="שווי הערכות פתוחות"
-              value={`₪${(stats.totalValue / 1000000).toFixed(1)}M`}
+              label="תיקים פתוחים"
+              value={stats.openCases.toString()}
               color="success"
             />
           </div>
