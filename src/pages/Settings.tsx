@@ -24,7 +24,17 @@ const STORAGE_KEYS = {
   driveFolderName: "appraiser_drive_folder_name",
   geminiSource: "appraiser_gemini_source",
   geminiKeyMasked: "appraiser_gemini_key_masked",
+  backupEnabled: "appraiser_backup_enabled",
+  backupFolderId: "appraiser_backup_folder_id",
+  backupTime: "appraiser_backup_time",
+  backupLastRun: "appraiser_backup_last_run",
 };
+
+const BACKUP_FOLDERS: DriveFolder[] = [
+  { id: "b_backup_main", name: "גיבוי מערכת שמאות" },
+  { id: "b_backup_media", name: "גיבוי מדיה" },
+  { id: "b_backup_archive", name: "ארכיון גיבויים" },
+];
 
 const SAMPLE_FOLDERS: DriveFolder[] = [
   { id: "f_appraisals", name: "תיקי שמאות 2026" },
