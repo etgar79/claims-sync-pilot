@@ -30,7 +30,26 @@ const sourceIcons = {
   manual: FolderOpen,
 };
 
-export function CaseDetail({ appraisalCase }: CaseDetailProps) {
+export function CaseDetail({ appraisalCase, aiSummary, aiSummaryGeneratedAt, onSummaryUpdated }: CaseDetailProps) {
+  const [generating, setGenerating] = useState(false);
+
+  const handleGenerateSummary = async () => {
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("summarize-case", {
+        body: { caseId: appraisalCase.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("הסיכום נוצר בהצלחה");
+      onSummaryUpdated?.();
+    } catch (e: any) {
+      toast.error(e?.message ?? "שגיאה ביצירת הסיכום");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
