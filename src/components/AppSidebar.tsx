@@ -32,13 +32,14 @@ export function AppSidebar() {
     { title: "חיפוש", url: "/search", icon: Search },
   );
 
-  const integrationItems: { title: string; url: string; icon: any }[] = [
-    { title: "Google Drive", url: "/drive", icon: Cloud },
-    { title: "הגדרות", url: "/settings", icon: Settings },
-  ];
-
+  // ניהול והגדרות - רק למנהל
+  const integrationItems: { title: string; url: string; icon: any }[] = [];
   if (isAdmin) {
-    integrationItems.unshift({ title: "ניהול משתמשים", url: "/admin", icon: Shield });
+    integrationItems.push(
+      { title: "ניהול משתמשים", url: "/admin", icon: Shield },
+      { title: "Google Drive", url: "/drive", icon: Cloud },
+      { title: "הגדרות", url: "/settings", icon: Settings },
+    );
   }
 
   return (
@@ -74,23 +75,25 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>אינטגרציות</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {integrationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                    <NavLink to={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {integrationItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>ניהול</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {integrationItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+                      <NavLink to={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );
