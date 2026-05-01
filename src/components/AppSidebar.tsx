@@ -72,7 +72,7 @@ export function AppSidebar() {
     mainLabel = "סקירת מערכת";
     mainItems = [{ title: "סקירה כללית", url: "/", icon: LayoutDashboard }];
   } else {
-    mainLabel = "טוען...";
+    mainLabel = "אין תפקיד פעיל";
     mainItems = [];
   }
 
