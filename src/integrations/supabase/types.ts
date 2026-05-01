@@ -148,6 +148,7 @@ export type Database = {
           meeting_id: string | null
           recorded_at: string
           source: string
+          tags: string[] | null
           transcript: string | null
           transcript_status: string
           transcription_service: string | null
@@ -163,6 +164,7 @@ export type Database = {
           meeting_id?: string | null
           recorded_at?: string
           source?: string
+          tags?: string[] | null
           transcript?: string | null
           transcript_status?: string
           transcription_service?: string | null
@@ -178,6 +180,7 @@ export type Database = {
           meeting_id?: string | null
           recorded_at?: string
           source?: string
+          tags?: string[] | null
           transcript?: string | null
           transcript_status?: string
           transcription_service?: string | null
@@ -352,6 +355,7 @@ export type Database = {
           id: string
           recorded_at: string
           source: string
+          tags: string[] | null
           transcript: string | null
           transcript_status: string
           transcription_service: string | null
@@ -367,6 +371,7 @@ export type Database = {
           id?: string
           recorded_at?: string
           source?: string
+          tags?: string[] | null
           transcript?: string | null
           transcript_status?: string
           transcription_service?: string | null
@@ -382,6 +387,7 @@ export type Database = {
           id?: string
           recorded_at?: string
           source?: string
+          tags?: string[] | null
           transcript?: string | null
           transcript_status?: string
           transcription_service?: string | null
