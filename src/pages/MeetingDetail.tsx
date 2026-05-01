@@ -57,7 +57,7 @@ const MeetingDetail = () => {
     setLoading(true);
     const [m, r] = await Promise.all([
       supabase.from("meetings").select("*").eq("id", id).single(),
-      supabase.from("meeting_recordings").select("*").eq("meeting_id", id).order("recorded_at"),
+      supabase.from("meeting_recordings").select("*").eq("meeting_id", id).order("recorded_at", { ascending: false }),
     ]);
     if (m.data) {
       setMeeting(m.data);
@@ -247,7 +247,15 @@ const MeetingDetail = () => {
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <FileAudio className="h-4 w-4" />
-                            <span className="text-sm font-medium">{r.filename}</span>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium">{r.filename}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(r.recorded_at).toLocaleString("he-IL", {
+                                  year: "numeric", month: "2-digit", day: "2-digit",
+                                  hour: "2-digit", minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             {r.transcription_service && (
