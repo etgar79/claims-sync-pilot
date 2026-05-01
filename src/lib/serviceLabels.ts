@@ -6,6 +6,7 @@ export const SERVICE_LABEL: Record<string, string> = {
   whisper: "AI מהיר",
   elevenlabs: "AI איכות גבוהה",
   lovable_ai: "AI סיכום",
+  merged: "תמלול-על משולב",
 };
 
 export function serviceLabel(id?: string | null): string {

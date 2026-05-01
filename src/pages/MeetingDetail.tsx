@@ -9,12 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, Upload, Loader2, Sparkles, FileAudio, Save, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Upload, Loader2, Sparkles, FileAudio, Save, CheckCircle2, Wand2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
 import { MergeTranscriptsDialog } from "@/components/MergeTranscriptsDialog";
 import { serviceLabel } from "@/lib/serviceLabels";
+import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 
 interface Meeting {
   id: string;
@@ -51,7 +52,8 @@ const MeetingDetail = () => {
   const [uploading, setUploading] = useState(false);
 
   const [statusUpdating, setStatusUpdating] = useState(false);
-
+  const { runAll, running: runningAll } = useTranscribeAll();
+  const [progressMsg, setProgressMsg] = useState<string>("");
   const load = async () => {
     if (!id) return;
     setLoading(true);
@@ -278,6 +280,34 @@ const MeetingDetail = () => {
                                 onCompleted={load}
                                 trigger={<Button size="sm" variant="outline">הרץ תמלול נוסף</Button>}
                               />
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={runningAll === r.id}
+                                onClick={async () => {
+                                  setProgressMsg("");
+                                  await runAll({
+                                    recordingId: r.id,
+                                    audioFile: r._file,
+                                    audioUrl: r.drive_url || undefined,
+                                    table: "meeting_recordings",
+                                    context: {
+                                      title: meeting?.title,
+                                      client: meeting?.client_name ?? undefined,
+                                      project: meeting?.project_name ?? undefined,
+                                    },
+                                    onProgress: setProgressMsg,
+                                    onCompleted: load,
+                                  });
+                                  setProgressMsg("");
+                                }}
+                              >
+                                {runningAll === r.id ? (
+                                  <><Loader2 className="h-4 w-4 ml-2 animate-spin" /> {progressMsg || "מריץ..."}</>
+                                ) : (
+                                  <><Wand2 className="h-4 w-4 ml-2" /> הרץ הכל + מיזוג</>
+                                )}
+                              </Button>
                               <MergeTranscriptsDialog
                                 recordingId={r.id}
                                 table="meeting_recordings"
@@ -286,13 +316,43 @@ const MeetingDetail = () => {
                             </div>
                           </>
                         ) : (
-                          <TranscribeDialog
-                            recordingId={r.id}
-                            audioFile={r._file}
-                            audioUrl={r.drive_url || undefined}
-                            table="meeting_recordings"
-                            onCompleted={load}
-                          />
+                          <div className="flex flex-wrap gap-2">
+                            <TranscribeDialog
+                              recordingId={r.id}
+                              audioFile={r._file}
+                              audioUrl={r.drive_url || undefined}
+                              table="meeting_recordings"
+                              onCompleted={load}
+                            />
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={runningAll === r.id}
+                              onClick={async () => {
+                                setProgressMsg("");
+                                await runAll({
+                                  recordingId: r.id,
+                                  audioFile: r._file,
+                                  audioUrl: r.drive_url || undefined,
+                                  table: "meeting_recordings",
+                                  context: {
+                                    title: meeting?.title,
+                                    client: meeting?.client_name ?? undefined,
+                                    project: meeting?.project_name ?? undefined,
+                                  },
+                                  onProgress: setProgressMsg,
+                                  onCompleted: load,
+                                });
+                                setProgressMsg("");
+                              }}
+                            >
+                              {runningAll === r.id ? (
+                                <><Loader2 className="h-4 w-4 ml-2 animate-spin" /> {progressMsg || "מריץ..."}</>
+                              ) : (
+                                <><Wand2 className="h-4 w-4 ml-2" /> הרץ הכל + מיזוג</>
+                              )}
+                            </Button>
+                          </div>
                         )}
                       </div>
                     ))}
