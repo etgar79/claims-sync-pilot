@@ -15,16 +15,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { seedSampleCases } from "@/lib/seedSampleCases";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 const Index = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<CaseStatus | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { cases, loading, reload } = useCases();
+  const { isAppraiser, isAdmin, loading: rolesLoading } = useUserRoles();
   const navigate = useNavigate();
 
-  // Seed sample data on first load if user has no cases
+  // Seed sample data only for appraisers (not pure architects)
   useEffect(() => {
+    if (rolesLoading) return;
+    if (!isAppraiser && !isAdmin) return;
     (async () => {
       const { data } = await supabase.auth.getUser();
       if (!data.user) return;
@@ -35,7 +39,7 @@ const Index = () => {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [rolesLoading, isAppraiser, isAdmin]);
 
   useEffect(() => {
     if (!selectedId && cases.length > 0) setSelectedId(cases[0].id);
