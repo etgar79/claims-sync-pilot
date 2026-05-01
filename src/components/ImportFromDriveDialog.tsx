@@ -41,14 +41,30 @@ export function ImportFromDriveDialog({ open, onOpenChange, onImported }: Props)
     setLoading(true);
     setSelected(new Set());
     try {
+      console.log("[ImportFromDrive] Calling google-drive-api with folder:", folder.folder_id);
       const { data, error } = await supabase.functions.invoke("google-drive-api", {
         body: { action: "list_files_in_folder", folderId: folder.folder_id },
       });
-      if (error) throw error;
+      console.log("[ImportFromDrive] Response:", { data, error });
+      if (error) {
+        // Try to extract the real error message from the function response
+        const ctx: any = (error as any).context;
+        let msg = error.message;
+        if (ctx?.json) {
+          try {
+            const body = await ctx.json();
+            msg = body?.error || msg;
+          } catch {}
+        }
+        throw new Error(msg);
+      }
+      if (data?.error) throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error));
       const all: DriveFile[] = data?.files ?? [];
       const media = all.filter((f) => AUDIO_VIDEO_REGEX.test(f.mimeType));
+      console.log(`[ImportFromDrive] Found ${all.length} files, ${media.length} audio/video`);
       setFiles(media);
     } catch (e: any) {
+      console.error("[ImportFromDrive] Error:", e);
       toast.error(e?.message ?? "שגיאה בטעינת קבצים מ-Drive");
     } finally {
       setLoading(false);
