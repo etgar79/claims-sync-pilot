@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Calendar, MapPin, User, Phone, ExternalLink, Mic, Image as ImageIcon, FileText, Play, Loader2, CheckCircle2, Clock, Mail, FolderOpen, Cloud, Sparkles, RefreshCw, Pencil, Save, X } from "lucide-react";
+import { Calendar, MapPin, User, Phone, ExternalLink, Mic, Image as ImageIcon, FileText, Play, Loader2, CheckCircle2, Clock, Mail, FolderOpen, Cloud, Sparkles, RefreshCw, Pencil, Save, X, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { GenerateReportDialog } from "./GenerateReportDialog";
+import { TranscribeDialog } from "./TranscribeDialog";
+import { MergeTranscriptsDialog } from "./MergeTranscriptsDialog";
+import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 
 interface CaseDetailProps {
   appraisalCase: AppraisalCase;
