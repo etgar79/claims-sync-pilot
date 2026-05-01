@@ -63,13 +63,14 @@ export function useActiveWorkspace() {
   const canSwitch = available.length > 1;
 
   const resolved = workspace ?? available[0] ?? null;
+  const isResolvingWorkspace = !loading && available.length > 0 && resolved === null;
 
   return {
-    workspace: resolved as Workspace,
+    workspace: resolved,
     setWorkspace,
     available,
     canSwitch,
-    loading: loading || workspace === null,
+    loading: loading || isResolvingWorkspace,
     isAdminWorkspace: resolved === "admin",
     // STRICT workspace flags — admin acting as a workspace switches by selection only.
     isAppraiserWorkspace: resolved === "appraiser",
