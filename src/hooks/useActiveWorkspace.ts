@@ -46,7 +46,7 @@ export function useActiveWorkspace() {
     if (stored && !available.includes(stored)) {
       try { localStorage.removeItem(STORAGE_KEY); } catch {}
     }
-    // Default selection
+    // Default selection — pick the most appropriate single workspace
     if (isAdmin) setWorkspaceState("admin");
     else if (available.length === 1) setWorkspaceState(available[0]);
     else if (available.includes("architect")) setWorkspaceState("architect");
