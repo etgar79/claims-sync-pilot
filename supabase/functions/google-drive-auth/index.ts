@@ -7,8 +7,14 @@ const corsHeaders = {
 };
 
 const SCOPES = [
+  // Drive
   "https://www.googleapis.com/auth/drive.file",
   "https://www.googleapis.com/auth/drive.readonly",
+  // Calendar - ניהול אירועים ביומן המשתמש
+  "https://www.googleapis.com/auth/calendar.events",
+  // Tasks - ניהול משימות
+  "https://www.googleapis.com/auth/tasks",
+  // Identity
   "https://www.googleapis.com/auth/userinfo.email",
   "openid",
 ].join(" ");
