@@ -13,6 +13,7 @@ import { ArrowRight, Upload, Loader2, Sparkles, FileAudio, Save, CheckCircle2 } 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
+import { serviceLabel } from "@/lib/serviceLabels";
 
 interface Meeting {
   id: string;
@@ -249,7 +250,7 @@ const MeetingDetail = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             {r.transcription_service && (
-                              <Badge variant="secondary" className="text-xs">{r.transcription_service}</Badge>
+                              <Badge variant="secondary" className="text-xs">{serviceLabel(r.transcription_service)}</Badge>
                             )}
                             <Badge variant={r.transcript_status === "completed" ? "default" : "outline"}>
                               {r.transcript_status === "completed" ? "תומלל" : "ממתין"}

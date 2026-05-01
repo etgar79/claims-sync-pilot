@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderOpen, Mic, Image as ImageIcon, Settings, Cloud, Search, Users, FileText, Calendar, Shield } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Mic, Image as ImageIcon, Settings, Cloud, Search, Users, FileText, Calendar, Shield, DollarSign } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader } from "@/components/ui/sidebar";
 import { NavLink, useLocation } from "react-router-dom";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -40,6 +40,7 @@ export function AppSidebar() {
   if (isAdmin) {
     integrationItems.push(
       { title: "ניהול משתמשים", url: "/admin", icon: Shield },
+      { title: "צריכה ועלויות", url: "/usage", icon: DollarSign },
       { title: "Google Drive", url: "/drive", icon: Cloud },
       { title: "הגדרות", url: "/settings", icon: Settings },
     );
