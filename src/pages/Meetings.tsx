@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
 import { AssignToMeetingDialog } from "@/components/AssignToMeetingDialog";
+import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { Mic, Tag, Cloud } from "lucide-react";
 
 interface Meeting {
@@ -64,6 +65,23 @@ const Meetings = () => {
     meeting_date: "",
   });
   const navigate = useNavigate();
+  const { runAll, running: transcribing } = useTranscribeAll();
+
+  const handleQuickTranscribe = async (r: UnassignedRecording) => {
+    if (!r.drive_url) {
+      toast.error("אין קובץ אודיו זמין");
+      return;
+    }
+    await supabase.from("meeting_recordings").update({ transcript_status: "processing" }).eq("id", r.id);
+    load();
+    await runAll({
+      recordingId: r.id,
+      audioUrl: r.drive_url,
+      table: "meeting_recordings",
+      context: { title: r.filename },
+      onCompleted: load,
+    });
+  };
 
   const load = async () => {
     setLoading(true);
