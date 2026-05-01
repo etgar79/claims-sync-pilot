@@ -174,6 +174,44 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "download_file") {
+      const fileId = body.fileId;
+      if (!fileId) throw new Error("חסר מזהה קובץ");
+      // Get file metadata first (name + mimeType)
+      const metaRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,size`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      const meta = await metaRes.json();
+      if (!metaRes.ok) {
+        return new Response(JSON.stringify({ error: meta }), {
+          status: metaRes.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Download the file content
+      const contentRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      if (!contentRes.ok) {
+        const errText = await contentRes.text();
+        return new Response(JSON.stringify({ error: errText }), {
+          status: contentRes.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const arrayBuf = await contentRes.arrayBuffer();
+      // Stream back as the original mime type, with filename header
+      return new Response(arrayBuf, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": meta.mimeType || "application/octet-stream",
+          "X-Filename": encodeURIComponent(meta.name || "audio"),
+        },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
