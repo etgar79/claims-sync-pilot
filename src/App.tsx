@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
+import RoleHome from "./pages/RoleHome.tsx";
 import Settings from "./pages/Settings.tsx";
 import Clients from "./pages/Clients.tsx";
 import ReportTemplates from "./pages/ReportTemplates.tsx";
@@ -24,7 +25,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
-          <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+          <Route path="/" element={<ProtectedRoute><RoleHome /></ProtectedRoute>} />
+          <Route path="/cases" element={<ProtectedRoute><Index /></ProtectedRoute>} />
           <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
           <Route path="/templates" element={<ProtectedRoute><ReportTemplates /></ProtectedRoute>} />
           <Route path="/meetings" element={<ProtectedRoute><Meetings /></ProtectedRoute>} />
