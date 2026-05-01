@@ -12,3 +12,12 @@ verify_jwt = true
 [functions.merge-transcripts]
 verify_jwt = true
 
+[functions.google-calendar-event]
+verify_jwt = true
+
+[functions.google-tasks-create]
+verify_jwt = true
+
+[functions.extract-action-items]
+verify_jwt = true
+
