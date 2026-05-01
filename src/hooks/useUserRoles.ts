@@ -40,7 +40,6 @@ export function useUserRoles() {
     let mounted = true;
     load();
     const { data: sub } = supabase.auth.onAuthStateChange((_event, _session) => {
-      // Defer to avoid deadlock with the auth callback
       if (!mounted) return;
       setTimeout(() => {
         if (mounted) load();
@@ -53,12 +52,10 @@ export function useUserRoles() {
   }, []);
 
   const isAdmin = roles.includes("admin");
-  const isArchitectRaw = roles.includes("architect");
-  const isAppraiserRaw = roles.includes("appraiser");
-  // Appraiser is true only if explicitly assigned, OR if admin (admin sees everything),
-  // OR if user has no roles at all AND is not an architect (legacy default for old users).
-  const isAppraiser = isAppraiserRaw || isAdmin || (roles.length === 0 && !isArchitectRaw);
-  const isArchitect = isArchitectRaw || isAdmin;
+  // STRICT: a role is true only if explicitly assigned. Admin is the ONLY exception
+  // (admin can act as either workspace). No legacy "default to appraiser" fallback.
+  const isAppraiser = roles.includes("appraiser") || isAdmin;
+  const isArchitect = roles.includes("architect") || isAdmin;
 
   return {
     roles,

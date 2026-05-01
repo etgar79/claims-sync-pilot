@@ -17,7 +17,7 @@ export function useActiveWorkspace() {
   const { roles, isAdmin, loading } = useUserRoles();
   const [workspace, setWorkspaceState] = useState<Workspace | null>(null);
 
-  // Available workspaces for this user
+  // Available workspaces — STRICT: only what the user actually has.
   const available: Workspace[] = useMemo(() => {
     if (loading) return [];
     const list: Workspace[] = [];
@@ -31,17 +31,26 @@ export function useActiveWorkspace() {
   }, [loading, isAdmin, roles]);
 
   useEffect(() => {
-    if (loading || available.length === 0) return;
+    if (loading) return;
+    if (available.length === 0) {
+      setWorkspaceState(null);
+      try { localStorage.removeItem(STORAGE_KEY); } catch {}
+      return;
+    }
     const stored = readStored();
+    // If stored workspace is NOT in the user's available list — discard it.
     if (stored && available.includes(stored)) {
       setWorkspaceState(stored);
       return;
     }
-    // Default: admin -> admin; single role -> that role
+    if (stored && !available.includes(stored)) {
+      try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    }
+    // Default selection
     if (isAdmin) setWorkspaceState("admin");
     else if (available.length === 1) setWorkspaceState(available[0]);
-    else if (available.includes("appraiser")) setWorkspaceState("appraiser");
     else if (available.includes("architect")) setWorkspaceState("architect");
+    else setWorkspaceState(available[0]);
   }, [loading, isAdmin, available]);
 
   const setWorkspace = useCallback((w: Workspace) => {
@@ -53,17 +62,17 @@ export function useActiveWorkspace() {
 
   const canSwitch = available.length > 1;
 
-  // While loading or workspace not yet determined, treat as loading
-  const resolved = workspace ?? (available[0] || "appraiser");
+  const resolved = workspace ?? available[0] ?? null;
 
   return {
-    workspace: resolved,
+    workspace: resolved as Workspace,
     setWorkspace,
     available,
     canSwitch,
     loading: loading || workspace === null,
     isAdminWorkspace: resolved === "admin",
-    isAppraiserWorkspace: resolved === "appraiser" || (isAdmin && resolved === "admin"),
-    isArchitectWorkspace: resolved === "architect" || (isAdmin && resolved === "admin"),
+    // STRICT workspace flags — admin acting as a workspace switches by selection only.
+    isAppraiserWorkspace: resolved === "appraiser",
+    isArchitectWorkspace: resolved === "architect",
   };
 }
