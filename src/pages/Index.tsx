@@ -22,13 +22,14 @@ const Index = () => {
   const [statusFilter, setStatusFilter] = useState<CaseStatus | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { cases, loading, reload } = useCases();
-  const { isAppraiser, isAdmin, loading: rolesLoading } = useUserRoles();
+  const { roles, isAdmin, loading: rolesLoading } = useUserRoles();
   const navigate = useNavigate();
 
-  // Seed sample data only for appraisers (not pure architects)
+  // Seed sample cases ONLY for explicit appraisers (never admin-only, never architects).
   useEffect(() => {
     if (rolesLoading) return;
-    if (!isAppraiser && !isAdmin) return;
+    const isExplicitAppraiser = roles.includes("appraiser");
+    if (!isExplicitAppraiser) return;
     (async () => {
       const { data } = await supabase.auth.getUser();
       if (!data.user) return;
@@ -39,7 +40,7 @@ const Index = () => {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rolesLoading, isAppraiser, isAdmin]);
+  }, [rolesLoading, roles]);
 
   useEffect(() => {
     if (!selectedId && cases.length > 0) setSelectedId(cases[0].id);

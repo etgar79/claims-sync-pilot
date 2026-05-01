@@ -60,18 +60,20 @@ export function AppSidebar() {
       { title: "תבניות דוחות", url: "/templates", icon: FileText },
     ];
   } else if (workspace === "architect") {
-    mainLabel = "מערכת ניהול פגישות";
+    mainLabel = "ניהול פגישות";
     mainItems = [
       { title: "דשבורד פגישות", url: "/", icon: LayoutDashboard },
       { title: "פגישות", url: "/meetings", icon: Calendar },
+      { title: "הקלטות פגישה", url: "/meeting-recordings", icon: Mic },
       { title: "לקוחות / פרויקטים", url: "/clients", icon: Users },
-      { title: "הקלטות פגישה", url: "/recordings", icon: Mic },
       { title: "תבניות סיכום פגישה", url: "/meeting-templates", icon: ClipboardList },
     ];
-  } else {
-    // admin overview
+  } else if (workspace === "admin") {
     mainLabel = "סקירת מערכת";
     mainItems = [{ title: "סקירה כללית", url: "/", icon: LayoutDashboard }];
+  } else {
+    mainLabel = "טוען...";
+    mainItems = [];
   }
 
   // Management

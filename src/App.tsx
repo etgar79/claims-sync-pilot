@@ -10,6 +10,7 @@ import Clients from "./pages/Clients.tsx";
 import ReportTemplates from "./pages/ReportTemplates.tsx";
 import MeetingTemplates from "./pages/MeetingTemplates.tsx";
 import Recordings from "./pages/Recordings.tsx";
+import MeetingRecordings from "./pages/MeetingRecordings.tsx";
 import Meetings from "./pages/Meetings.tsx";
 import MeetingDetail from "./pages/MeetingDetail.tsx";
 import Admin from "./pages/Admin.tsx";
@@ -34,8 +35,9 @@ const App = () => (
           <Route path="/recordings" element={<ProtectedRoute allow={["appraiser"]}><Recordings /></ProtectedRoute>} />
           <Route path="/templates" element={<ProtectedRoute allow={["appraiser"]}><ReportTemplates /></ProtectedRoute>} />
           <Route path="/meeting-templates" element={<ProtectedRoute allow={["architect"]}><MeetingTemplates /></ProtectedRoute>} />
-          <Route path="/meetings" element={<ProtectedRoute allow={["architect", "appraiser"]}><Meetings /></ProtectedRoute>} />
-          <Route path="/meetings/:id" element={<ProtectedRoute allow={["architect", "appraiser"]}><MeetingDetail /></ProtectedRoute>} />
+          <Route path="/meeting-recordings" element={<ProtectedRoute allow={["architect"]}><MeetingRecordings /></ProtectedRoute>} />
+          <Route path="/meetings" element={<ProtectedRoute allow={["architect"]}><Meetings /></ProtectedRoute>} />
+          <Route path="/meetings/:id" element={<ProtectedRoute allow={["architect"]}><MeetingDetail /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute allow={["admin"]}><Admin /></ProtectedRoute>} />
           <Route path="/usage" element={<ProtectedRoute allow={["admin"]}><Usage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
