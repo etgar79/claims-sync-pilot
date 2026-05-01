@@ -74,6 +74,69 @@ export type Database = {
         }
         Relationships: []
       }
+      drive_work_folders: {
+        Row: {
+          created_at: string
+          folder_id: string
+          folder_name: string
+          folder_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          folder_id: string
+          folder_name: string
+          folder_type?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          folder_id?: string
+          folder_name?: string
+          folder_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      google_drive_connections: {
+        Row: {
+          access_token: string
+          created_at: string
+          google_email: string
+          id: string
+          refresh_token: string
+          scope: string | null
+          token_expires_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          google_email: string
+          id?: string
+          refresh_token: string
+          scope?: string | null
+          token_expires_at: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          google_email?: string
+          id?: string
+          refresh_token?: string
+          scope?: string | null
+          token_expires_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meeting_recordings: {
         Row: {
           created_at: string
