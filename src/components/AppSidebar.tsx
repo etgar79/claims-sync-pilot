@@ -33,8 +33,8 @@ type Item = { title: string; url: string; icon: any };
 
 export function AppSidebar() {
   const location = useLocation();
-  const { isAdmin, displayName, email } = useUserRoles();
-  const { workspace } = useActiveWorkspace();
+  const { isAdmin, displayName, email, loading: rolesLoading } = useUserRoles();
+  const { workspace, loading: wsLoading } = useActiveWorkspace();
   const branding = useBranding();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -45,8 +45,12 @@ export function AppSidebar() {
   // Build menu by active workspace
   let mainItems: Item[] = [];
   let mainLabel = "ראשי";
+  const stillLoading = rolesLoading || wsLoading;
 
-  if (workspace === "appraiser") {
+  if (stillLoading) {
+    mainLabel = "טוען...";
+    mainItems = [];
+  } else if (workspace === "appraiser") {
     mainLabel = "מערכת שמאות";
     mainItems = [
       { title: "דשבורד שמאי", url: "/", icon: LayoutDashboard },
@@ -61,6 +65,7 @@ export function AppSidebar() {
       { title: "דשבורד פגישות", url: "/", icon: LayoutDashboard },
       { title: "פגישות", url: "/meetings", icon: Calendar },
       { title: "לקוחות / פרויקטים", url: "/clients", icon: Users },
+      { title: "הקלטות פגישה", url: "/recordings", icon: Mic },
       { title: "תבניות סיכום פגישה", url: "/meeting-templates", icon: ClipboardList },
     ];
   } else {
