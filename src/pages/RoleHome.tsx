@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Loader2, Calendar, Mic, FolderOpen, Users, Shield, DollarSign, ClipboardList, FileText } from "lucide-react";
+import { Loader2, Calendar, Mic, FolderOpen, Users, Shield, DollarSign, ClipboardList, FileText, LogOut } from "lucide-react";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useActiveWorkspace } from "@/hooks/useActiveWorkspace";
 import { Card } from "@/components/ui/card";
@@ -23,9 +23,9 @@ const RoleHome = () => {
     );
   }
 
-  // No roles -> show selector if there are options, else fallback to Index
+  // No roles means no workspace access. Never fall back to the appraiser/cases dashboard.
   if (!isAdmin && roles.length === 0) {
-    return <Index />;
+    return <NoRoleScreen />;
   }
 
   // Non-admin with both roles, no preference set yet -> selector
@@ -75,9 +75,39 @@ const RoleHome = () => {
     return <ArchitectDashboard />;
   }
 
-  // Appraiser default - existing cases dashboard
-  return <Index />;
+  if (workspace === "appraiser") {
+    return <Index />;
+  }
+
+  return <NoRoleScreen />;
 };
+
+function NoRoleScreen() {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth", { replace: true });
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-6" dir="rtl">
+      <Card className="w-full max-w-md p-6 text-center space-y-4">
+        <Shield className="h-9 w-9 mx-auto text-muted-foreground" />
+        <div className="space-y-1">
+          <h1 className="text-xl font-semibold">לא הוגדר תפקיד לחשבון הזה</h1>
+          <p className="text-sm text-muted-foreground">
+            מנהל המערכת צריך לשייך לחשבון תפקיד אדריכל או שמאי לפני כניסה למערכת.
+          </p>
+        </div>
+        <Button variant="outline" onClick={handleLogout} className="w-full gap-2">
+          <LogOut className="h-4 w-4" />
+          יציאה
+        </Button>
+      </Card>
+    </div>
+  );
+}
 
 // ====== Architect dashboard ======
 function ArchitectDashboard() {
