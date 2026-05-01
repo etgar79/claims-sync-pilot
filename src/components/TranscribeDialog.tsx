@@ -176,14 +176,16 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button size="sm" variant="default">
-            <Mic className="h-4 w-4 ml-2" />
-            תמלל
-          </Button>
-        )}
-      </DialogTrigger>
+      {trigger !== null && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button size="sm" variant="default">
+              <Mic className="h-4 w-4 ml-2" />
+              תמלל
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>בחר רמת תמלול</DialogTitle>
