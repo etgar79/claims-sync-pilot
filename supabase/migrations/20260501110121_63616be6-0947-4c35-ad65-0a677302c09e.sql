@@ -1,0 +1,2 @@
+ALTER TABLE public.report_templates ADD COLUMN IF NOT EXISTS template_kind text NOT NULL DEFAULT 'appraisal';
+CREATE INDEX IF NOT EXISTS idx_report_templates_user_kind ON public.report_templates(user_id, template_kind);
