@@ -32,13 +32,14 @@ export function AppSidebar() {
     { title: "חיפוש", url: "/search", icon: Search },
   );
 
-  const integrationItems: { title: string; url: string; icon: any }[] = [
-    { title: "Google Drive", url: "/drive", icon: Cloud },
-    { title: "הגדרות", url: "/settings", icon: Settings },
-  ];
-
+  // ניהול והגדרות - רק למנהל
+  const integrationItems: { title: string; url: string; icon: any }[] = [];
   if (isAdmin) {
-    integrationItems.unshift({ title: "ניהול משתמשים", url: "/admin", icon: Shield });
+    integrationItems.push(
+      { title: "ניהול משתמשים", url: "/admin", icon: Shield },
+      { title: "Google Drive", url: "/drive", icon: Cloud },
+      { title: "הגדרות", url: "/settings", icon: Settings },
+    );
   }
 
   return (
