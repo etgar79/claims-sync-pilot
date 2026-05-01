@@ -1,138 +1,101 @@
 
-## הבעיה
+# תוכנית: סנכרון Drive פרטי לכל יוזר + תיוג הקלטות
 
-כרגע התפריט נבנה מצירוף תפקידים (אם שמאי → תיקים/לקוחות/תבניות; אם אדריכל → פגישות) ולכן:
-- **שמאי לא רואה "הקלטות/פגישות"** למרות שגם הוא צריך להקליט שיחות עם לקוחות.
-- **אדריכל (שלומי) רואה "תבניות דוחות"** אם בטעות יש לו גם תפקיד שמאי, או לא רואה כלום שייחודי לו מעבר ל"פגישות".
-- אין באמת "מערכת ייחודית" לכל יוזר - רק רשימת קישורים לפי דגלים.
+## עקרונות ברזל
+1. **כל יוזר = חשבון Google משלו** (כבר קיים — `google_drive_connections` עם `user_id`).
+2. **הפרדה מוחלטת**: שמאי לא רואה דבר של אדריכל, ולהיפך. RLS קיימת ועובדת.
+3. **אדמין רואה ועושה הכל** (RLS קיימת).
+4. **תיקיית Drive נפרדת לכל workspace**: שמאי בוחר תיקיית הקלטות שטח, אדריכל בוחר תיקיית הקלטות פגישות.
+5. **סנכרון ידני בלחיצת כפתור** (לא אוטומטי) — היוזר בשליטה.
+6. **תיוג ידני אחרי סנכרון**: ההקלטה נכנסת "ללא שיוך", והיוזר מתייג אותה.
 
-## העיקרון החדש
+## איך זה ייראה לכל יוזר
 
-**שני מוצרים נפרדים בתוך אותה מערכת**, שחולקים רק את מנוע התמלול וההגדרות (Drive). האדמין רואה את הכל + ניהול משתמשים.
+### שמאי
+- **הגדרות** → כרטיס "תיקיית הקלטות שטח" → מחבר Drive (אם לא מחובר) → בוחר תיקייה.
+- **/recordings** → באנר עליון: שם התיקייה + [סנכרן עכשיו] + [פתח ב-Drive].
+- אחרי סנכרון: הקלטות חדשות מופיעות עם תג **"ללא שיוך"** ועם כפתור **"שייך לתיק שומה"** (Select של תיקי השומה שלו, או "צור תיק חדש").
 
-| תפקיד | מטרה | תפריט |
-|-------|------|-------|
-| **שמאי** | ניהול תיקי שומה + הקלטות שטח | דשבורד שמאי, תיקים, לקוחות, **הקלטות שטח**, תבניות דוחות, הגדרות |
-| **אדריכל (שלומי)** | ניהול פגישות עם לקוחות/קבלנים | דשבורד פגישות, **פגישות**, לקוחות, **תבניות סיכום פגישה**, הגדרות |
-| **אדמין** | שליטה מלאה | כל הנ"ל + ניהול משתמשים + צריכה ועלויות + מעבר בין תצוגות |
+### אדריכל
+- **הגדרות** → כרטיס "תיקיית הקלטות פגישות" → מחבר Drive → בוחר תיקייה.
+- **/meetings** → באנר עליון: שם התיקייה + [סנכרן עכשיו] + [פתח ב-Drive].
+- אחרי סנכרון: הקלטות חדשות מופיעות כ**"הקלטות לא משויכות"** עם כפתור **"שייך לפגישה"** (Select של פגישות קיימות, או "צור פגישה חדשה מההקלטה" — שם הקובץ נהיה כותרת).
 
-שניהם מקבלים: **לקוחות**, **תבניות** (לפי הקשר), **הקלטה+תמלול**, **חיבור Drive**, **סיכום AI** - אבל בעטיפות UI נפרדות עם טרמינולוגיה שונה.
+### אדמין
+- רואה ב-Settings את **שני הכרטיסים** (תיקיית שמאי + תיקיית אדריכל) של החשבון שלו.
+- ב-Workspace Switcher יכול לעבור בין מצב שמאי / אדריכל / סקירה כללית.
+- בעמוד ניהול משתמשים יכול לראות את התיקיות והחיבורים של כל יוזר אחר.
 
-## תוכנית מפורטת
+## שינויים טכניים
 
-### 1. תפריט צד דינמי לפי תפקיד (`AppSidebar.tsx`)
+### 1. DB — מיגרציה
+**`drive_work_folders.folder_type`** מקבל ערכים מוגדרים:
+- `appraiser_recordings`
+- `architect_meetings`
+- (`input` קיים → ימופה לפי תפקיד היוזר במיגרציה)
 
-מבנה חדש - "workspace" אחד פעיל בכל רגע:
+**`recordings`**: שדה `case_id` הופך **nullable** (כדי לאפשר הקלטה "ללא שיוך"). מוסיף `source` ('drive_sync' | 'manual_upload') ו-`drive_file_id` (UNIQUE per user) למניעת כפילויות בסנכרון חוזר.
 
-**תצוגת שמאי:**
-```
-ראשי
-  • דשבורד שמאי         (/)
-  • תיקי שומה          (/cases)
-  • לקוחות              (/clients)
-  • הקלטות שטח         (/recordings)   ← חדש בתפריט
-  • תבניות דוחות שומה   (/templates)
-ניהול
-  • הגדרות (Drive, פרופיל)
-```
+**`meeting_recordings`**: אותו דבר — `meeting_id` nullable + `drive_file_id` ו-`source`.
 
-**תצוגת אדריכל:**
-```
-ראשי
-  • דשבורד פגישות       (/)
-  • פגישות              (/meetings)
-  • לקוחות / פרויקטים  (/clients)      ← חדש בתפריט עבורו
-  • תבניות סיכום פגישה (/meeting-templates)
-ניהול
-  • הגדרות (Drive, פרופיל)
-```
+### 2. Edge Function חדשה: `drive-sync`
+Body: `{ workspace: 'appraiser' | 'architect' }`
+- מאמת JWT, מוצא את `user_id`.
+- שולף את `drive_work_folders` של היוזר לפי `folder_type` המתאים.
+- שולף את ה-Google token של היוזר (שלו בלבד) מ-`google_drive_connections`.
+- קורא ל-Drive API → מקבל רשימת קבצי אודיו/וידאו בתיקייה.
+- לכל קובץ שלא קיים ב-DB (לפי `drive_file_id` + `user_id`):
+  - שמאי → `INSERT INTO recordings` עם `case_id=NULL`, `source='drive_sync'`.
+  - אדריכל → `INSERT INTO meeting_recordings` עם `meeting_id=NULL`, `source='drive_sync'`.
+- מחזירה: `{ added: N, existing: M, total: K }`.
 
-**תצוגת אדמין:**
-```
-ראשי
-  • סקירה כללית         (/)
-ניהול
-  • משתמשים            (/admin)
-  • צריכה ועלויות       (/usage)
-  • הגדרות מערכת
-מעבר תצוגה (workspace switcher)
-  • היכנס כשמאי / היכנס כאדריכל
-```
+### 3. רכיבי UI חדשים
+- **`WorkspaceFolderBanner`** — באנר אחיד בראש דפי `/recordings` ו-`/meetings`:
+  ```
+  📁 תיקיית הקלטות שטח: "פגישות 2026"  [סנכרן]  [פתח ב-Drive]  [שנה תיקייה]
+  ```
+  אם לא מוגדר — מציג CTA "הגדר תיקייה בהגדרות →".
 
-האדמין מקבל **בורר תצוגה** (דרופדאון בראש הסיידבר) שמאפשר להחליף בין "מצב שמאי" ל-"מצב אדריכל" כדי לראות את שתי המערכות. נשמור את הבחירה ב-`localStorage` (`active_workspace`).
+- **`AssignRecordingDialog`** (לשמאי) — דיאלוג עם Select של תיקי שומה + כפתור "צור תיק חדש".
+- **`AssignToMeetingDialog`** (לאדריכל) — Select של פגישות + כפתור "צור פגישה מההקלטה".
 
-### 2. דפים חדשים / שינויים
+### 4. עדכון דפים קיימים
+- **`Settings.tsx`** — מחליף את כרטיס `WorkFolderPicker` היחיד בשני כרטיסים נפרדים לפי תפקיד. אדמין רואה את שניהם.
+- **`Recordings.tsx`** — מוסיף באנר, מציג סקציה "ללא שיוך" עם כפתור תיוג.
+- **`Meetings.tsx`** — מוסיף באנר + סקציית "הקלטות לא משויכות" בראש הדף, מסיר/מפשט את `ImportFromDriveDialog`.
 
-- **`src/pages/Recordings.tsx`** (חדש) - רשימת כל ההקלטות של השמאי, מקושרת לתיקים. משתמש ב-`recordings` table הקיים.
-- **`src/pages/MeetingTemplates.tsx`** (חדש) - תבניות סיכום פגישה לאדריכל. משתמש ב-`report_templates` עם תיוג `template_kind = 'meeting'` (נוסיף עמודה).
-- **`src/pages/ReportTemplates.tsx`** - יוגבל לתבניות שומה (`template_kind = 'appraisal'`).
-- **`src/pages/Clients.tsx`** - יוצג לשניהם, עם התאמת שפה לפי `activeWorkspace`.
-- **`src/pages/RoleHome.tsx`** - יציג דשבורד שונה לחלוטין:
-  - שמאי: KPI של תיקים, תיקים אחרונים, הקלטות לא מתומללות.
-  - אדריכל: KPI של פגישות, פגישות קרובות, סיכומים ממתינים.
-  - אדמין: סקירה כללית של כל המערכת + קיצורי דרך.
+### 5. הוקים חדשים
+- `useWorkspaceFolder(workspace)` — שולף תיקיה לפי workspace.
+- `useDriveSync(workspace)` — מפעיל את ה-edge function ומחזיר loading + תוצאה.
 
-### 3. ניתוב חדש (`App.tsx`)
+## קבצים מושפעים
 
-```
-/                    → RoleHome (דשבורד מותאם)
-/cases               → appraiser, admin
-/clients             → appraiser, architect, admin
-/recordings          → appraiser, admin           ← חדש
-/templates           → appraiser, admin
-/meetings            → architect, admin
-/meeting-templates   → architect, admin           ← חדש
-/admin, /usage       → admin בלבד
-/settings            → כולם
-```
+**חדשים:**
+- `supabase/migrations/<timestamp>_drive_sync.sql`
+- `supabase/functions/drive-sync/index.ts`
+- `src/hooks/useWorkspaceFolder.ts`
+- `src/hooks/useDriveSync.ts`
+- `src/components/WorkspaceFolderBanner.tsx`
+- `src/components/AssignRecordingDialog.tsx`
+- `src/components/AssignToMeetingDialog.tsx`
 
-### 4. ניהול workspace פעיל (`useActiveWorkspace` hook חדש)
+**משתנים:**
+- `src/components/WorkFolderPicker.tsx` (מקבל `workspace` כ-prop)
+- `src/pages/Settings.tsx` (שני כרטיסים לפי תפקיד)
+- `src/pages/Recordings.tsx` (באנר + סקציית לא-משויכות + תיוג)
+- `src/pages/Meetings.tsx` (באנר + סקציית לא-משויכות + תיוג)
 
-- אם למשתמש יש תפקיד יחיד → workspace קבוע.
-- אם יש שני תפקידים או admin → ניתן להחליף; ערך נשמר ב-localStorage.
-- כל המסכים (Sidebar, RoleHome, Branding) משתמשים בערך זה כדי להחליט אילו פריטים/טרמינולוגיה להציג.
+## אבטחה
+- ה-edge function משתמשת ב-`getClaims()` כדי לאמת את היוזר.
+- כל הקריאות ל-Drive נעשות עם **ה-token של אותו יוזר** (מתוך `google_drive_connections.user_id = auth.uid()`).
+- **אף יוזר לא יכול לסנכרן או לראות תיקייה של יוזר אחר** — לא ב-UI ולא ב-API.
+- אדמין: ה-RLS הקיימת (`Admins manage all...`) נותנת לו לראות את הכל **בקוד**, אבל הסנכרון עצמו תמיד רץ עבור היוזר המחובר.
 
-### 5. ניהול משתמשים (`Admin.tsx`)
-
-כבר תומך ביצירה ושיוך תפקידים. נוסיף:
-- כפתור "הענקת תפקיד נוסף" (כדי שמשתמש יוכל להיות גם שמאי וגם אדריכל).
-- אפשרות להפוך משתמש לאדמין (רק אדמין קיים יכול).
-- מחיקת תפקיד.
-
-### 6. בידוד נתונים
-
-קיים כבר ב-RLS לפי `user_id`. אדמין רואה הכל דרך `has_role(admin)`. **לא נדרש שינוי DB** מעבר ל:
-- הוספת עמודה `template_kind text default 'appraisal'` ל-`report_templates` כדי להפריד תבניות שומה מתבניות פגישה.
-
-## פרטים טכניים
-
-**מיגרציה:**
-```sql
-ALTER TABLE public.report_templates 
-  ADD COLUMN template_kind text NOT NULL DEFAULT 'appraisal';
--- 'appraisal' | 'meeting'
-```
-
-**קבצים שייווצרו:**
-- `src/hooks/useActiveWorkspace.ts`
-- `src/pages/Recordings.tsx`
-- `src/pages/MeetingTemplates.tsx`
-- `src/components/WorkspaceSwitcher.tsx` (לאדמין / לבעלי 2 תפקידים)
-
-**קבצים שיעודכנו:**
-- `src/components/AppSidebar.tsx` - תפריט לפי `activeWorkspace`
-- `src/App.tsx` - ניתובים חדשים + הרשאות
-- `src/pages/RoleHome.tsx` - דשבורד מותאם לכל workspace
-- `src/pages/ReportTemplates.tsx` - סינון `template_kind='appraisal'`
-- `src/pages/Admin.tsx` - הענקת תפקידים מרובים + הפיכה לאדמין
-- `src/hooks/useBranding.ts` - שם/כותרת לפי workspace ("מערכת שמאות" / "מערכת ניהול פגישות")
-
-## מה שלא משתנה
-
-- מנוע התמלול (`transcribe-audio` edge function) - משותף.
-- חיבור Google Drive והגדרות - משותפים.
-- RLS הקיים - מספיק; כל משתמש רואה רק את הנתונים שלו, אדמין רואה הכל.
+## מה לא נכלל (אפשר אחר כך)
+- סנכרון אוטומטי ברקע (cron).
+- סנכרון דו-כיווני (מחיקה ב-Drive → מחיקה במערכת).
+- העלאת קבצים מהמערכת חזרה ל-Drive.
 
 ---
 
-לאחר אישור אעבור למצב ביצוע, אריץ את המיגרציה ואיישם את כל הקבצים.
+**מאשר?** ברגע שתאשר, אני מבצע ברצף: מיגרציה → edge function → הוקים → קומפוננטות → עדכון 3 הדפים.

@@ -40,8 +40,8 @@ const BACKUP_FOLDERS: DriveFolder[] = [
 ];
 
 export default function Settings() {
-  // Roles - backup section is admin-only
-  const { isAdmin } = useUserRoles();
+  // Roles - decide which folder pickers to show + admin-only sections
+  const { isAdmin, isAppraiser, isArchitect } = useUserRoles();
   // Drive - real connection via Google OAuth
   const { isConnected: driveConnected, connection, connecting, connect, disconnect } = useDriveConnection();
   const driveAccount = connection?.google_email ?? "";
@@ -218,7 +218,18 @@ export default function Settings() {
                       </Button>
                     </div>
 
-                    <WorkFolderPicker />
+                    {isAppraiser && (
+                      <WorkFolderPicker
+                        workspace="appraiser"
+                        label="📁 תיקיית הקלטות שטח (שמאי)"
+                      />
+                    )}
+                    {isArchitect && (
+                      <WorkFolderPicker
+                        workspace="architect"
+                        label="📁 תיקיית הקלטות פגישות (אדריכל)"
+                      />
+                    )}
                   </div>
                 )}
               </Card>

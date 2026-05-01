@@ -9,12 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Calendar, MapPin, Users, Loader2, Search, Sparkles, Clock, CheckCircle2, LogOut, FolderInput } from "lucide-react";
+import { Plus, Calendar, MapPin, Users, Loader2, Search, Sparkles, Clock, CheckCircle2, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
-import { ImportFromDriveDialog } from "@/components/ImportFromDriveDialog";
-import { useWorkFolder } from "@/hooks/useWorkFolder";
+import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
+import { AssignToMeetingDialog } from "@/components/AssignToMeetingDialog";
+import { Mic, Tag, Cloud } from "lucide-react";
 
 interface Meeting {
   id: string;
@@ -36,13 +37,22 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "בוטלה",
 };
 
+interface UnassignedRecording {
+  id: string;
+  filename: string;
+  duration: string | null;
+  recorded_at: string;
+  drive_url: string | null;
+  source: string | null;
+}
+
 const Meetings = () => {
   const { displayName } = useUserRoles();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [unassignedRecs, setUnassignedRecs] = useState<UnassignedRecording[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-  const { folder: workFolder } = useWorkFolder();
+  const [assignTarget, setAssignTarget] = useState<UnassignedRecording | null>(null);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -57,12 +67,20 @@ const Meetings = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("meetings")
-      .select("*")
-      .order("meeting_date", { ascending: false, nullsFirst: false });
-    if (error) toast.error(error.message);
-    setMeetings(data || []);
+    const [mRes, urRes] = await Promise.all([
+      supabase
+        .from("meetings")
+        .select("*")
+        .order("meeting_date", { ascending: false, nullsFirst: false }),
+      supabase
+        .from("meeting_recordings")
+        .select("id, filename, duration, recorded_at, drive_url, source")
+        .is("meeting_id", null)
+        .order("recorded_at", { ascending: false }),
+    ]);
+    if (mRes.error) toast.error(mRes.error.message);
+    setMeetings(mRes.data || []);
+    setUnassignedRecs((urRes.data as UnassignedRecording[]) || []);
     setLoading(false);
   };
 
@@ -150,12 +168,7 @@ const Meetings = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {workFolder && (
-                <Button variant="outline" onClick={() => setImportOpen(true)}>
-                  <FolderInput className="h-4 w-4 ml-2" />
-                  ייבוא מ-Drive
-                </Button>
-              )}
+              {/* Drive sync moved to WorkspaceFolderBanner below */}
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
                   <Button>
@@ -206,6 +219,43 @@ const Meetings = () => {
           </header>
 
           <div className="flex-1 p-6 space-y-6">
+            {/* Drive folder banner with sync */}
+            <WorkspaceFolderBanner workspace="architect" onSynced={load} />
+
+            {/* Unassigned recordings from Drive */}
+            {unassignedRecs.length > 0 && (
+              <Card className="p-4 border-warning/40 bg-warning/5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Mic className="h-4 w-4 text-warning" />
+                  <h3 className="font-semibold">הקלטות חדשות לשיוך</h3>
+                  <Badge variant="outline">{unassignedRecs.length}</Badge>
+                </div>
+                <div className="space-y-2">
+                  {unassignedRecs.map((r) => (
+                    <div key={r.id} className="flex items-center gap-3 p-2 rounded bg-background border">
+                      <Mic className="h-4 w-4 text-primary shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{r.filename}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                          <span>{new Date(r.recorded_at).toLocaleString("he-IL")}</span>
+                          {r.duration && <span>{r.duration}</span>}
+                          {r.source === "drive_sync" && (
+                            <Badge variant="outline" className="gap-1 text-xs">
+                              <Cloud className="h-3 w-3" /> Drive
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <Button size="sm" onClick={() => setAssignTarget(r)} className="gap-1 shrink-0">
+                        <Tag className="h-3.5 w-3.5" />
+                        שייך לפגישה
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="p-4">
@@ -327,7 +377,15 @@ const Meetings = () => {
           </div>
         </main>
       </div>
-      <ImportFromDriveDialog open={importOpen} onOpenChange={setImportOpen} onImported={load} />
+      {assignTarget && (
+        <AssignToMeetingDialog
+          open={!!assignTarget}
+          onOpenChange={(o) => !o && setAssignTarget(null)}
+          recordingId={assignTarget.id}
+          recordingFilename={assignTarget.filename}
+          onAssigned={load}
+        />
+      )}
     </SidebarProvider>
   );
 };
