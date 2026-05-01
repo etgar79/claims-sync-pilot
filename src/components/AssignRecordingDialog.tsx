@@ -103,10 +103,19 @@ export function AssignRecordingDialog({
             title: newCase.title,
             client_name: newCase.client_name,
           })
-          .select("id")
+          .select("id, title, case_number")
           .single();
         if (createErr) throw createErr;
         caseId = newC.id;
+        // Fire-and-forget: create matching Drive sub-folder
+        const folderName = `${newC.case_number} - ${newC.title}`;
+        supabase.functions
+          .invoke("google-drive-create-case-folder", {
+            body: { kind: "case", id: newC.id, name: folderName },
+          })
+          .then(({ error }) => {
+            if (error) console.warn("Drive folder creation skipped:", error);
+          });
       } else if (mode === "tagsOnly") {
         caseId = null;
       }
