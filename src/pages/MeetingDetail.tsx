@@ -280,6 +280,34 @@ const MeetingDetail = () => {
                                 onCompleted={load}
                                 trigger={<Button size="sm" variant="outline">הרץ תמלול נוסף</Button>}
                               />
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={runningAll === r.id}
+                                onClick={async () => {
+                                  setProgressMsg("");
+                                  await runAll({
+                                    recordingId: r.id,
+                                    audioFile: r._file,
+                                    audioUrl: r.drive_url || undefined,
+                                    table: "meeting_recordings",
+                                    context: {
+                                      title: meeting?.title,
+                                      client: meeting?.client_name ?? undefined,
+                                      project: meeting?.project_name ?? undefined,
+                                    },
+                                    onProgress: setProgressMsg,
+                                    onCompleted: load,
+                                  });
+                                  setProgressMsg("");
+                                }}
+                              >
+                                {runningAll === r.id ? (
+                                  <><Loader2 className="h-4 w-4 ml-2 animate-spin" /> {progressMsg || "מריץ..."}</>
+                                ) : (
+                                  <><Wand2 className="h-4 w-4 ml-2" /> הרץ הכל + מיזוג</>
+                                )}
+                              </Button>
                               <MergeTranscriptsDialog
                                 recordingId={r.id}
                                 table="meeting_recordings"
@@ -288,13 +316,43 @@ const MeetingDetail = () => {
                             </div>
                           </>
                         ) : (
-                          <TranscribeDialog
-                            recordingId={r.id}
-                            audioFile={r._file}
-                            audioUrl={r.drive_url || undefined}
-                            table="meeting_recordings"
-                            onCompleted={load}
-                          />
+                          <div className="flex flex-wrap gap-2">
+                            <TranscribeDialog
+                              recordingId={r.id}
+                              audioFile={r._file}
+                              audioUrl={r.drive_url || undefined}
+                              table="meeting_recordings"
+                              onCompleted={load}
+                            />
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={runningAll === r.id}
+                              onClick={async () => {
+                                setProgressMsg("");
+                                await runAll({
+                                  recordingId: r.id,
+                                  audioFile: r._file,
+                                  audioUrl: r.drive_url || undefined,
+                                  table: "meeting_recordings",
+                                  context: {
+                                    title: meeting?.title,
+                                    client: meeting?.client_name ?? undefined,
+                                    project: meeting?.project_name ?? undefined,
+                                  },
+                                  onProgress: setProgressMsg,
+                                  onCompleted: load,
+                                });
+                                setProgressMsg("");
+                              }}
+                            >
+                              {runningAll === r.id ? (
+                                <><Loader2 className="h-4 w-4 ml-2 animate-spin" /> {progressMsg || "מריץ..."}</>
+                              ) : (
+                                <><Wand2 className="h-4 w-4 ml-2" /> הרץ הכל + מיזוג</>
+                              )}
+                            </Button>
+                          </div>
                         )}
                       </div>
                     ))}
