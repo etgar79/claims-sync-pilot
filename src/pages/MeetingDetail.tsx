@@ -195,10 +195,29 @@ const MeetingDetail = () => {
                 </p>
               </div>
             </div>
-            <Button onClick={generateSummary} disabled={summarizing}>
-              {summarizing ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Sparkles className="h-4 w-4 ml-2" />}
-              צור סיכום AI
-            </Button>
+            <div className="flex items-center gap-2">
+              <Select value={meeting.status} onValueChange={updateStatus} disabled={statusUpdating}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scheduled">מתוזמנת</SelectItem>
+                  <SelectItem value="active">פעילה</SelectItem>
+                  <SelectItem value="completed">הושלמה</SelectItem>
+                  <SelectItem value="cancelled">בוטלה</SelectItem>
+                </SelectContent>
+              </Select>
+              {meeting.status !== "completed" && (
+                <Button variant="outline" onClick={() => updateStatus("completed")} disabled={statusUpdating}>
+                  <CheckCircle2 className="h-4 w-4 ml-2" />
+                  סמן כהושלמה
+                </Button>
+              )}
+              <Button onClick={generateSummary} disabled={summarizing}>
+                {summarizing ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Sparkles className="h-4 w-4 ml-2" />}
+                צור סיכום AI
+              </Button>
+            </div>
           </header>
 
           <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
