@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Briefcase, Building2 } from "lucide-react";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [role, setRole] = useState<"appraiser" | "architect">("appraiser");
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +39,7 @@ export default function Auth() {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/`,
-        data: { display_name: displayName || email },
+        data: { display_name: displayName || email, role },
       },
     });
     setLoading(false);
@@ -109,6 +111,35 @@ export default function Auth() {
               <div>
                 <Label htmlFor="password-up">סיסמה</Label>
                 <Input id="password-up" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} dir="ltr" />
+              </div>
+              <div>
+                <Label>סוג חשבון</Label>
+                <RadioGroup
+                  value={role}
+                  onValueChange={(v) => setRole(v as "appraiser" | "architect")}
+                  className="grid grid-cols-2 gap-2 mt-2"
+                >
+                  <Label
+                    htmlFor="role-appraiser"
+                    className={`flex items-center gap-2 border-2 rounded-lg p-3 cursor-pointer transition-colors ${
+                      role === "appraiser" ? "border-primary bg-primary/5" : "border-border"
+                    }`}
+                  >
+                    <RadioGroupItem value="appraiser" id="role-appraiser" />
+                    <Briefcase className="h-4 w-4" />
+                    <span>שמאי</span>
+                  </Label>
+                  <Label
+                    htmlFor="role-architect"
+                    className={`flex items-center gap-2 border-2 rounded-lg p-3 cursor-pointer transition-colors ${
+                      role === "architect" ? "border-primary bg-primary/5" : "border-border"
+                    }`}
+                  >
+                    <RadioGroupItem value="architect" id="role-architect" />
+                    <Building2 className="h-4 w-4" />
+                    <span>אדריכל</span>
+                  </Label>
+                </RadioGroup>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}

@@ -24,14 +24,13 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
-          {/* DEMO MODE: Auth disabled. To restore, wrap with <ProtectedRoute>...</ProtectedRoute> */}
-          <Route path="/" element={<Index />} />
-          <Route path="/clients" element={<Clients />} />
-          <Route path="/templates" element={<ReportTemplates />} />
-          <Route path="/meetings" element={<Meetings />} />
-          <Route path="/meetings/:id" element={<MeetingDetail />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+          <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
+          <Route path="/templates" element={<ProtectedRoute><ReportTemplates /></ProtectedRoute>} />
+          <Route path="/meetings" element={<ProtectedRoute><Meetings /></ProtectedRoute>} />
+          <Route path="/meetings/:id" element={<ProtectedRoute><MeetingDetail /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
