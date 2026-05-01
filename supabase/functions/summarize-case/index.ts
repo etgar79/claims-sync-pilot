@@ -31,7 +31,48 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { caseId } = await req.json();
+    const body = await req.json();
+
+    // === MEETING MODE (architect meetings) ===
+    if (body.mode === "meeting") {
+      const { title, client, project, transcripts, notes } = body;
+      const userPrompt = `פרטי הפגישה:
+- כותרת: ${title ?? ""}
+${client ? `- לקוח: ${client}` : ""}
+${project ? `- פרויקט: ${project}` : ""}
+
+${transcripts ? `תמלולי הקלטות:\n${transcripts}\n` : ""}
+${notes ? `הערות:\n${notes}\n` : ""}
+
+צור סיכום פגישה מקצועי בעברית עבור משרד אדריכלים. כלול: נושאים שעלו, החלטות שהתקבלו, משימות לביצוע (action items) עם אחראים אם צוין, נקודות פתוחות להמשך, והמלצות. השתמש בכותרות ורשימות בפורמט Markdown.`;
+
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+      const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: "אתה עוזר למשרד אדריכלים. צור סיכומי פגישות מקצועיים, מובנים ותמציתיים בעברית בפורמט Markdown." },
+            { role: "user", content: userPrompt },
+          ],
+        }),
+      });
+
+      if (!aiResp.ok) {
+        if (aiResp.status === 429) return new Response(JSON.stringify({ error: "חרגת ממגבלת הבקשות." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        if (aiResp.status === 402) return new Response(JSON.stringify({ error: "נדרשת טעינת קרדיטים ל-Lovable AI." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: "שגיאה ביצירת הסיכום" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const aiData = await aiResp.json();
+      const summary = aiData.choices?.[0]?.message?.content ?? "";
+      return new Response(JSON.stringify({ summary }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const { caseId } = body;
     if (!caseId || typeof caseId !== "string") {
       return new Response(JSON.stringify({ error: "caseId is required" }), {
         status: 400,

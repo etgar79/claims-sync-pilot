@@ -1,26 +1,45 @@
-import { LayoutDashboard, FolderOpen, Mic, Image as ImageIcon, Settings, Cloud, Search, Users, FileText } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Mic, Image as ImageIcon, Settings, Cloud, Search, Users, FileText, Calendar, Shield } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader } from "@/components/ui/sidebar";
 import { NavLink, useLocation } from "react-router-dom";
-
-const mainItems = [
-  { title: "דשבורד", url: "/", icon: LayoutDashboard },
-  { title: "כל התיקים", url: "/cases", icon: FolderOpen },
-  { title: "לקוחות", url: "/clients", icon: Users },
-  { title: "תבניות דוחות", url: "/templates", icon: FileText },
-  { title: "הקלטות לתמלול", url: "/recordings", icon: Mic },
-  { title: "תמונות", url: "/photos", icon: ImageIcon },
-  { title: "חיפוש", url: "/search", icon: Search },
-];
-
-const integrationItems = [
-  { title: "Google Drive", url: "/drive", icon: Cloud },
-  { title: "הגדרות", url: "/settings", icon: Settings },
-];
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 export function AppSidebar() {
   const location = useLocation();
+  const { isAppraiser, isArchitect, isAdmin } = useUserRoles();
 
   const isActive = (path: string) => location.pathname === path;
+
+  // Build menu items based on role
+  const mainItems: { title: string; url: string; icon: any }[] = [
+    { title: "דשבורד", url: "/", icon: LayoutDashboard },
+  ];
+
+  if (isAppraiser) {
+    mainItems.push(
+      { title: "כל התיקים", url: "/cases", icon: FolderOpen },
+      { title: "לקוחות", url: "/clients", icon: Users },
+      { title: "תבניות דוחות", url: "/templates", icon: FileText },
+    );
+  }
+
+  if (isArchitect) {
+    mainItems.push({ title: "פגישות", url: "/meetings", icon: Calendar });
+  }
+
+  mainItems.push(
+    { title: "הקלטות לתמלול", url: "/recordings", icon: Mic },
+    { title: "תמונות", url: "/photos", icon: ImageIcon },
+    { title: "חיפוש", url: "/search", icon: Search },
+  );
+
+  const integrationItems: { title: string; url: string; icon: any }[] = [
+    { title: "Google Drive", url: "/drive", icon: Cloud },
+    { title: "הגדרות", url: "/settings", icon: Settings },
+  ];
+
+  if (isAdmin) {
+    integrationItems.unshift({ title: "ניהול משתמשים", url: "/admin", icon: Shield });
+  }
 
   return (
     <Sidebar side="right" collapsible="icon">
@@ -30,8 +49,8 @@ export function AppSidebar() {
             ש
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="font-bold text-sidebar-foreground">מערכת שמאות</span>
-            <span className="text-xs text-sidebar-foreground/70">ניהול תיקים</span>
+            <span className="font-bold text-sidebar-foreground">מערכת ניהול</span>
+            <span className="text-xs text-sidebar-foreground/70">תיקים ופגישות</span>
           </div>
         </div>
       </SidebarHeader>
