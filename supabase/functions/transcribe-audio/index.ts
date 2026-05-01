@@ -18,6 +18,7 @@ const COST_PER_SECOND_USD: Record<Service, number> = {
   ivrit_ai: 0.10 / 3600,    // ~$0.10/hour
   whisper: 0.006 / 60,      // $0.006/minute = $0.36/hour
   elevenlabs: 0.40 / 3600,  // ~$0.40/hour
+  lovable_ai: 0,            // covered by Lovable AI credits, tracked separately
 };
 
 async function transcribeWhisper(file: File): Promise<{ text: string; duration?: number }> {
