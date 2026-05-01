@@ -7,11 +7,35 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mic, Loader2, Search, FileText, Clock, AlertCircle, CheckCircle2, ExternalLink, Tag, Cloud } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Mic,
+  Loader2,
+  Search,
+  FileText,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
+  ExternalLink,
+  Tag,
+  Cloud,
+  Sparkles,
+  Zap,
+  ChevronDown,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
 import { AssignRecordingDialog } from "@/components/AssignRecordingDialog";
+import { TranscribeDialog } from "@/components/TranscribeDialog";
+import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 
 interface RecordingRow {
   id: string;
@@ -23,6 +47,7 @@ interface RecordingRow {
   drive_url: string | null;
   case_id: string | null;
   source: string | null;
+  tags: string[] | null;
   case_title?: string;
   case_number?: string;
   client_name?: string;
@@ -39,13 +64,16 @@ const Recordings = () => {
   const [items, setItems] = useState<RecordingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [assignTarget, setAssignTarget] = useState<RecordingRow | null>(null);
+  const [transcribeTarget, setTranscribeTarget] = useState<RecordingRow | null>(null);
+  const { runAll, running } = useTranscribeAll();
 
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("recordings")
-      .select("id, filename, duration, recorded_at, transcript_status, transcript, drive_url, case_id, source")
+      .select("id, filename, duration, recorded_at, transcript_status, transcript, drive_url, case_id, source, tags")
       .order("recorded_at", { ascending: false });
     if (error) {
       toast.error(error.message);
@@ -78,25 +106,52 @@ const Recordings = () => {
     load();
   }, []);
 
+  // All unique tags across recordings
+  const allTags = Array.from(
+    new Set(items.flatMap((r) => r.tags ?? []))
+  ).sort();
+
   const filtered = items.filter((r) => {
     const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      r.filename.toLowerCase().includes(q) ||
-      (r.case_title ?? "").toLowerCase().includes(q) ||
-      (r.case_number ?? "").toLowerCase().includes(q) ||
-      (r.client_name ?? "").toLowerCase().includes(q)
-    );
+    if (q) {
+      const hit =
+        r.filename.toLowerCase().includes(q) ||
+        (r.case_title ?? "").toLowerCase().includes(q) ||
+        (r.case_number ?? "").toLowerCase().includes(q) ||
+        (r.client_name ?? "").toLowerCase().includes(q) ||
+        (r.tags ?? []).some((t) => t.toLowerCase().includes(q));
+      if (!hit) return false;
+    }
+    if (tagFilter && !(r.tags ?? []).includes(tagFilter)) return false;
+    return true;
   });
 
-  const unassigned = filtered.filter((r) => !r.case_id);
-  const assigned = filtered.filter((r) => !!r.case_id);
+  const unassigned = filtered.filter((r) => !r.case_id && (!r.tags || r.tags.length === 0));
+  const tagged = filtered.filter((r) => r.case_id || (r.tags && r.tags.length > 0));
+
+  const handleQuickTranscribe = async (r: RecordingRow) => {
+    if (!r.drive_url) {
+      toast.error("אין קובץ אודיו זמין");
+      return;
+    }
+    // mark processing immediately for UX
+    await supabase.from("recordings").update({ transcript_status: "processing" }).eq("id", r.id);
+    load();
+    await runAll({
+      recordingId: r.id,
+      audioUrl: r.drive_url,
+      table: "recordings",
+      context: { title: r.filename, client: r.client_name, project: r.case_title },
+      onCompleted: load,
+    });
+  };
 
   const renderCard = (r: RecordingRow) => {
     const st = STATUS[r.transcript_status] ?? STATUS.pending;
     const Icon = st.icon;
+    const isRunning = running === r.id;
     return (
-      <Card key={r.id} className="p-4 flex items-center gap-4 hover:border-primary/50 transition-colors">
+      <Card key={r.id} className="p-4 flex items-start gap-4 hover:border-primary/50 transition-colors">
         <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
           <Mic className="h-5 w-5 text-primary" />
         </div>
@@ -104,8 +159,8 @@ const Recordings = () => {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium truncate">{r.filename}</span>
             <Badge className={`gap-1 ${st.cls}`} variant="secondary">
-              <Icon className={`h-3 w-3 ${r.transcript_status === "processing" ? "animate-spin" : ""}`} />
-              {st.label}
+              <Icon className={`h-3 w-3 ${r.transcript_status === "processing" || isRunning ? "animate-spin" : ""}`} />
+              {isRunning ? "מתמלל-על..." : st.label}
             </Badge>
             {r.transcript && (
               <Badge variant="outline" className="gap-1">
@@ -120,35 +175,89 @@ const Recordings = () => {
               </Badge>
             )}
           </div>
+
           <div className="text-xs text-muted-foreground mt-1 flex items-center gap-3 flex-wrap">
             {r.case_id && r.case_number ? (
               <Link to={`/cases?id=${r.case_id}`} className="hover:text-primary">
                 תיק {r.case_number} • {r.case_title}
               </Link>
-            ) : (
-              <span className="text-warning">ללא שיוך לתיק</span>
-            )}
+            ) : !r.tags || r.tags.length === 0 ? (
+              <span className="text-warning">ללא תיוג</span>
+            ) : null}
             {r.client_name && <span>לקוח: {r.client_name}</span>}
             <span>{new Date(r.recorded_at).toLocaleString("he-IL")}</span>
             {r.duration && <span>{r.duration}</span>}
           </div>
+
+          {r.tags && r.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {r.tags.map((t) => (
+                <Badge
+                  key={t}
+                  variant="outline"
+                  className="text-xs cursor-pointer hover:bg-primary/10"
+                  onClick={() => setTagFilter(t)}
+                >
+                  <Tag className="h-2.5 w-2.5 ml-1" />
+                  {t}
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
-        {!r.case_id && (
-          <Button size="sm" variant="default" className="gap-1 shrink-0" onClick={() => setAssignTarget(r)}>
+
+        <div className="flex flex-col gap-1.5 shrink-0">
+          {/* Transcribe split-button */}
+          {!r.transcript && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="default" className="gap-1" disabled={isRunning}>
+                  {isRunning ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Mic className="h-3.5 w-3.5" />
+                  )}
+                  תמלל
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>בחר רמת תמלול</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleQuickTranscribe(r)} className="gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">תמלול-על</span>
+                    <span className="text-xs text-muted-foreground">3 מנועים + מיזוג AI</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTranscribeTarget(r)} className="gap-2">
+                  <Zap className="h-4 w-4 text-primary" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">תמלול מהיר</span>
+                    <span className="text-xs text-muted-foreground">בחר מנוע יחיד</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => setAssignTarget(r)}>
             <Tag className="h-3.5 w-3.5" />
-            שייך לתיק
+            {r.case_id || (r.tags && r.tags.length > 0) ? "ערוך תיוג" : "תייג"}
           </Button>
-        )}
-        {r.drive_url && (
-          <a
-            href={r.drive_url}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-primary inline-flex items-center gap-1 shrink-0"
-          >
-            Drive <ExternalLink className="h-3 w-3" />
-          </a>
-        )}
+
+          {r.drive_url && (
+            <a
+              href={r.drive_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-primary inline-flex items-center gap-1 justify-center"
+            >
+              Drive <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </div>
       </Card>
     );
   };
@@ -168,7 +277,7 @@ const Recordings = () => {
             <div className="relative w-72 max-w-full">
               <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="חיפוש לפי קובץ, תיק, לקוח..."
+                placeholder="חיפוש לפי קובץ, תיק, תווית..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pr-8"
@@ -178,8 +287,34 @@ const Recordings = () => {
 
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-4">
-              {/* Drive folder banner with sync action */}
               <WorkspaceFolderBanner workspace="appraiser" onSynced={load} />
+
+              {/* Tag filter chips */}
+              {allTags.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-muted-foreground">סינון לפי תווית:</span>
+                  {tagFilter && (
+                    <Badge
+                      variant="default"
+                      className="cursor-pointer gap-1"
+                      onClick={() => setTagFilter(null)}
+                    >
+                      {tagFilter} ✕
+                    </Badge>
+                  )}
+                  {!tagFilter &&
+                    allTags.slice(0, 12).map((t) => (
+                      <Badge
+                        key={t}
+                        variant="outline"
+                        className="cursor-pointer hover:bg-muted"
+                        onClick={() => setTagFilter(t)}
+                      >
+                        {t}
+                      </Badge>
+                    ))}
+                </div>
+              )}
 
               {loading ? (
                 <div className="text-center py-12 text-muted-foreground">
@@ -197,26 +332,22 @@ const Recordings = () => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 px-1">
                         <h2 className="text-sm font-semibold text-warning">
-                          הקלטות חדשות לשיוך
+                          הקלטות חדשות לתיוג
                         </h2>
                         <Badge variant="outline">{unassigned.length}</Badge>
                       </div>
-                      <div className="space-y-2">
-                        {unassigned.map(renderCard)}
-                      </div>
+                      <div className="space-y-2">{unassigned.map(renderCard)}</div>
                     </div>
                   )}
 
-                  {assigned.length > 0 && (
+                  {tagged.length > 0 && (
                     <div className="space-y-2">
                       {unassigned.length > 0 && (
                         <h2 className="text-sm font-semibold text-muted-foreground px-1 pt-2">
-                          משויכות לתיקים
+                          הקלטות מתויגות
                         </h2>
                       )}
-                      <div className="space-y-2">
-                        {assigned.map(renderCard)}
-                      </div>
+                      <div className="space-y-2">{tagged.map(renderCard)}</div>
                     </div>
                   )}
                 </>
@@ -232,7 +363,33 @@ const Recordings = () => {
           onOpenChange={(o) => !o && setAssignTarget(null)}
           recordingId={assignTarget.id}
           recordingFilename={assignTarget.filename}
+          initialTags={assignTarget.tags ?? []}
+          initialCaseId={assignTarget.case_id}
           onAssigned={load}
+        />
+      )}
+
+      {transcribeTarget && (
+        <TranscribeDialog
+          recordingId={transcribeTarget.id}
+          audioUrl={transcribeTarget.drive_url ?? undefined}
+          table="recordings"
+          onCompleted={() => {
+            setTranscribeTarget(null);
+            load();
+          }}
+          trigger={
+            <button
+              ref={(el) => {
+                // auto-open the dialog by dispatching click once mounted
+                if (el && !el.dataset.opened) {
+                  el.dataset.opened = "1";
+                  el.click();
+                }
+              }}
+              className="hidden"
+            />
+          }
         />
       )}
     </SidebarProvider>
