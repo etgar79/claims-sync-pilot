@@ -144,8 +144,8 @@ export function useTranscribeAll() {
         return true;
       }
 
-      // Merge with Gemini
-      onProgress?.("ממזג את כל הגרסאות עם Gemini...");
+      // Merge with the configured AI engine
+      onProgress?.("ממזג את כל הגרסאות עם AI...");
       const mergeRes = await supabase.functions.invoke("merge-transcripts", {
         body: { versions, language: "he", context },
       });
