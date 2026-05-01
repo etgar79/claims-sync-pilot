@@ -219,6 +219,43 @@ const Meetings = () => {
           </header>
 
           <div className="flex-1 p-6 space-y-6">
+            {/* Drive folder banner with sync */}
+            <WorkspaceFolderBanner workspace="architect" onSynced={load} />
+
+            {/* Unassigned recordings from Drive */}
+            {unassignedRecs.length > 0 && (
+              <Card className="p-4 border-warning/40 bg-warning/5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Mic className="h-4 w-4 text-warning" />
+                  <h3 className="font-semibold">הקלטות חדשות לשיוך</h3>
+                  <Badge variant="outline">{unassignedRecs.length}</Badge>
+                </div>
+                <div className="space-y-2">
+                  {unassignedRecs.map((r) => (
+                    <div key={r.id} className="flex items-center gap-3 p-2 rounded bg-background border">
+                      <Mic className="h-4 w-4 text-primary shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{r.filename}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                          <span>{new Date(r.recorded_at).toLocaleString("he-IL")}</span>
+                          {r.duration && <span>{r.duration}</span>}
+                          {r.source === "drive_sync" && (
+                            <Badge variant="outline" className="gap-1 text-xs">
+                              <Cloud className="h-3 w-3" /> Drive
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <Button size="sm" onClick={() => setAssignTarget(r)} className="gap-1 shrink-0">
+                        <Tag className="h-3.5 w-3.5" />
+                        שייך לפגישה
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="p-4">
