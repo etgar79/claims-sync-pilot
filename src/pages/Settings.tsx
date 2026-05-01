@@ -125,16 +125,6 @@ export default function Settings() {
     localStorage.removeItem(STORAGE_KEYS.driveFolderName);
   };
 
-  const handleFolderChange = (id: string) => {
-    const folder = SAMPLE_FOLDERS.find((f) => f.id === id);
-    if (!folder) return;
-    setFolderId(folder.id);
-    setFolderName(folder.name);
-    localStorage.setItem(STORAGE_KEYS.driveFolderId, folder.id);
-    localStorage.setItem(STORAGE_KEYS.driveFolderName, folder.name);
-    toast.success(`התיקייה "${folder.name}" נבחרה לסנכרון`);
-  };
-
   const handleSaveGemini = () => {
     localStorage.setItem(STORAGE_KEYS.geminiSource, geminiSource);
     if (geminiSource === "custom" && geminiKey.trim()) {
