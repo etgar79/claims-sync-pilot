@@ -36,6 +36,7 @@ const ReportTemplates = () => {
     const { data, error } = await supabase
       .from("report_templates")
       .select("*")
+      .eq("template_kind", "appraisal")
       .order("is_default", { ascending: false })
       .order("updated_at", { ascending: false });
     if (error) {
@@ -55,6 +56,7 @@ const ReportTemplates = () => {
             description: DEFAULT_TEMPLATE_DESCRIPTION,
             content: DEFAULT_TEMPLATE_CONTENT,
             is_default: true,
+            template_kind: "appraisal",
           })
           .select()
           .single();
@@ -116,6 +118,7 @@ const ReportTemplates = () => {
         description: editing.description,
         content: editing.content,
         is_default: editing.is_default,
+        template_kind: "appraisal",
       });
       if (error) {
         toast.error("שגיאה ביצירה");
@@ -130,6 +133,7 @@ const ReportTemplates = () => {
         .from("report_templates")
         .update({ is_default: false })
         .eq("user_id", userData.user.id)
+        .eq("template_kind", "appraisal")
         .neq("id", editing.id || "00000000-0000-0000-0000-000000000000");
     }
 
