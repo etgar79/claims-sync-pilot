@@ -9,8 +9,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
 const IVRIT_AI_API_KEY = Deno.env.get("IVRIT_AI_API_KEY");
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-type Service = "ivrit_ai" | "whisper" | "elevenlabs";
+type Service = "ivrit_ai" | "whisper" | "elevenlabs" | "lovable_ai";
 
 // Cost per second of audio (USD). Conservative estimates.
 const COST_PER_SECOND_USD: Record<Service, number> = {
