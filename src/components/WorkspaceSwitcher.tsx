@@ -21,7 +21,7 @@ export function WorkspaceSwitcher({ collapsed = false }: { collapsed?: boolean }
   const { workspace, setWorkspace, available, canSwitch } = useActiveWorkspace();
   const navigate = useNavigate();
 
-  if (!canSwitch) return null;
+  if (!canSwitch || !workspace) return null;
 
   const Icon = META[workspace].icon;
 

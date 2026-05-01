@@ -218,13 +218,13 @@ export default function Settings() {
                       </Button>
                     </div>
 
-                    {isAppraiser && (
+                    {(isAppraiser || isAdmin) && (
                       <WorkFolderPicker
                         workspace="appraiser"
                         label="📁 תיקיית הקלטות שטח (שמאי)"
                       />
                     )}
-                    {isArchitect && (
+                    {(isArchitect || isAdmin) && (
                       <WorkFolderPicker
                         workspace="architect"
                         label="📁 תיקיית הקלטות פגישות (אדריכל)"

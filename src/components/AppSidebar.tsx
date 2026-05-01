@@ -70,8 +70,11 @@ export function AppSidebar() {
     ];
   } else if (workspace === "admin") {
     mainLabel = "סקירת מערכת";
-    mainItems = [{ title: "סקירה כללית", url: "/", icon: LayoutDashboard }];
+    mainItems = [
+      { title: "סקירה כללית", url: "/", icon: LayoutDashboard },
+    ];
   } else {
+    // No role yet — show only Settings/Logout in management; keep main empty
     mainLabel = "אין תפקיד פעיל";
     mainItems = [];
   }
