@@ -140,12 +140,14 @@ export type Database = {
       meeting_recordings: {
         Row: {
           created_at: string
+          drive_file_id: string | null
           drive_url: string | null
           duration: string | null
           filename: string
           id: string
-          meeting_id: string
+          meeting_id: string | null
           recorded_at: string
+          source: string
           transcript: string | null
           transcript_status: string
           transcription_service: string | null
@@ -153,12 +155,14 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          drive_file_id?: string | null
           drive_url?: string | null
           duration?: string | null
           filename: string
           id?: string
-          meeting_id: string
+          meeting_id?: string | null
           recorded_at?: string
+          source?: string
           transcript?: string | null
           transcript_status?: string
           transcription_service?: string | null
@@ -166,12 +170,14 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          drive_file_id?: string | null
           drive_url?: string | null
           duration?: string | null
           filename?: string
           id?: string
-          meeting_id?: string
+          meeting_id?: string | null
           recorded_at?: string
+          source?: string
           transcript?: string | null
           transcript_status?: string
           transcription_service?: string | null
@@ -337,39 +343,45 @@ export type Database = {
       }
       recordings: {
         Row: {
-          case_id: string
+          case_id: string | null
           created_at: string
+          drive_file_id: string | null
           drive_url: string | null
           duration: string | null
           filename: string
           id: string
           recorded_at: string
+          source: string
           transcript: string | null
           transcript_status: string
           transcription_service: string | null
           user_id: string
         }
         Insert: {
-          case_id: string
+          case_id?: string | null
           created_at?: string
+          drive_file_id?: string | null
           drive_url?: string | null
           duration?: string | null
           filename: string
           id?: string
           recorded_at?: string
+          source?: string
           transcript?: string | null
           transcript_status?: string
           transcription_service?: string | null
           user_id: string
         }
         Update: {
-          case_id?: string
+          case_id?: string | null
           created_at?: string
+          drive_file_id?: string | null
           drive_url?: string | null
           duration?: string | null
           filename?: string
           id?: string
           recorded_at?: string
+          source?: string
           transcript?: string | null
           transcript_status?: string
           transcription_service?: string | null
