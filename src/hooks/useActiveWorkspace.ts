@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useUserRoles } from "@/hooks/useUserRoles";
 
 export type Workspace = "appraiser" | "architect" | "admin";
@@ -15,31 +15,34 @@ function readStored(): Workspace | null {
 
 export function useActiveWorkspace() {
   const { roles, isAdmin, loading } = useUserRoles();
-  const [workspace, setWorkspaceState] = useState<Workspace>("appraiser");
+  const [workspace, setWorkspaceState] = useState<Workspace | null>(null);
 
   // Available workspaces for this user
-  const available: Workspace[] = [];
-  if (isAdmin) {
-    available.push("admin", "appraiser", "architect");
-  } else {
-    if (roles.includes("appraiser")) available.push("appraiser");
-    if (roles.includes("architect")) available.push("architect");
-  }
+  const available: Workspace[] = useMemo(() => {
+    if (loading) return [];
+    const list: Workspace[] = [];
+    if (isAdmin) {
+      list.push("admin", "appraiser", "architect");
+    } else {
+      if (roles.includes("appraiser")) list.push("appraiser");
+      if (roles.includes("architect")) list.push("architect");
+    }
+    return list;
+  }, [loading, isAdmin, roles]);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || available.length === 0) return;
     const stored = readStored();
     if (stored && available.includes(stored)) {
       setWorkspaceState(stored);
       return;
     }
-    // Default: admin -> admin; pure architect -> architect; otherwise appraiser
+    // Default: admin -> admin; single role -> that role
     if (isAdmin) setWorkspaceState("admin");
     else if (available.length === 1) setWorkspaceState(available[0]);
     else if (available.includes("appraiser")) setWorkspaceState("appraiser");
     else if (available.includes("architect")) setWorkspaceState("architect");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, isAdmin, roles.join(",")]);
+  }, [loading, isAdmin, available]);
 
   const setWorkspace = useCallback((w: Workspace) => {
     setWorkspaceState(w);
@@ -50,14 +53,17 @@ export function useActiveWorkspace() {
 
   const canSwitch = available.length > 1;
 
+  // While loading or workspace not yet determined, treat as loading
+  const resolved = workspace ?? (available[0] || "appraiser");
+
   return {
-    workspace,
+    workspace: resolved,
     setWorkspace,
     available,
     canSwitch,
-    loading,
-    isAdminWorkspace: workspace === "admin",
-    isAppraiserWorkspace: workspace === "appraiser" || (isAdmin && workspace === "admin"),
-    isArchitectWorkspace: workspace === "architect" || (isAdmin && workspace === "admin"),
+    loading: loading || workspace === null,
+    isAdminWorkspace: resolved === "admin",
+    isAppraiserWorkspace: resolved === "appraiser" || (isAdmin && resolved === "admin"),
+    isArchitectWorkspace: resolved === "architect" || (isAdmin && resolved === "admin"),
   };
 }
