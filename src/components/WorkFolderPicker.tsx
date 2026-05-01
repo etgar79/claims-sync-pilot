@@ -13,7 +13,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FolderOpen, Loader2, Search, Cloud, ExternalLink, Link2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { useWorkspaceFolder, type WorkspaceKind } from "@/hooks/useWorkspaceFolder";
+import { useWorkspaceFolder, type WorkspaceKind, type FolderPurpose } from "@/hooks/useWorkspaceFolder";
 
 interface DriveFolder {
   id: string;
@@ -24,11 +24,12 @@ interface DriveFolder {
 
 interface WorkFolderPickerProps {
   workspace: WorkspaceKind;
+  purpose?: FolderPurpose;
   label?: string;
 }
 
-export function WorkFolderPicker({ workspace, label }: WorkFolderPickerProps) {
-  const { folder, folderUrl, reload, folderType } = useWorkspaceFolder(workspace);
+export function WorkFolderPicker({ workspace, purpose = "recordings", label }: WorkFolderPickerProps) {
+  const { folder, folderUrl, reload, folderType } = useWorkspaceFolder(workspace, purpose);
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");

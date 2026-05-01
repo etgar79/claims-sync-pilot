@@ -1,7 +1,7 @@
 import { AppraisalCase, CaseStatus, CaseType } from "@/data/sampleCases";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, User, Mic, Image as ImageIcon, FileText } from "lucide-react";
+import { Calendar, MapPin, User, Mic, Image as ImageIcon, FileText, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const statusConfig: Record<CaseStatus, { label: string; className: string }> = {
@@ -86,9 +86,22 @@ export function CaseCard({ appraisalCase, onClick, selected }: CaseCardProps) {
           <span>{appraisalCase.notes.length}</span>
         </div>
         {appraisalCase.estimatedValue && (
-          <div className="mr-auto font-semibold text-foreground">
+          <div className="font-semibold text-foreground">
             ₪{appraisalCase.estimatedValue.toLocaleString("he-IL")}
           </div>
+        )}
+        {appraisalCase.driveFolderUrl && (
+          <a
+            href={appraisalCase.driveFolderUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="mr-auto inline-flex items-center gap-1 text-primary hover:underline"
+            title="פתח תיקייה ב-Drive"
+          >
+            <FolderOpen className="h-3.5 w-3.5" />
+            Drive
+          </a>
         )}
       </div>
     </Card>

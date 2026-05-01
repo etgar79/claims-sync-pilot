@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, Upload, Loader2, Sparkles, FileAudio, Save, CheckCircle2, Wand2 } from "lucide-react";
+import { ArrowRight, Upload, Loader2, Sparkles, FileAudio, Save, CheckCircle2, Wand2, FolderOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
@@ -29,6 +29,7 @@ interface Meeting {
   status: string;
   ai_summary: string | null;
   ai_summary_generated_at: string | null;
+  drive_folder_url: string | null;
 }
 
 interface Recording {
@@ -201,6 +202,14 @@ const MeetingDetail = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {meeting.drive_folder_url && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={meeting.drive_folder_url} target="_blank" rel="noopener noreferrer" title="תיקיית הפגישה ב-Drive">
+                    <FolderOpen className="h-4 w-4 ml-2" />
+                    Drive
+                  </a>
+                </Button>
+              )}
               <Select value={meeting.status} onValueChange={updateStatus} disabled={statusUpdating}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue />

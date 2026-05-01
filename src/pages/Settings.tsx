@@ -219,16 +219,34 @@ export default function Settings() {
                     </div>
 
                     {(isAppraiser || isAdmin) && (
-                      <WorkFolderPicker
-                        workspace="appraiser"
-                        label="📁 תיקיית הקלטות שטח (שמאי)"
-                      />
+                      <div className="space-y-4 pt-2 border-t border-border">
+                        <div className="text-xs font-semibold text-muted-foreground">תיקיות שמאי ב-Drive</div>
+                        <WorkFolderPicker
+                          workspace="appraiser"
+                          purpose="recordings"
+                          label="🎙️ תיקיית הקלטות שטח"
+                        />
+                        <WorkFolderPicker
+                          workspace="appraiser"
+                          purpose="photos"
+                          label="🖼️ תיקיית תמונות"
+                        />
+                      </div>
                     )}
                     {(isArchitect || isAdmin) && (
-                      <WorkFolderPicker
-                        workspace="architect"
-                        label="📁 תיקיית הקלטות פגישות (אדריכל)"
-                      />
+                      <div className="space-y-4 pt-2 border-t border-border">
+                        <div className="text-xs font-semibold text-muted-foreground">תיקיות אדריכל ב-Drive</div>
+                        <WorkFolderPicker
+                          workspace="architect"
+                          purpose="recordings"
+                          label="🎙️ תיקיית הקלטות פגישות"
+                        />
+                        <WorkFolderPicker
+                          workspace="architect"
+                          purpose="photos"
+                          label="🖼️ תיקיית תמונות"
+                        />
+                      </div>
                     )}
                   </div>
                 )}

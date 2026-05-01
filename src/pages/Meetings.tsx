@@ -129,7 +129,7 @@ const Meetings = () => {
         meeting_date: form.meeting_date || null,
         status: form.meeting_date && new Date(form.meeting_date) > new Date() ? "scheduled" : "active",
       })
-      .select("id")
+      .select("id, title")
       .single();
     setCreating(false);
     if (error) {
@@ -137,6 +137,16 @@ const Meetings = () => {
       return;
     }
     toast.success("פגישה נוצרה בהצלחה");
+    // Fire-and-forget: create matching Drive sub-folder
+    if (data?.id) {
+      supabase.functions
+        .invoke("google-drive-create-case-folder", {
+          body: { kind: "meeting", id: data.id, name: data.title },
+        })
+        .then(({ error: fnErr }) => {
+          if (fnErr) console.warn("Drive folder creation skipped:", fnErr);
+        });
+    }
     setOpen(false);
     setForm({ title: "", client_name: "", project_name: "", location: "", meeting_date: "" });
     if (data?.id) navigate(`/meetings/${data.id}`);
