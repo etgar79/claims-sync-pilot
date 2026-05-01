@@ -49,6 +49,9 @@ interface Props {
   table?: "recordings" | "meeting_recordings";
   onCompleted?: (transcript: string, service: TranscriptionService) => void;
   trigger?: React.ReactNode;
+  /** Controlled mode */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // Read audio duration in seconds in the browser, used as a fallback for usage tracking.
@@ -74,8 +77,10 @@ async function getAudioDuration(file: File): Promise<number> {
   });
 }
 
-export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "recordings", onCompleted, trigger }: Props) {
-  const [open, setOpen] = useState(false);
+export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "recordings", onCompleted, trigger, open: controlledOpen, onOpenChange: controlledOnOpenChange }: Props) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [loading, setLoading] = useState<TranscriptionService | null>(null);
 
   const handleSelect = async (service: TranscriptionService) => {
@@ -171,14 +176,16 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button size="sm" variant="default">
-            <Mic className="h-4 w-4 ml-2" />
-            תמלל
-          </Button>
-        )}
-      </DialogTrigger>
+      {trigger !== null && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button size="sm" variant="default">
+              <Mic className="h-4 w-4 ml-2" />
+              תמלל
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>בחר רמת תמלול</DialogTitle>
