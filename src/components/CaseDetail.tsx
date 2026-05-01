@@ -237,12 +237,14 @@ export function CaseDetail({ appraisalCase, aiSummary, aiSummaryGeneratedAt, onS
   );
 }
 
-function RecordingCard({ recording, onUpdated }: { recording: Recording; onUpdated?: () => void }) {
+function RecordingCard({ recording, appraisalCase, onUpdated }: { recording: Recording; appraisalCase: AppraisalCase; onUpdated?: () => void }) {
   const status = transcriptStatusConfig[recording.transcriptStatus];
   const StatusIcon = status.icon;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(recording.transcript ?? "");
   const [saving, setSaving] = useState(false);
+  const { runAll, running: runningAll } = useTranscribeAll();
+  const [progressMsg, setProgressMsg] = useState<string>("");
 
   const handleSave = async () => {
     setSaving(true);
@@ -259,6 +261,33 @@ function RecordingCard({ recording, onUpdated }: { recording: Recording; onUpdat
     setEditing(false);
     onUpdated?.();
   };
+
+  const runAllForRec = async () => {
+    setProgressMsg("");
+    await runAll({
+      recordingId: recording.id,
+      audioUrl: recording.driveUrl,
+      table: "recordings",
+      context: {
+        title: appraisalCase.title,
+        client: appraisalCase.clientName,
+        project: appraisalCase.caseNumber,
+      },
+      onProgress: setProgressMsg,
+      onCompleted: onUpdated,
+    });
+    setProgressMsg("");
+  };
+
+  const runAllButton = (
+    <Button size="sm" variant="secondary" disabled={runningAll === recording.id} onClick={runAllForRec}>
+      {runningAll === recording.id ? (
+        <><Loader2 className="h-3.5 w-3.5 ml-2 animate-spin" /> {progressMsg || "מריץ..."}</>
+      ) : (
+        <><Wand2 className="h-3.5 w-3.5 ml-2" /> הרץ הכל + מיזוג</>
+      )}
+    </Button>
+  );
 
   return (
     <Card className="p-4">
@@ -309,21 +338,36 @@ function RecordingCard({ recording, onUpdated }: { recording: Recording; onUpdat
               {recording.transcript}
             </p>
           </div>
-          <div className="flex justify-end mt-2">
+          <div className="flex flex-wrap justify-end gap-2 mt-2">
             <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
               <Pencil className="h-3.5 w-3.5 ml-1" />
               ערוך תמלול
             </Button>
+            <TranscribeDialog
+              recordingId={recording.id}
+              audioUrl={recording.driveUrl}
+              table="recordings"
+              onCompleted={onUpdated}
+              trigger={<Button size="sm" variant="outline"><Mic className="h-3.5 w-3.5 ml-1" />הרץ תמלול נוסף</Button>}
+            />
+            {runAllButton}
+            <MergeTranscriptsDialog
+              recordingId={recording.id}
+              table="recordings"
+              onMerged={onUpdated}
+            />
           </div>
         </div>
       ) : (
-        <div className="flex items-center gap-2 mt-3">
-          {recording.transcriptStatus === "pending" && (
-            <Button size="sm" variant="default">
-              <Mic className="h-3.5 w-3.5 ml-2" />
-              תמלל עכשיו
-            </Button>
-          )}
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          <TranscribeDialog
+            recordingId={recording.id}
+            audioUrl={recording.driveUrl}
+            table="recordings"
+            onCompleted={onUpdated}
+            trigger={<Button size="sm" variant="default"><Mic className="h-3.5 w-3.5 ml-2" />תמלל עכשיו</Button>}
+          />
+          {runAllButton}
           <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
             <Pencil className="h-3.5 w-3.5 ml-1" />
             הוסף תמלול ידני
