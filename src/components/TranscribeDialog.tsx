@@ -77,8 +77,10 @@ async function getAudioDuration(file: File): Promise<number> {
   });
 }
 
-export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "recordings", onCompleted, trigger }: Props) {
-  const [open, setOpen] = useState(false);
+export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "recordings", onCompleted, trigger, open: controlledOpen, onOpenChange: controlledOnOpenChange }: Props) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [loading, setLoading] = useState<TranscriptionService | null>(null);
 
   const handleSelect = async (service: TranscriptionService) => {
