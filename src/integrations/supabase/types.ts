@@ -74,6 +74,107 @@ export type Database = {
         }
         Relationships: []
       }
+      meeting_recordings: {
+        Row: {
+          created_at: string
+          drive_url: string | null
+          duration: string | null
+          filename: string
+          id: string
+          meeting_id: string
+          recorded_at: string
+          transcript: string | null
+          transcript_status: string
+          transcription_service: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          drive_url?: string | null
+          duration?: string | null
+          filename: string
+          id?: string
+          meeting_id: string
+          recorded_at?: string
+          transcript?: string | null
+          transcript_status?: string
+          transcription_service?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          drive_url?: string | null
+          duration?: string | null
+          filename?: string
+          id?: string
+          meeting_id?: string
+          recorded_at?: string
+          transcript?: string | null
+          transcript_status?: string
+          transcription_service?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_recordings_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetings: {
+        Row: {
+          ai_summary: string | null
+          ai_summary_generated_at: string | null
+          client_name: string | null
+          created_at: string
+          id: string
+          location: string | null
+          meeting_date: string | null
+          notes: string | null
+          project_name: string | null
+          status: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          ai_summary_generated_at?: string | null
+          client_name?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          meeting_date?: string | null
+          notes?: string | null
+          project_name?: string | null
+          status?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_summary?: string | null
+          ai_summary_generated_at?: string | null
+          client_name?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          meeting_date?: string | null
+          notes?: string | null
+          project_name?: string | null
+          status?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           case_id: string
@@ -182,6 +283,7 @@ export type Database = {
           recorded_at: string
           transcript: string | null
           transcript_status: string
+          transcription_service: string | null
           user_id: string
         }
         Insert: {
@@ -194,6 +296,7 @@ export type Database = {
           recorded_at?: string
           transcript?: string | null
           transcript_status?: string
+          transcription_service?: string | null
           user_id: string
         }
         Update: {
@@ -206,6 +309,7 @@ export type Database = {
           recorded_at?: string
           transcript?: string | null
           transcript_status?: string
+          transcription_service?: string | null
           user_id?: string
         }
         Relationships: [
@@ -251,15 +355,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "appraiser" | "architect" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -386,6 +517,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["appraiser", "architect", "admin"],
+    },
   },
 } as const
