@@ -48,7 +48,7 @@ export default function Settings() {
   const [folderId, setFolderId] = useState<string>("");
   const [folderName, setFolderName] = useState<string>("");
 
-  // Gemini
+  // AI engine settings
   const [geminiSource, setGeminiSource] = useState<"lovable" | "custom">("lovable");
   const [geminiKey, setGeminiKey] = useState("");
   const [geminiKeyMasked, setGeminiKeyMasked] = useState<string>("");
@@ -135,13 +135,13 @@ export default function Settings() {
       setGeminiKeyMasked(masked);
       localStorage.setItem(STORAGE_KEYS.geminiKeyMasked, masked);
       setGeminiKey("");
-      toast.success("מפתח Gemini נשמר", {
+      toast.success("מפתח AI נשמר", {
         description: "המפתח יישמר באופן מאובטח בצד השרת",
       });
     } else if (geminiSource === "lovable") {
       localStorage.removeItem(STORAGE_KEYS.geminiKeyMasked);
       setGeminiKeyMasked("");
-      toast.success("המערכת תשתמש ב-Lovable AI Gateway");
+      toast.success("המערכת תשתמש ב-AI המובנה");
     } else {
       toast.error("יש להזין מפתח API");
     }
