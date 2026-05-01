@@ -14,34 +14,31 @@ interface ServiceOption {
   name: string;
   tagline: string;
   pros: string[];
-  price: string;
   badge?: { label: string; icon: React.ReactNode; className: string };
 }
 
+// Generic, white-label tiers - no third-party brand names exposed to users.
 const SERVICES: ServiceOption[] = [
   {
     id: "ivrit_ai",
-    name: "ivrit.ai",
-    tagline: "מודל ייעודי לעברית 🇮🇱",
-    pros: ["דיוק הכי גבוה בעברית", "מבין סלנג ומונחי מקצוע", "פותח בישראל"],
-    price: "חינם / זול",
-    badge: { label: "מומלץ לעברית", icon: <Star className="h-3 w-3" />, className: "bg-primary text-primary-foreground" },
+    name: "AI חסכוני",
+    tagline: "המחיר המשתלם ביותר 💰",
+    pros: ["הדיוק הטוב ביותר בעברית", "מבין סלנג ומונחים מקצועיים", "עלות מינימלית"],
+    badge: { label: "חסכוני", icon: <Star className="h-3 w-3" />, className: "bg-secondary text-secondary-foreground" },
   },
   {
     id: "whisper",
-    name: "OpenAI Whisper",
-    tagline: "האיזון המושלם בין מחיר ואיכות",
-    pros: ["דיוק מצוין בעברית", "מהיר מאוד", "$0.006 לדקה"],
-    price: "~$0.36 לשעה",
-    badge: { label: "משתלם", icon: <Zap className="h-3 w-3" />, className: "bg-secondary text-secondary-foreground" },
+    name: "AI מהיר",
+    tagline: "תמלול מהיר ואמין",
+    pros: ["דיוק מצוין בעברית", "מהירות גבוהה במיוחד", "מתאים לרוב המקרים"],
+    badge: { label: "מהיר", icon: <Zap className="h-3 w-3" />, className: "bg-primary text-primary-foreground" },
   },
   {
     id: "elevenlabs",
-    name: "ElevenLabs Scribe",
-    tagline: "עם פיצ'רים מתקדמים",
-    pros: ["זיהוי דוברים (Diarization)", "תיוג אירועי שמע", "חותמות זמן מדויקות"],
-    price: "~$0.40 לשעה",
-    badge: { label: "פרימיום", icon: <Sparkles className="h-3 w-3" />, className: "bg-accent text-accent-foreground" },
+    name: "AI איכות גבוהה",
+    tagline: "התמלול המתקדם ביותר ✨",
+    pros: ["זיהוי דוברים אוטומטי", "תיוג אירועי שמע", "חותמות זמן מדויקות"],
+    badge: { label: "איכות גבוהה", icon: <Sparkles className="h-3 w-3" />, className: "bg-accent text-accent-foreground" },
   },
 ];
 
@@ -52,6 +49,29 @@ interface Props {
   table?: "recordings" | "meeting_recordings";
   onCompleted?: (transcript: string, service: TranscriptionService) => void;
   trigger?: React.ReactNode;
+}
+
+// Read audio duration in seconds in the browser, used as a fallback for usage tracking.
+async function getAudioDuration(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    try {
+      const url = URL.createObjectURL(file);
+      const audio = document.createElement("audio");
+      audio.preload = "metadata";
+      audio.onloadedmetadata = () => {
+        const d = isFinite(audio.duration) ? audio.duration : 0;
+        URL.revokeObjectURL(url);
+        resolve(d);
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(0);
+      };
+      audio.src = url;
+    } catch {
+      resolve(0);
+    }
+  });
 }
 
 export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "recordings", onCompleted, trigger }: Props) {
@@ -69,14 +89,21 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
       }
       if (!file) throw new Error("לא נמצא קובץ אודיו לתמלול");
 
+      const clientDuration = await getAudioDuration(file);
+
       const fd = new FormData();
       fd.append("file", file);
       fd.append("service", service);
+      if (clientDuration > 0) fd.append("client_duration", String(clientDuration));
+
+      // Use the user's session token so the edge function can attribute usage.
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`;
       const res = await fetch(url, {
         method: "POST",
-        headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        headers: { Authorization: `Bearer ${token}` },
         body: fd,
       });
       const data = await res.json();
@@ -92,7 +119,8 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
         .eq("id", recordingId);
       if (updErr) throw updErr;
 
-      toast.success(`התמלול הושלם בהצלחה (${SERVICES.find((s) => s.id === service)?.name})`);
+      const label = SERVICES.find((s) => s.id === service)?.name ?? "תמלול";
+      toast.success(`התמלול הושלם בהצלחה (${label})`);
       onCompleted?.(data.transcript, service);
       setOpen(false);
     } catch (e: any) {
@@ -114,8 +142,8 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
       </DialogTrigger>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>בחר שירות תמלול</DialogTitle>
-          <DialogDescription>3 שירותי תמלול מובילים - בחר את המתאים לצרכים שלך</DialogDescription>
+          <DialogTitle>בחר רמת תמלול</DialogTitle>
+          <DialogDescription>3 רמות תמלול - בחר את המתאימה לצרכים שלך</DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
@@ -139,7 +167,6 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
                   </li>
                 ))}
               </ul>
-              <div className="text-xs text-muted-foreground border-t pt-2">{svc.price}</div>
               <Button
                 onClick={() => handleSelect(svc.id)}
                 disabled={loading !== null}
