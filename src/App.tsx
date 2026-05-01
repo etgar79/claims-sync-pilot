@@ -1,52 +1,60 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Suspense, lazy } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import RoleHome from "./pages/RoleHome.tsx";
-import Settings from "./pages/Settings.tsx";
-import Clients from "./pages/Clients.tsx";
-import ReportTemplates from "./pages/ReportTemplates.tsx";
-import MeetingTemplates from "./pages/MeetingTemplates.tsx";
-import Recordings from "./pages/Recordings.tsx";
-import MeetingRecordings from "./pages/MeetingRecordings.tsx";
-import Meetings from "./pages/Meetings.tsx";
-import MeetingDetail from "./pages/MeetingDetail.tsx";
-import Admin from "./pages/Admin.tsx";
-import Usage from "./pages/Usage.tsx";
-import Auth from "./pages/Auth.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
+import { Loader2 } from "lucide-react";
+
+const Index = lazy(() => import("./pages/Index.tsx"));
+const RoleHome = lazy(() => import("./pages/RoleHome.tsx"));
+const Settings = lazy(() => import("./pages/Settings.tsx"));
+const Clients = lazy(() => import("./pages/Clients.tsx"));
+const ReportTemplates = lazy(() => import("./pages/ReportTemplates.tsx"));
+const MeetingTemplates = lazy(() => import("./pages/MeetingTemplates.tsx"));
+const Recordings = lazy(() => import("./pages/Recordings.tsx"));
+const MeetingRecordings = lazy(() => import("./pages/MeetingRecordings.tsx"));
+const Meetings = lazy(() => import("./pages/Meetings.tsx"));
+const MeetingDetail = lazy(() => import("./pages/MeetingDetail.tsx"));
+const Admin = lazy(() => import("./pages/Admin.tsx"));
+const Usage = lazy(() => import("./pages/Usage.tsx"));
+const Auth = lazy(() => import("./pages/Auth.tsx"));
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/" element={<ProtectedRoute><RoleHome /></ProtectedRoute>} />
-          <Route path="/cases" element={<ProtectedRoute allow={["appraiser"]}><Index /></ProtectedRoute>} />
-          <Route path="/clients" element={<ProtectedRoute allow={["appraiser", "architect"]}><Clients /></ProtectedRoute>} />
-          <Route path="/recordings" element={<ProtectedRoute allow={["appraiser"]}><Recordings /></ProtectedRoute>} />
-          <Route path="/templates" element={<ProtectedRoute allow={["appraiser"]}><ReportTemplates /></ProtectedRoute>} />
-          <Route path="/meeting-templates" element={<ProtectedRoute allow={["architect"]}><MeetingTemplates /></ProtectedRoute>} />
-          <Route path="/meeting-recordings" element={<ProtectedRoute allow={["architect"]}><MeetingRecordings /></ProtectedRoute>} />
-          <Route path="/meetings" element={<ProtectedRoute allow={["architect"]}><Meetings /></ProtectedRoute>} />
-          <Route path="/meetings/:id" element={<ProtectedRoute allow={["architect"]}><MeetingDetail /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute allow={["admin"]}><Admin /></ProtectedRoute>} />
-          <Route path="/usage" element={<ProtectedRoute allow={["admin"]}><Usage /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <AppErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/" element={<ProtectedRoute><RoleHome /></ProtectedRoute>} />
+              <Route path="/cases" element={<ProtectedRoute allow={["appraiser"]}><Index /></ProtectedRoute>} />
+              <Route path="/clients" element={<ProtectedRoute allow={["appraiser", "architect"]}><Clients /></ProtectedRoute>} />
+              <Route path="/recordings" element={<ProtectedRoute allow={["appraiser"]}><Recordings /></ProtectedRoute>} />
+              <Route path="/templates" element={<ProtectedRoute allow={["appraiser"]}><ReportTemplates /></ProtectedRoute>} />
+              <Route path="/meeting-templates" element={<ProtectedRoute allow={["architect"]}><MeetingTemplates /></ProtectedRoute>} />
+              <Route path="/meeting-recordings" element={<ProtectedRoute allow={["architect"]}><MeetingRecordings /></ProtectedRoute>} />
+              <Route path="/meetings" element={<ProtectedRoute allow={["architect"]}><Meetings /></ProtectedRoute>} />
+              <Route path="/meetings/:id" element={<ProtectedRoute allow={["architect"]}><MeetingDetail /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute allow={["admin"]}><Admin /></ProtectedRoute>} />
+              <Route path="/usage" element={<ProtectedRoute allow={["admin"]}><Usage /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </AppErrorBoundary>
 );
 
 export default App;
