@@ -9,14 +9,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
 const IVRIT_AI_API_KEY = Deno.env.get("IVRIT_AI_API_KEY");
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-type Service = "ivrit_ai" | "whisper" | "elevenlabs";
+type Service = "ivrit_ai" | "whisper" | "elevenlabs" | "lovable_ai";
 
 // Cost per second of audio (USD). Conservative estimates.
 const COST_PER_SECOND_USD: Record<Service, number> = {
   ivrit_ai: 0.10 / 3600,    // ~$0.10/hour
   whisper: 0.006 / 60,      // $0.006/minute = $0.36/hour
   elevenlabs: 0.40 / 3600,  // ~$0.40/hour
+  lovable_ai: 0,            // covered by Lovable AI credits, tracked separately
 };
 
 async function transcribeWhisper(file: File): Promise<{ text: string; duration?: number }> {
@@ -71,6 +73,48 @@ async function transcribeIvritAi(file: File): Promise<{ text: string; duration?:
   if (!res.ok) throw new Error(`ivrit.ai failed [${res.status}]: ${await res.text()}`);
   const data = await res.json();
   return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined };
+}
+
+// Fallback: transcribe using Lovable AI Gateway (Gemini multimodal). Always available.
+async function transcribeLovableAi(file: File): Promise<{ text: string; duration?: number }> {
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+  const buf = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < buf.length; i += chunk) {
+    binary += String.fromCharCode(...buf.subarray(i, i + chunk));
+  }
+  const b64 = btoa(binary);
+  const mime = file.type || "audio/mpeg";
+  const format = (mime.split("/")[1] || "mp3").split(";")[0];
+
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: "אתה מערכת תמלול. תמלל את ההקלטה לעברית במדויק. החזר רק את הטקסט המתומלל, ללא הקדמות או הערות.",
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "תמלל את ההקלטה הבאה לעברית:" },
+            { type: "input_audio", input_audio: { data: b64, format } },
+          ],
+        },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(`Lovable AI failed [${res.status}]: ${await res.text()}`);
+  const data = await res.json();
+  const text = data?.choices?.[0]?.message?.content ?? "";
+  return { text, duration: undefined };
 }
 
 async function logUsage(opts: {
@@ -130,11 +174,38 @@ Deno.serve(async (req) => {
       });
     }
 
-    let result: { text: string; duration?: number };
-    if (service === "whisper") result = await transcribeWhisper(file);
-    else if (service === "elevenlabs") result = await transcribeElevenLabs(file);
-    else if (service === "ivrit_ai") result = await transcribeIvritAi(file);
-    else throw new Error(`Unknown service: ${service}`);
+    // Build fallback chain: requested service first, then others, then Lovable AI as final safety net.
+    const runners: Record<Service, () => Promise<{ text: string; duration?: number }>> = {
+      whisper: () => transcribeWhisper(file),
+      elevenlabs: () => transcribeElevenLabs(file),
+      ivrit_ai: () => transcribeIvritAi(file),
+      lovable_ai: () => transcribeLovableAi(file),
+    };
+    const order: Service[] = [service];
+    for (const s of ["ivrit_ai", "whisper", "elevenlabs", "lovable_ai"] as Service[]) {
+      if (!order.includes(s)) order.push(s);
+    }
+
+    let result: { text: string; duration?: number } | null = null;
+    let usedService: Service = service;
+    const warnings: string[] = [];
+    for (const s of order) {
+      try {
+        result = await runners[s]();
+        usedService = s;
+        if (s !== service) {
+          warnings.push(`השירות שנבחר לא היה זמין, התמלול בוצע עם שירות חלופי`);
+        }
+        break;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[transcribe] ${s} failed:`, msg);
+        warnings.push(`${s}: ${msg}`);
+      }
+    }
+    if (!result) {
+      throw new Error(`כל שירותי התמלול נכשלו. ${warnings.join(" | ")}`);
+    }
 
     // Choose best duration estimate: provider response > client-provided > rough size estimate
     const sizeEstimate = file.size > 0 ? file.size / (16_000) : 0; // ~16KB/s rough fallback
@@ -147,13 +218,20 @@ Deno.serve(async (req) => {
     if (userId && durationSec > 0) {
       await logUsage({
         userId,
-        service,
+        service: usedService,
         durationSec,
-        meta: { filename: file.name, size_bytes: file.size },
+        meta: { filename: file.name, size_bytes: file.size, requested_service: service, warnings },
       });
     }
 
-    return new Response(JSON.stringify({ transcript: result.text, service, duration: durationSec }), {
+    return new Response(JSON.stringify({
+      transcript: result.text,
+      service: usedService,
+      requested_service: service,
+      fallback_used: usedService !== service,
+      warnings,
+      duration: durationSec,
+    }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
