@@ -48,7 +48,7 @@ export default function Auth() {
       <Card className="w-full max-w-md p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xl">
-            ש
+            ●
           </div>
           <div>
             <h1 className="text-xl font-bold">מערכת ניהול</h1>
