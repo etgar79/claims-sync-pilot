@@ -49,6 +49,9 @@ interface Props {
   table?: "recordings" | "meeting_recordings";
   onCompleted?: (transcript: string, service: TranscriptionService) => void;
   trigger?: React.ReactNode;
+  /** Controlled mode */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // Read audio duration in seconds in the browser, used as a fallback for usage tracking.
