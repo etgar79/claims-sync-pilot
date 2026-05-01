@@ -9,10 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Calendar, MapPin, Users, Loader2, Search, Sparkles, Clock, CheckCircle2, LogOut } from "lucide-react";
+import { Plus, Calendar, MapPin, Users, Loader2, Search, Sparkles, Clock, CheckCircle2, LogOut, FolderInput } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { ImportFromDriveDialog } from "@/components/ImportFromDriveDialog";
+import { useWorkFolder } from "@/hooks/useWorkFolder";
 
 interface Meeting {
   id: string;
@@ -39,6 +41,8 @@ const Meetings = () => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const { folder: workFolder } = useWorkFolder();
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -146,6 +150,12 @@ const Meetings = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {workFolder && (
+                <Button variant="outline" onClick={() => setImportOpen(true)}>
+                  <FolderInput className="h-4 w-4 ml-2" />
+                  ייבוא מ-Drive
+                </Button>
+              )}
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
                   <Button>
