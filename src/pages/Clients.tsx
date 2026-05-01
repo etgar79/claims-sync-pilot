@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Users, Phone, FolderOpen, TrendingUp, Calendar, Loader2, ArrowLeft } from "lucide-react";
+import { Search, Users, Phone, FolderOpen, TrendingUp, Calendar, Loader2, ArrowLeft, Cloud, ExternalLink } from "lucide-react";
 import { useCases } from "@/hooks/useCases";
+import { useWorkFolder } from "@/hooks/useWorkFolder";
 import { CaseCard } from "@/components/CaseCard";
 import { CaseDetail } from "@/components/CaseDetail";
+import { toast } from "sonner";
 
 interface ClientGroup {
   name: string;
@@ -18,11 +20,13 @@ interface ClientGroup {
   caseCount: number;
   totalValue: number;
   lastCaseDate: string;
+  driveFolderUrl?: string;
   cases: ReturnType<typeof useCases>["cases"];
 }
 
 const Clients = () => {
   const { cases, loading, reload } = useCases();
+  const { folderUrl: workFolderUrl, folder: workFolder } = useWorkFolder();
   const [search, setSearch] = useState("");
   const [selectedClient, setSelectedClient] = useState<ClientGroup | null>(null);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
@@ -41,6 +45,7 @@ const Clients = () => {
           existing.lastCaseDate = c.createdAt;
         }
         if (!existing.phone && c.clientPhone) existing.phone = c.clientPhone;
+        if (!existing.driveFolderUrl && c.driveFolderUrl) existing.driveFolderUrl = c.driveFolderUrl;
       } else {
         map.set(key, {
           name: key,
@@ -48,6 +53,7 @@ const Clients = () => {
           caseCount: 1,
           totalValue: c.estimatedValue ?? 0,
           lastCaseDate: c.createdAt,
+          driveFolderUrl: c.driveFolderUrl,
           cases: [c],
         });
       }
@@ -77,6 +83,24 @@ const Clients = () => {
               <h1 className="text-lg font-semibold">לקוחות</h1>
               <Badge variant="secondary">{clients.length}</Badge>
             </div>
+            {workFolderUrl ? (
+              <Button variant="outline" size="sm" asChild>
+                <a href={workFolderUrl} target="_blank" rel="noopener noreferrer" title={workFolder?.folder_name}>
+                  <Cloud className="h-4 w-4 ml-2" />
+                  תיקיית התוכנה
+                  <ExternalLink className="h-3 w-3 mr-2" />
+                </a>
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toast.info("בחר תיקיית עבודה בהגדרות → Google Drive")}
+              >
+                <Cloud className="h-4 w-4 ml-2" />
+                תיקיית התוכנה
+              </Button>
+            )}
           </header>
 
           <div className="p-4 border-b border-border bg-card">
@@ -114,7 +138,7 @@ const Clients = () => {
                         setSelectedCaseId(client.cases[0]?.id ?? null);
                       }}
                     >
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start justify-between mb-3 gap-2">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="h-11 w-11 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
                             {client.name.charAt(0)}
@@ -129,6 +153,20 @@ const Clients = () => {
                             )}
                           </div>
                         </div>
+                        {client.driveFolderUrl && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0 h-8 w-8"
+                            title="פתח תיקייה ב-Drive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(client.driveFolderUrl, "_blank", "noopener,noreferrer");
+                            }}
+                          >
+                            <Cloud className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-border">
