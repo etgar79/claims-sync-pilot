@@ -52,7 +52,8 @@ const MeetingDetail = () => {
   const [uploading, setUploading] = useState(false);
 
   const [statusUpdating, setStatusUpdating] = useState(false);
-
+  const { runAll, running: runningAll } = useTranscribeAll();
+  const [progressMsg, setProgressMsg] = useState<string>("");
   const load = async () => {
     if (!id) return;
     setLoading(true);
