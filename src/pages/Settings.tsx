@@ -48,7 +48,7 @@ export default function Settings() {
   const [folderId, setFolderId] = useState<string>("");
   const [folderName, setFolderName] = useState<string>("");
 
-  // Gemini
+  // AI engine settings
   const [geminiSource, setGeminiSource] = useState<"lovable" | "custom">("lovable");
   const [geminiKey, setGeminiKey] = useState("");
   const [geminiKeyMasked, setGeminiKeyMasked] = useState<string>("");
@@ -135,13 +135,13 @@ export default function Settings() {
       setGeminiKeyMasked(masked);
       localStorage.setItem(STORAGE_KEYS.geminiKeyMasked, masked);
       setGeminiKey("");
-      toast.success("מפתח Gemini נשמר", {
+      toast.success("מפתח AI נשמר", {
         description: "המפתח יישמר באופן מאובטח בצד השרת",
       });
     } else if (geminiSource === "lovable") {
       localStorage.removeItem(STORAGE_KEYS.geminiKeyMasked);
       setGeminiKeyMasked("");
-      toast.success("המערכת תשתמש ב-Lovable AI Gateway");
+      toast.success("המערכת תשתמש ב-AI המובנה");
     } else {
       toast.error("יש להזין מפתח API");
     }
@@ -234,14 +234,15 @@ export default function Settings() {
                 )}
               </Card>
 
-              {/* Gemini API */}
+              {/* AI settings - admin only */}
+              {isAdmin && (
               <Card className="p-6">
                 <div className="flex items-start gap-4 mb-4">
                   <div className="h-11 w-11 rounded-lg bg-accent/10 text-accent-foreground flex items-center justify-center shrink-0">
                     <Sparkles className="h-5 w-5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h2 className="font-semibold text-foreground mb-1">Gemini AI - תמלול וניתוח</h2>
+                    <h2 className="font-semibold text-foreground mb-1">AI - תמלול וניתוח</h2>
                     <p className="text-sm text-muted-foreground">
                       מודל ה-AI שישמש לתמלול הקלטות וניתוח תוכן
                     </p>
@@ -258,20 +259,20 @@ export default function Settings() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="lovable">Lovable AI Gateway (מומלץ)</SelectItem>
-                        <SelectItem value="custom">מפתח Gemini אישי</SelectItem>
+                        <SelectItem value="lovable">AI מובנה (מומלץ)</SelectItem>
+                        <SelectItem value="custom">מפתח AI אישי</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
                       {geminiSource === "lovable"
-                        ? "Gemini מובנה דרך Lovable - ללא צורך בהגדרה"
-                        : "השתמש במפתח שלך מ-Google AI Studio"}
+                        ? "AI מובנה - ללא צורך בהגדרה"
+                        : "השתמש במפתח AI פרטי"}
                     </p>
                   </div>
 
                   {geminiSource === "custom" && (
                     <div className="space-y-2">
-                      <Label htmlFor="gemini-key">Gemini API Key</Label>
+                      <Label htmlFor="gemini-key">AI API Key</Label>
                       <div className="relative">
                         <Key className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -295,7 +296,7 @@ export default function Settings() {
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                       >
-                        קבל מפתח מ-Google AI Studio
+                        ניהול מפתח AI
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>
@@ -304,6 +305,7 @@ export default function Settings() {
                   <Button onClick={handleSaveGemini}>שמור הגדרות</Button>
                 </div>
               </Card>
+              )}
 
               {/* Backup */}
               {isAdmin && (
