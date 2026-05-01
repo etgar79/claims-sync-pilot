@@ -1,44 +1,83 @@
-import { LayoutDashboard, FolderOpen, Settings, Users, FileText, Calendar, Shield, DollarSign } from "lucide-react";
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader } from "@/components/ui/sidebar";
+import {
+  LayoutDashboard,
+  FolderOpen,
+  Settings,
+  Users,
+  FileText,
+  Calendar,
+  Shield,
+  DollarSign,
+  Mic,
+  ClipboardList,
+} from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarHeader,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { NavLink, useLocation } from "react-router-dom";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useBranding } from "@/hooks/useBranding";
+import { useActiveWorkspace } from "@/hooks/useActiveWorkspace";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
+
+type Item = { title: string; url: string; icon: any };
 
 export function AppSidebar() {
   const location = useLocation();
-  const { isAppraiser, isArchitect, isAdmin, displayName, email } = useUserRoles();
+  const { isAdmin, displayName, email } = useUserRoles();
+  const { workspace } = useActiveWorkspace();
   const branding = useBranding();
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
   const initial = (displayName || email || "U").trim().charAt(0).toUpperCase();
 
   const isActive = (path: string) => location.pathname === path;
 
-  // Build menu items based on role
-  const mainItems: { title: string; url: string; icon: any }[] = [
-    { title: "דשבורד", url: "/", icon: LayoutDashboard },
-  ];
+  // Build menu by active workspace
+  let mainItems: Item[] = [];
+  let mainLabel = "ראשי";
 
-  if (isAppraiser) {
-    mainItems.push(
-      { title: "כל התיקים", url: "/cases", icon: FolderOpen },
+  if (workspace === "appraiser") {
+    mainLabel = "מערכת שמאות";
+    mainItems = [
+      { title: "דשבורד שמאי", url: "/", icon: LayoutDashboard },
+      { title: "תיקי שומה", url: "/cases", icon: FolderOpen },
       { title: "לקוחות", url: "/clients", icon: Users },
+      { title: "הקלטות שטח", url: "/recordings", icon: Mic },
       { title: "תבניות דוחות", url: "/templates", icon: FileText },
-    );
+    ];
+  } else if (workspace === "architect") {
+    mainLabel = "מערכת ניהול פגישות";
+    mainItems = [
+      { title: "דשבורד פגישות", url: "/", icon: LayoutDashboard },
+      { title: "פגישות", url: "/meetings", icon: Calendar },
+      { title: "לקוחות / פרויקטים", url: "/clients", icon: Users },
+      { title: "תבניות סיכום פגישה", url: "/meeting-templates", icon: ClipboardList },
+    ];
+  } else {
+    // admin overview
+    mainLabel = "סקירת מערכת";
+    mainItems = [{ title: "סקירה כללית", url: "/", icon: LayoutDashboard }];
   }
 
-  if (isArchitect) {
-    mainItems.push({ title: "פגישות", url: "/meetings", icon: Calendar });
-  }
-
-  // ניהול והגדרות
-  const integrationItems: { title: string; url: string; icon: any }[] = [];
+  // Management
+  const managementItems: Item[] = [];
   if (isAdmin) {
-    integrationItems.push(
+    managementItems.push(
       { title: "ניהול משתמשים", url: "/admin", icon: Shield },
       { title: "צריכה ועלויות", url: "/usage", icon: DollarSign },
     );
   }
-  // הגדרות זמינות לכל משתמש מחובר (חיבור Drive, תיקיית עבודה וכו')
-  integrationItems.push({ title: "הגדרות", url: "/settings", icon: Settings });
+  managementItems.push({ title: "הגדרות", url: "/settings", icon: Settings });
 
   return (
     <Sidebar side="right" collapsible="icon">
@@ -56,7 +95,7 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>ראשי</SidebarGroupLabel>
+          <SidebarGroupLabel>{mainLabel}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainItems.map((item) => (
@@ -73,12 +112,12 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {integrationItems.length > 0 && (
+        {managementItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>ניהול</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {integrationItems.map((item) => (
+                {managementItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
                       <NavLink to={item.url}>
@@ -93,6 +132,10 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
       </SidebarContent>
+
+      <SidebarFooter className="border-t border-sidebar-border">
+        <WorkspaceSwitcher collapsed={collapsed} />
+      </SidebarFooter>
     </Sidebar>
   );
 }

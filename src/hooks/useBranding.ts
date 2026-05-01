@@ -70,7 +70,20 @@ export function getBrandingForRoles(opts: {
 
 export function useBranding(): Branding {
   const { isAdmin, isArchitect, isAppraiser, displayName, loading } = useUserRoles();
-  const branding = getBrandingForRoles({ isAdmin, isArchitect, isAppraiser, displayName });
+  // Lazy import to avoid circular: read workspace from localStorage
+  let workspace: string | null = null;
+  try { workspace = typeof window !== "undefined" ? localStorage.getItem("active_workspace") : null; } catch {}
+
+  let branding: Branding;
+  if (workspace === "admin" && isAdmin) {
+    branding = getBrandingForRoles({ isAdmin: true, isArchitect: false, isAppraiser: false, displayName });
+  } else if (workspace === "architect") {
+    branding = getBrandingForRoles({ isAdmin: false, isArchitect: true, isAppraiser: false, displayName });
+  } else if (workspace === "appraiser") {
+    branding = getBrandingForRoles({ isAdmin: false, isArchitect: false, isAppraiser: true, displayName });
+  } else {
+    branding = getBrandingForRoles({ isAdmin, isArchitect, isAppraiser, displayName });
+  }
 
   useEffect(() => {
     if (loading) return;
