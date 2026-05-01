@@ -418,6 +418,42 @@ export type Database = {
         }
         Relationships: []
       }
+      transcript_versions: {
+        Row: {
+          created_at: string
+          id: string
+          is_merged: boolean
+          language: string | null
+          recording_id: string
+          service: string
+          source_version_ids: string[] | null
+          transcript: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_merged?: boolean
+          language?: string | null
+          recording_id: string
+          service: string
+          source_version_ids?: string[] | null
+          transcript: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_merged?: boolean
+          language?: string | null
+          recording_id?: string
+          service?: string
+          source_version_ids?: string[] | null
+          transcript?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       usage_events: {
         Row: {
           cost_usd: number

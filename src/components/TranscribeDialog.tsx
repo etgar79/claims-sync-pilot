@@ -119,6 +119,18 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
         .eq("id", recordingId);
       if (updErr) throw updErr;
 
+      // Save as a separate version too (for merged super-transcripts)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && data.transcript) {
+        await supabase.from("transcript_versions").insert({
+          recording_id: recordingId,
+          user_id: user.id,
+          service,
+          transcript: data.transcript,
+          is_merged: false,
+        });
+      }
+
       const label = SERVICES.find((s) => s.id === service)?.name ?? "תמלול";
       toast.success(`התמלול הושלם בהצלחה (${label})`);
       onCompleted?.(data.transcript, service);

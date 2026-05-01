@@ -13,6 +13,7 @@ import { ArrowRight, Upload, Loader2, Sparkles, FileAudio, Save, CheckCircle2 } 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
+import { MergeTranscriptsDialog } from "@/components/MergeTranscriptsDialog";
 import { serviceLabel } from "@/lib/serviceLabels";
 
 interface Meeting {
@@ -258,7 +259,24 @@ const MeetingDetail = () => {
                           </div>
                         </div>
                         {r.transcript ? (
-                          <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-wrap">{r.transcript}</p>
+                          <>
+                            <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-wrap">{r.transcript}</p>
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              <TranscribeDialog
+                                recordingId={r.id}
+                                audioFile={r._file}
+                                audioUrl={r.drive_url || undefined}
+                                table="meeting_recordings"
+                                onCompleted={load}
+                                trigger={<Button size="sm" variant="outline">הרץ תמלול נוסף</Button>}
+                              />
+                              <MergeTranscriptsDialog
+                                recordingId={r.id}
+                                table="meeting_recordings"
+                                onMerged={load}
+                              />
+                            </div>
+                          </>
                         ) : (
                           <TranscribeDialog
                             recordingId={r.id}
