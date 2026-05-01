@@ -138,7 +138,7 @@ const Clients = () => {
                         setSelectedCaseId(client.cases[0]?.id ?? null);
                       }}
                     >
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start justify-between mb-3 gap-2">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="h-11 w-11 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
                             {client.name.charAt(0)}
@@ -153,6 +153,20 @@ const Clients = () => {
                             )}
                           </div>
                         </div>
+                        {client.driveFolderUrl && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0 h-8 w-8"
+                            title="פתח תיקייה ב-Drive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(client.driveFolderUrl, "_blank", "noopener,noreferrer");
+                            }}
+                          >
+                            <Cloud className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-border">
