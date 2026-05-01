@@ -168,12 +168,7 @@ const Meetings = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {workFolder && (
-                <Button variant="outline" onClick={() => setImportOpen(true)}>
-                  <FolderInput className="h-4 w-4 ml-2" />
-                  ייבוא מ-Drive
-                </Button>
-              )}
+              {/* Drive sync moved to WorkspaceFolderBanner below */}
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
                   <Button>
