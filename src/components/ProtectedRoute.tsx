@@ -45,6 +45,7 @@ export function ProtectedRoute({ children, allow }: ProtectedRouteProps) {
       appraiser: isAppraiser,
       architect: isArchitect,
     };
+    // Admin always has access. Otherwise require explicit role match.
     const hasAccess = isAdmin || allow.some((r) => roleMap[r]);
     if (!hasAccess) return <Navigate to="/" replace />;
   }
