@@ -13,6 +13,7 @@ import { Cloud, CheckCircle2, FolderOpen, Sparkles, Key, RefreshCw, ExternalLink
 import { toast } from "sonner";
 import { useDriveConnection } from "@/hooks/useDriveConnection";
 import { WorkFolderPicker } from "@/components/WorkFolderPicker";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 interface DriveFolder {
   id: string;
@@ -39,6 +40,8 @@ const BACKUP_FOLDERS: DriveFolder[] = [
 ];
 
 export default function Settings() {
+  // Roles - backup section is admin-only
+  const { isAdmin } = useUserRoles();
   // Drive - real connection via Google OAuth
   const { isConnected: driveConnected, connection, connecting, connect, disconnect } = useDriveConnection();
   const driveAccount = connection?.google_email ?? "";
@@ -292,6 +295,7 @@ export default function Settings() {
               </Card>
 
               {/* Backup */}
+              {isAdmin && (
               <Card className="p-6">
                 <div className="flex items-start gap-4 mb-4">
                   <div className="h-11 w-11 rounded-lg bg-success/10 text-success flex items-center justify-center shrink-0">
@@ -386,6 +390,7 @@ export default function Settings() {
                   </div>
                 </div>
               </Card>
+              )}
             </div>
           </div>
         </SidebarInset>
