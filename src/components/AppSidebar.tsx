@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderOpen, Mic, Image as ImageIcon, Settings, Cloud, Search, Users, FileText, Calendar, Shield, DollarSign } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Settings, Users, FileText, Calendar, Shield, DollarSign } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader } from "@/components/ui/sidebar";
 import { NavLink, useLocation } from "react-router-dom";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -29,19 +29,12 @@ export function AppSidebar() {
     mainItems.push({ title: "פגישות", url: "/meetings", icon: Calendar });
   }
 
-  mainItems.push(
-    { title: "הקלטות לתמלול", url: "/recordings", icon: Mic },
-    { title: "תמונות", url: "/photos", icon: ImageIcon },
-    { title: "חיפוש", url: "/search", icon: Search },
-  );
-
   // ניהול והגדרות - רק למנהל
   const integrationItems: { title: string; url: string; icon: any }[] = [];
   if (isAdmin) {
     integrationItems.push(
       { title: "ניהול משתמשים", url: "/admin", icon: Shield },
       { title: "צריכה ועלויות", url: "/usage", icon: DollarSign },
-      { title: "Google Drive", url: "/drive", icon: Cloud },
       { title: "הגדרות", url: "/settings", icon: Settings },
     );
   }
