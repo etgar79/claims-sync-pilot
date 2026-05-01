@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Upload, Loader2, Sparkles, FileAudio, Save } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowRight, Upload, Loader2, Sparkles, FileAudio, Save, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
@@ -21,6 +22,7 @@ interface Meeting {
   location: string | null;
   meeting_date: string | null;
   notes: string | null;
+  status: string;
   ai_summary: string | null;
   ai_summary_generated_at: string | null;
 }
@@ -46,6 +48,8 @@ const MeetingDetail = () => {
   const [summarizing, setSummarizing] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  const [statusUpdating, setStatusUpdating] = useState(false);
+
   const load = async () => {
     if (!id) return;
     setLoading(true);
@@ -57,13 +61,28 @@ const MeetingDetail = () => {
       setMeeting(m.data);
       setNotes(m.data.notes || "");
     }
-    setRecordings(r.data || []);
+    // Preserve any local _file refs that we already have in memory
+    setRecordings((prev) => {
+      const fileMap = new Map<string, File>();
+      prev.forEach((p: any) => { if (p._file) fileMap.set(p.id, p._file); });
+      return (r.data || []).map((rec: any) => fileMap.has(rec.id) ? { ...rec, _file: fileMap.get(rec.id) } : rec);
+    });
     setLoading(false);
   };
 
   useEffect(() => {
     load();
   }, [id]);
+
+  const updateStatus = async (newStatus: string) => {
+    if (!id) return;
+    setStatusUpdating(true);
+    const { error } = await supabase.from("meetings").update({ status: newStatus }).eq("id", id);
+    setStatusUpdating(false);
+    if (error) return toast.error(error.message);
+    toast.success("הסטטוס עודכן");
+    setMeeting((prev) => prev ? { ...prev, status: newStatus } : prev);
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -176,10 +195,29 @@ const MeetingDetail = () => {
                 </p>
               </div>
             </div>
-            <Button onClick={generateSummary} disabled={summarizing}>
-              {summarizing ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Sparkles className="h-4 w-4 ml-2" />}
-              צור סיכום AI
-            </Button>
+            <div className="flex items-center gap-2">
+              <Select value={meeting.status} onValueChange={updateStatus} disabled={statusUpdating}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scheduled">מתוזמנת</SelectItem>
+                  <SelectItem value="active">פעילה</SelectItem>
+                  <SelectItem value="completed">הושלמה</SelectItem>
+                  <SelectItem value="cancelled">בוטלה</SelectItem>
+                </SelectContent>
+              </Select>
+              {meeting.status !== "completed" && (
+                <Button variant="outline" onClick={() => updateStatus("completed")} disabled={statusUpdating}>
+                  <CheckCircle2 className="h-4 w-4 ml-2" />
+                  סמן כהושלמה
+                </Button>
+              )}
+              <Button onClick={generateSummary} disabled={summarizing}>
+                {summarizing ? <Loader2 className="h-4 w-4 ml-2 animate-spin" /> : <Sparkles className="h-4 w-4 ml-2" />}
+                צור סיכום AI
+              </Button>
+            </div>
           </header>
 
           <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">

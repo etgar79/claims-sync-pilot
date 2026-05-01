@@ -6,18 +6,14 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
-import { Loader2, Briefcase, Building2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export default function Auth() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [role, setRole] = useState<"appraiser" | "architect">("appraiser");
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,25 +26,6 @@ export default function Auth() {
     }
     toast.success("התחברת בהצלחה");
     navigate("/");
-  };
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-        data: { display_name: displayName || email, role },
-      },
-    });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success("נרשמת בהצלחה! בדוק את המייל שלך לאישור.");
   };
 
   const handleGoogle = async () => {
@@ -74,84 +51,25 @@ export default function Auth() {
             ש
           </div>
           <div>
-            <h1 className="text-xl font-bold">מערכת שמאות</h1>
-            <p className="text-sm text-muted-foreground">התחבר או הירשם</p>
+            <h1 className="text-xl font-bold">מערכת ניהול</h1>
+            <p className="text-sm text-muted-foreground">התחברות לחשבון</p>
           </div>
         </div>
 
-        <Tabs defaultValue="signin">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin">התחברות</TabsTrigger>
-            <TabsTrigger value="signup">הרשמה</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="signin">
-            <form onSubmit={handleSignIn} className="space-y-4 mt-4">
-              <div>
-                <Label htmlFor="email-in">מייל</Label>
-                <Input id="email-in" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required dir="ltr" />
-              </div>
-              <div>
-                <Label htmlFor="password-in">סיסמה</Label>
-                <Input id="password-in" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required dir="ltr" />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
-                התחבר
-              </Button>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="signup">
-            <form onSubmit={handleSignUp} className="space-y-4 mt-4">
-              <div>
-                <Label htmlFor="name-up">שם תצוגה</Label>
-                <Input id="name-up" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="email-up">מייל</Label>
-                <Input id="email-up" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required dir="ltr" />
-              </div>
-              <div>
-                <Label htmlFor="password-up">סיסמה</Label>
-                <Input id="password-up" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} dir="ltr" />
-              </div>
-              <div>
-                <Label>סוג חשבון</Label>
-                <RadioGroup
-                  value={role}
-                  onValueChange={(v) => setRole(v as "appraiser" | "architect")}
-                  className="grid grid-cols-2 gap-2 mt-2"
-                >
-                  <Label
-                    htmlFor="role-appraiser"
-                    className={`flex items-center gap-2 border-2 rounded-lg p-3 cursor-pointer transition-colors ${
-                      role === "appraiser" ? "border-primary bg-primary/5" : "border-border"
-                    }`}
-                  >
-                    <RadioGroupItem value="appraiser" id="role-appraiser" />
-                    <Briefcase className="h-4 w-4" />
-                    <span>שמאי</span>
-                  </Label>
-                  <Label
-                    htmlFor="role-architect"
-                    className={`flex items-center gap-2 border-2 rounded-lg p-3 cursor-pointer transition-colors ${
-                      role === "architect" ? "border-primary bg-primary/5" : "border-border"
-                    }`}
-                  >
-                    <RadioGroupItem value="architect" id="role-architect" />
-                    <Building2 className="h-4 w-4" />
-                    <span>אדריכל</span>
-                  </Label>
-                </RadioGroup>
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
-                הירשם
-              </Button>
-            </form>
-          </TabsContent>
-        </Tabs>
+        <form onSubmit={handleSignIn} className="space-y-4">
+          <div>
+            <Label htmlFor="email-in">מייל</Label>
+            <Input id="email-in" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required dir="ltr" />
+          </div>
+          <div>
+            <Label htmlFor="password-in">סיסמה</Label>
+            <Input id="password-in" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required dir="ltr" />
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
+            התחבר
+          </Button>
+        </form>
 
         <div className="relative my-4">
           <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
@@ -161,6 +79,10 @@ export default function Auth() {
         <Button variant="outline" className="w-full" onClick={handleGoogle} disabled={loading}>
           המשך עם Google
         </Button>
+
+        <p className="text-xs text-muted-foreground text-center mt-6">
+          חשבונות נוצרים על ידי מנהל המערכת בלבד
+        </p>
       </Card>
     </div>
   );
