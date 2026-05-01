@@ -5,6 +5,35 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Pricing for google/gemini-2.5-flash via Lovable AI Gateway (USD per token, conservative)
+const PRICE_PER_INPUT_TOKEN = 0.075 / 1_000_000;
+const PRICE_PER_OUTPUT_TOKEN = 0.30 / 1_000_000;
+
+async function logAiUsage(userId: string, usage: any, mode: string) {
+  if (!userId || !usage) return;
+  try {
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const inputTokens = Number(usage.prompt_tokens ?? usage.input_tokens ?? 0);
+    const outputTokens = Number(usage.completion_tokens ?? usage.output_tokens ?? 0);
+    const totalTokens = inputTokens + outputTokens;
+    const cost = inputTokens * PRICE_PER_INPUT_TOKEN + outputTokens * PRICE_PER_OUTPUT_TOKEN;
+    await admin.from("usage_events").insert({
+      user_id: userId,
+      event_type: "ai_summary",
+      service: "lovable_ai",
+      quantity: totalTokens,
+      unit: "tokens",
+      cost_usd: cost,
+      metadata: { mode, input_tokens: inputTokens, output_tokens: outputTokens },
+    });
+  } catch (e) {
+    console.error("ai usage log failed:", e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -69,6 +98,7 @@ ${notes ? `הערות:\n${notes}\n` : ""}
 
       const aiData = await aiResp.json();
       const summary = aiData.choices?.[0]?.message?.content ?? "";
+      await logAiUsage(userData.user.id, aiData.usage, "meeting");
       return new Response(JSON.stringify({ summary }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
