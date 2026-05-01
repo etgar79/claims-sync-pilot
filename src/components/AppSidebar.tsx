@@ -29,19 +29,12 @@ export function AppSidebar() {
     mainItems.push({ title: "פגישות", url: "/meetings", icon: Calendar });
   }
 
-  mainItems.push(
-    { title: "הקלטות לתמלול", url: "/recordings", icon: Mic },
-    { title: "תמונות", url: "/photos", icon: ImageIcon },
-    { title: "חיפוש", url: "/search", icon: Search },
-  );
-
   // ניהול והגדרות - רק למנהל
   const integrationItems: { title: string; url: string; icon: any }[] = [];
   if (isAdmin) {
     integrationItems.push(
       { title: "ניהול משתמשים", url: "/admin", icon: Shield },
       { title: "צריכה ועלויות", url: "/usage", icon: DollarSign },
-      { title: "Google Drive", url: "/drive", icon: Cloud },
       { title: "הגדרות", url: "/settings", icon: Settings },
     );
   }
