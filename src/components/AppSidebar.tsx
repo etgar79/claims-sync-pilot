@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderOpen, Mic, Image as ImageIcon, Settings, Cloud, Search, Users, FileText, Calendar, Shield, DollarSign } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Settings, Users, FileText, Calendar, Shield, DollarSign } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader } from "@/components/ui/sidebar";
 import { NavLink, useLocation } from "react-router-dom";
 import { useUserRoles } from "@/hooks/useUserRoles";
