@@ -83,6 +83,24 @@ const Clients = () => {
               <h1 className="text-lg font-semibold">לקוחות</h1>
               <Badge variant="secondary">{clients.length}</Badge>
             </div>
+            {workFolderUrl ? (
+              <Button variant="outline" size="sm" asChild>
+                <a href={workFolderUrl} target="_blank" rel="noopener noreferrer" title={workFolder?.folder_name}>
+                  <Cloud className="h-4 w-4 ml-2" />
+                  תיקיית התוכנה
+                  <ExternalLink className="h-3 w-3 mr-2" />
+                </a>
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toast.info("בחר תיקיית עבודה בהגדרות → Google Drive")}
+              >
+                <Cloud className="h-4 w-4 ml-2" />
+                תיקיית התוכנה
+              </Button>
+            )}
           </header>
 
           <div className="p-4 border-b border-border bg-card">
