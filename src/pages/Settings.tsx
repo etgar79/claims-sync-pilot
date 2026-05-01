@@ -232,36 +232,7 @@ export default function Settings() {
                       </Button>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="folder">תיקיית סנכרון</Label>
-                      <Select value={folderId} onValueChange={handleFolderChange}>
-                        <SelectTrigger id="folder">
-                          <SelectValue placeholder="בחר תיקייה מ-Drive..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SAMPLE_FOLDERS.map((f) => (
-                            <SelectItem key={f.id} value={f.id}>
-                              <div className="flex items-center gap-2">
-                                <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                                {f.name}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {folderName && (
-                        <p className="text-xs text-muted-foreground">
-                          סנכרון פעיל מהתיקייה <span className="font-medium text-foreground">{folderName}</span>
-                        </p>
-                      )}
-                    </div>
-
-                    {folderId && (
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <RefreshCw className="h-4 w-4" />
-                        סנכרן עכשיו
-                      </Button>
-                    )}
+                    <WorkFolderPicker />
                   </div>
                 )}
               </Card>
