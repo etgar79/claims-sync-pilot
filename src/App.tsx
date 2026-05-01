@@ -27,13 +27,13 @@ const App = () => (
         <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route path="/" element={<ProtectedRoute><RoleHome /></ProtectedRoute>} />
-          <Route path="/cases" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-          <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
-          <Route path="/templates" element={<ProtectedRoute><ReportTemplates /></ProtectedRoute>} />
-          <Route path="/meetings" element={<ProtectedRoute><Meetings /></ProtectedRoute>} />
-          <Route path="/meetings/:id" element={<ProtectedRoute><MeetingDetail /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
-          <Route path="/usage" element={<ProtectedRoute><Usage /></ProtectedRoute>} />
+          <Route path="/cases" element={<ProtectedRoute allow={["appraiser"]}><Index /></ProtectedRoute>} />
+          <Route path="/clients" element={<ProtectedRoute allow={["appraiser"]}><Clients /></ProtectedRoute>} />
+          <Route path="/templates" element={<ProtectedRoute allow={["appraiser"]}><ReportTemplates /></ProtectedRoute>} />
+          <Route path="/meetings" element={<ProtectedRoute allow={["architect", "appraiser"]}><Meetings /></ProtectedRoute>} />
+          <Route path="/meetings/:id" element={<ProtectedRoute allow={["architect", "appraiser"]}><MeetingDetail /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute allow={["admin"]}><Admin /></ProtectedRoute>} />
+          <Route path="/usage" element={<ProtectedRoute allow={["admin"]}><Usage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -29,15 +29,16 @@ export function AppSidebar() {
     mainItems.push({ title: "פגישות", url: "/meetings", icon: Calendar });
   }
 
-  // ניהול והגדרות - רק למנהל
+  // ניהול והגדרות
   const integrationItems: { title: string; url: string; icon: any }[] = [];
   if (isAdmin) {
     integrationItems.push(
       { title: "ניהול משתמשים", url: "/admin", icon: Shield },
       { title: "צריכה ועלויות", url: "/usage", icon: DollarSign },
-      { title: "הגדרות", url: "/settings", icon: Settings },
     );
   }
+  // הגדרות זמינות לכל משתמש מחובר (חיבור Drive, תיקיית עבודה וכו')
+  integrationItems.push({ title: "הגדרות", url: "/settings", icon: Settings });
 
   return (
     <Sidebar side="right" collapsible="icon">
