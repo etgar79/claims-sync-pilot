@@ -37,13 +37,22 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "בוטלה",
 };
 
+interface UnassignedRecording {
+  id: string;
+  filename: string;
+  duration: string | null;
+  recorded_at: string;
+  drive_url: string | null;
+  source: string | null;
+}
+
 const Meetings = () => {
   const { displayName } = useUserRoles();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [unassignedRecs, setUnassignedRecs] = useState<UnassignedRecording[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-  const { folder: workFolder } = useWorkFolder();
+  const [assignTarget, setAssignTarget] = useState<UnassignedRecording | null>(null);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
