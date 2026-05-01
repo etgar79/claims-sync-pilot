@@ -2,16 +2,13 @@ import { LayoutDashboard, FolderOpen, Mic, Image as ImageIcon, Settings, Cloud, 
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader } from "@/components/ui/sidebar";
 import { NavLink, useLocation } from "react-router-dom";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { useBranding } from "@/hooks/useBranding";
 
 export function AppSidebar() {
   const location = useLocation();
   const { isAppraiser, isArchitect, isAdmin, displayName, email } = useUserRoles();
+  const branding = useBranding();
   const initial = (displayName || email || "U").trim().charAt(0).toUpperCase();
-  const subtitle = isAdmin
-    ? "מנהל מערכת"
-    : isArchitect && !isAppraiser
-    ? "ניהול פגישות"
-    : "תיקים ופגישות";
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -56,8 +53,8 @@ export function AppSidebar() {
             {initial}
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden min-w-0">
-            <span className="font-bold text-sidebar-foreground truncate">{displayName || "מערכת ניהול"}</span>
-            <span className="text-xs text-sidebar-foreground/70 truncate">{subtitle}</span>
+            <span className="font-bold text-sidebar-foreground truncate">{branding.systemName}</span>
+            <span className="text-xs text-sidebar-foreground/70 truncate">{branding.systemSubtitle}</span>
           </div>
         </div>
       </SidebarHeader>
