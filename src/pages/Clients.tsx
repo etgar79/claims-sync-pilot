@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Users, Phone, FolderOpen, TrendingUp, Calendar, Loader2, ArrowLeft } from "lucide-react";
+import { Search, Users, Phone, FolderOpen, TrendingUp, Calendar, Loader2, ArrowLeft, Cloud, ExternalLink } from "lucide-react";
 import { useCases } from "@/hooks/useCases";
+import { useWorkFolder } from "@/hooks/useWorkFolder";
 import { CaseCard } from "@/components/CaseCard";
 import { CaseDetail } from "@/components/CaseDetail";
+import { toast } from "sonner";
 
 interface ClientGroup {
   name: string;
