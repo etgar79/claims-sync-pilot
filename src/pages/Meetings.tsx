@@ -67,12 +67,20 @@ const Meetings = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("meetings")
-      .select("*")
-      .order("meeting_date", { ascending: false, nullsFirst: false });
-    if (error) toast.error(error.message);
-    setMeetings(data || []);
+    const [mRes, urRes] = await Promise.all([
+      supabase
+        .from("meetings")
+        .select("*")
+        .order("meeting_date", { ascending: false, nullsFirst: false }),
+      supabase
+        .from("meeting_recordings")
+        .select("id, filename, duration, recorded_at, drive_url, source")
+        .is("meeting_id", null)
+        .order("recorded_at", { ascending: false }),
+    ]);
+    if (mRes.error) toast.error(mRes.error.message);
+    setMeetings(mRes.data || []);
+    setUnassignedRecs((urRes.data as UnassignedRecording[]) || []);
     setLoading(false);
   };
 
