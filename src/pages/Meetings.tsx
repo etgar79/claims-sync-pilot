@@ -13,8 +13,9 @@ import { Plus, Calendar, MapPin, Users, Loader2, Search, Sparkles, Clock, CheckC
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
-import { ImportFromDriveDialog } from "@/components/ImportFromDriveDialog";
-import { useWorkFolder } from "@/hooks/useWorkFolder";
+import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
+import { AssignToMeetingDialog } from "@/components/AssignToMeetingDialog";
+import { Mic, Tag, Cloud } from "lucide-react";
 
 interface Meeting {
   id: string;
