@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -8,9 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Calendar, MapPin, Users, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Calendar, MapPin, Users, Loader2, Search, Sparkles, Clock, CheckCircle2, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 interface Meeting {
   id: string;
@@ -21,13 +23,25 @@ interface Meeting {
   meeting_date: string | null;
   status: string;
   tags: string[] | null;
+  ai_summary: string | null;
+  notes: string | null;
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  active: "פעילה",
+  scheduled: "מתוזמנת",
+  completed: "הושלמה",
+  cancelled: "בוטלה",
+};
+
 const Meetings = () => {
+  const { displayName } = useUserRoles();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [form, setForm] = useState({
     title: "",
     client_name: "",
@@ -73,6 +87,7 @@ const Meetings = () => {
         project_name: form.project_name || null,
         location: form.location || null,
         meeting_date: form.meeting_date || null,
+        status: form.meeting_date && new Date(form.meeting_date) > new Date() ? "scheduled" : "active",
       })
       .select("id")
       .single();
@@ -88,6 +103,33 @@ const Meetings = () => {
     else load();
   };
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
+
+  const filtered = useMemo(() => {
+    return meetings.filter((m) => {
+      const q = search.trim();
+      const matchSearch =
+        !q ||
+        m.title?.includes(q) ||
+        m.client_name?.includes(q) ||
+        m.project_name?.includes(q) ||
+        m.location?.includes(q);
+      const matchStatus = statusFilter === "all" || m.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [meetings, search, statusFilter]);
+
+  const stats = useMemo(() => {
+    const total = meetings.length;
+    const active = meetings.filter((m) => m.status === "active" || m.status === "scheduled").length;
+    const completed = meetings.filter((m) => m.status === "completed").length;
+    const withSummary = meetings.filter((m) => !!m.ai_summary).length;
+    return { total, active, completed, withSummary };
+  }, [meetings]);
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -98,75 +140,149 @@ const Meetings = () => {
               <SidebarTrigger />
               <div>
                 <h1 className="text-2xl font-bold">פגישות</h1>
-                <p className="text-sm text-muted-foreground">ניהול פגישות, תמלולים וסיכומי AI</p>
+                <p className="text-sm text-muted-foreground">
+                  {displayName ? `שלום ${displayName} • ` : ""}ניהול פגישות, תמלולים וסיכומי AI
+                </p>
               </div>
             </div>
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 ml-2" />
-                  פגישה חדשה
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>צור פגישה חדשה</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-3">
-                  <div>
-                    <Label>כותרת *</Label>
-                    <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="פגישה עם לקוח..." />
-                  </div>
-                  <div>
-                    <Label>שם לקוח</Label>
-                    <Input value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>שם פרויקט</Label>
-                    <Input value={form.project_name} onChange={(e) => setForm({ ...form, project_name: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>מיקום</Label>
-                    <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>תאריך פגישה</Label>
-                    <Input type="datetime-local" value={form.meeting_date} onChange={(e) => setForm({ ...form, meeting_date: e.target.value })} />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setOpen(false)}>ביטול</Button>
-                  <Button onClick={handleCreate} disabled={creating}>
-                    {creating && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
-                    צור
+            <div className="flex items-center gap-2">
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 ml-2" />
+                    פגישה חדשה
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>צור פגישה חדשה</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <div>
+                      <Label>כותרת *</Label>
+                      <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="פגישה עם לקוח..." />
+                    </div>
+                    <div>
+                      <Label>שם לקוח</Label>
+                      <Input value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>שם פרויקט</Label>
+                      <Input value={form.project_name} onChange={(e) => setForm({ ...form, project_name: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>מיקום</Label>
+                      <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>תאריך פגישה</Label>
+                      <Input type="datetime-local" value={form.meeting_date} onChange={(e) => setForm({ ...form, meeting_date: e.target.value })} />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setOpen(false)}>ביטול</Button>
+                    <Button onClick={handleCreate} disabled={creating}>
+                      {creating && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
+                      צור
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 ml-2" />
+                יציאה
+              </Button>
+            </div>
           </header>
 
-          <div className="flex-1 p-6">
+          <div className="flex-1 p-6 space-y-6">
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="p-4">
+                <div className="text-sm text-muted-foreground">סה"כ פגישות</div>
+                <div className="text-2xl font-bold mt-1 flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  {stats.total}
+                </div>
+              </Card>
+              <Card className="p-4">
+                <div className="text-sm text-muted-foreground">פעילות</div>
+                <div className="text-2xl font-bold mt-1 flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-blue-500" />
+                  {stats.active}
+                </div>
+              </Card>
+              <Card className="p-4">
+                <div className="text-sm text-muted-foreground">הושלמו</div>
+                <div className="text-2xl font-bold mt-1 flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  {stats.completed}
+                </div>
+              </Card>
+              <Card className="p-4">
+                <div className="text-sm text-muted-foreground">עם סיכום AI</div>
+                <div className="text-2xl font-bold mt-1 flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-purple-500" />
+                  {stats.withSummary}
+                </div>
+              </Card>
+            </div>
+
+            {/* Filters */}
+            <div className="flex gap-3 flex-wrap">
+              <div className="relative flex-1 min-w-[240px]">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pr-9"
+                  placeholder="חיפוש לפי כותרת, לקוח, פרויקט או מיקום..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">כל הסטטוסים</SelectItem>
+                  <SelectItem value="scheduled">מתוזמנות</SelectItem>
+                  <SelectItem value="active">פעילות</SelectItem>
+                  <SelectItem value="completed">הושלמו</SelectItem>
+                  <SelectItem value="cancelled">בוטלו</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* List */}
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="h-6 w-6 animate-spin" />
               </div>
-            ) : meetings.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <Card className="p-12 text-center">
-                <h3 className="text-lg font-semibold mb-2">אין פגישות עדיין</h3>
-                <p className="text-muted-foreground mb-4">צור את הפגישה הראשונה שלך כדי להתחיל</p>
-                <Button onClick={() => setOpen(true)}>
-                  <Plus className="h-4 w-4 ml-2" />
-                  פגישה ראשונה
-                </Button>
+                <h3 className="text-lg font-semibold mb-2">
+                  {meetings.length === 0 ? "אין פגישות עדיין" : "לא נמצאו פגישות תואמות"}
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  {meetings.length === 0 ? "צור את הפגישה הראשונה שלך כדי להתחיל" : "נסה לשנות את החיפוש או הפילטר"}
+                </p>
+                {meetings.length === 0 && (
+                  <Button onClick={() => setOpen(true)}>
+                    <Plus className="h-4 w-4 ml-2" />
+                    פגישה ראשונה
+                  </Button>
+                )}
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {meetings.map((m) => (
+                {filtered.map((m) => (
                   <Link key={m.id} to={`/meetings/${m.id}`}>
                     <Card className="p-4 hover:border-primary transition-colors cursor-pointer h-full">
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="font-bold text-lg">{m.title}</h3>
-                        <Badge variant={m.status === "active" ? "default" : "secondary"}>{m.status}</Badge>
+                      <div className="flex items-start justify-between mb-2 gap-2">
+                        <h3 className="font-bold text-lg leading-tight">{m.title}</h3>
+                        <Badge variant={m.status === "completed" ? "secondary" : "default"} className="shrink-0">
+                          {STATUS_LABEL[m.status] || m.status}
+                        </Badge>
                       </div>
                       {m.project_name && <p className="text-sm font-medium">{m.project_name}</p>}
                       {m.client_name && (
@@ -186,6 +302,12 @@ const Meetings = () => {
                           <Calendar className="h-3 w-3" />
                           {new Date(m.meeting_date).toLocaleString("he-IL")}
                         </p>
+                      )}
+                      {m.ai_summary && (
+                        <Badge variant="outline" className="mt-3 gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          סיכום AI מוכן
+                        </Badge>
                       )}
                     </Card>
                   </Link>
