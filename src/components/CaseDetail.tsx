@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { GenerateReportDialog } from "./GenerateReportDialog";
 import { TranscribeDialog } from "./TranscribeDialog";
 import { MergeTranscriptsDialog } from "./MergeTranscriptsDialog";
+import { ActionItemsDialog } from "./ActionItemsDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 
 interface CaseDetailProps {
