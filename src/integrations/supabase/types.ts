@@ -23,6 +23,7 @@ export type Database = {
           client_name: string
           client_phone: string | null
           created_at: string
+          drive_folder_id: string | null
           drive_folder_url: string | null
           estimated_value: number | null
           id: string
@@ -42,6 +43,7 @@ export type Database = {
           client_name: string
           client_phone?: string | null
           created_at?: string
+          drive_folder_id?: string | null
           drive_folder_url?: string | null
           estimated_value?: number | null
           id?: string
@@ -61,6 +63,7 @@ export type Database = {
           client_name?: string
           client_phone?: string | null
           created_at?: string
+          drive_folder_id?: string | null
           drive_folder_url?: string | null
           estimated_value?: number | null
           id?: string
@@ -202,6 +205,8 @@ export type Database = {
           ai_summary_generated_at: string | null
           client_name: string | null
           created_at: string
+          drive_folder_id: string | null
+          drive_folder_url: string | null
           id: string
           location: string | null
           meeting_date: string | null
@@ -218,6 +223,8 @@ export type Database = {
           ai_summary_generated_at?: string | null
           client_name?: string | null
           created_at?: string
+          drive_folder_id?: string | null
+          drive_folder_url?: string | null
           id?: string
           location?: string | null
           meeting_date?: string | null
@@ -234,6 +241,8 @@ export type Database = {
           ai_summary_generated_at?: string | null
           client_name?: string | null
           created_at?: string
+          drive_folder_id?: string | null
+          drive_folder_url?: string | null
           id?: string
           location?: string | null
           meeting_date?: string | null
