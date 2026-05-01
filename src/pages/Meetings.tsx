@@ -246,7 +246,21 @@ const Meetings = () => {
                           )}
                         </div>
                       </div>
-                      <Button size="sm" onClick={() => setAssignTarget(r)} className="gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={transcribing === r.id || !r.drive_url}
+                        onClick={() => handleQuickTranscribe(r)}
+                        className="gap-1 shrink-0"
+                      >
+                        {transcribing === r.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3.5 w-3.5" />
+                        )}
+                        תמלל-על
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setAssignTarget(r)} className="gap-1 shrink-0">
                         <Tag className="h-3.5 w-3.5" />
                         שייך לפגישה
                       </Button>
