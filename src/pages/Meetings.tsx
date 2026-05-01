@@ -340,7 +340,15 @@ const Meetings = () => {
           </div>
         </main>
       </div>
-      <ImportFromDriveDialog open={importOpen} onOpenChange={setImportOpen} onImported={load} />
+      {assignTarget && (
+        <AssignToMeetingDialog
+          open={!!assignTarget}
+          onOpenChange={(o) => !o && setAssignTarget(null)}
+          recordingId={assignTarget.id}
+          recordingFilename={assignTarget.filename}
+          onAssigned={load}
+        />
+      )}
     </SidebarProvider>
   );
 };
