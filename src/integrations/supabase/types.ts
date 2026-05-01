@@ -355,6 +355,42 @@ export type Database = {
         }
         Relationships: []
       }
+      usage_events: {
+        Row: {
+          cost_usd: number
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          quantity: number
+          service: string
+          unit: string
+          user_id: string
+        }
+        Insert: {
+          cost_usd?: number
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          quantity?: number
+          service: string
+          unit: string
+          user_id: string
+        }
+        Update: {
+          cost_usd?: number
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          quantity?: number
+          service?: string
+          unit?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
