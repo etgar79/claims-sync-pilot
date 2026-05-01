@@ -52,10 +52,11 @@ export function useUserRoles() {
   }, []);
 
   const isAdmin = roles.includes("admin");
-  // STRICT: a role is true only if explicitly assigned. Admin is the ONLY exception
-  // (admin can act as either workspace). No legacy "default to appraiser" fallback.
-  const isAppraiser = roles.includes("appraiser") || isAdmin;
-  const isArchitect = roles.includes("architect") || isAdmin;
+  // STRICT: a role is true ONLY if explicitly assigned. Admin is NOT auto-treated as
+  // appraiser/architect — admin gets gated route access via ProtectedRoute (see allow list)
+  // but UI like Settings folder pickers and seed data must follow the explicit role only.
+  const isAppraiser = roles.includes("appraiser");
+  const isArchitect = roles.includes("architect");
 
   return {
     roles,
