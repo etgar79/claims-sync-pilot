@@ -45,6 +45,7 @@ const Clients = () => {
           existing.lastCaseDate = c.createdAt;
         }
         if (!existing.phone && c.clientPhone) existing.phone = c.clientPhone;
+        if (!existing.driveFolderUrl && c.driveFolderUrl) existing.driveFolderUrl = c.driveFolderUrl;
       } else {
         map.set(key, {
           name: key,
@@ -52,6 +53,7 @@ const Clients = () => {
           caseCount: 1,
           totalValue: c.estimatedValue ?? 0,
           lastCaseDate: c.createdAt,
+          driveFolderUrl: c.driveFolderUrl,
           cases: [c],
         });
       }
