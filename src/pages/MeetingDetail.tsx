@@ -271,7 +271,11 @@ const MeetingDetail = () => {
                         </div>
                         {r.transcript ? (
                           <>
-                            <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-wrap">{r.transcript}</p>
+                            <div className="rounded-md border border-border bg-muted/50 p-3">
+                              <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words">
+                                {r.transcript}
+                              </p>
+                            </div>
                             <div className="flex flex-wrap gap-2 mt-3">
                               <TranscribeDialog
                                 recordingId={r.id}
