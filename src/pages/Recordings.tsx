@@ -374,22 +374,13 @@ const Recordings = () => {
           recordingId={transcribeTarget.id}
           audioUrl={transcribeTarget.drive_url ?? undefined}
           table="recordings"
+          open={!!transcribeTarget}
+          onOpenChange={(o) => !o && setTranscribeTarget(null)}
+          trigger={null}
           onCompleted={() => {
             setTranscribeTarget(null);
             load();
           }}
-          trigger={
-            <button
-              ref={(el) => {
-                // auto-open the dialog by dispatching click once mounted
-                if (el && !el.dataset.opened) {
-                  el.dataset.opened = "1";
-                  el.click();
-                }
-              }}
-              className="hidden"
-            />
-          }
         />
       )}
     </SidebarProvider>
