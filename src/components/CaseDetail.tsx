@@ -182,7 +182,7 @@ export function CaseDetail({ appraisalCase, aiSummary, aiSummaryGeneratedAt, onS
               <EmptyState icon={Mic} message="אין הקלטות בתיק זה" />
             ) : (
               appraisalCase.recordings.map((rec) => (
-                <RecordingCard key={rec.id} recording={rec} onUpdated={onSummaryUpdated} />
+                <RecordingCard key={rec.id} recording={rec} appraisalCase={appraisalCase} onUpdated={onSummaryUpdated} />
               ))
             )}
           </TabsContent>
