@@ -13,7 +13,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FolderOpen, Loader2, Search, Cloud, ExternalLink, Link2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { useWorkFolder } from "@/hooks/useWorkFolder";
+import { useWorkspaceFolder, type WorkspaceKind } from "@/hooks/useWorkspaceFolder";
 
 interface DriveFolder {
   id: string;
@@ -22,8 +22,13 @@ interface DriveFolder {
   owners?: { emailAddress: string; displayName: string }[];
 }
 
-export function WorkFolderPicker() {
-  const { folder, folderUrl, reload } = useWorkFolder();
+interface WorkFolderPickerProps {
+  workspace: WorkspaceKind;
+  label?: string;
+}
+
+export function WorkFolderPicker({ workspace, label }: WorkFolderPickerProps) {
+  const { folder, folderUrl, reload, folderType } = useWorkspaceFolder(workspace);
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -98,19 +103,19 @@ export function WorkFolderPicker() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Replace any existing 'input' work folder for the user
+      // Replace any existing work folder for the user for this workspace type
       const { error: delErr } = await supabase
         .from("drive_work_folders")
         .delete()
         .eq("user_id", user.id)
-        .eq("folder_type", "input");
+        .eq("folder_type", folderType);
       if (delErr) throw delErr;
 
       const { error: insErr } = await supabase.from("drive_work_folders").insert({
         user_id: user.id,
         folder_id: id,
         folder_name: name,
-        folder_type: "input",
+        folder_type: folderType,
       });
       if (insErr) throw insErr;
 
@@ -155,14 +160,14 @@ export function WorkFolderPicker() {
       .from("drive_work_folders")
       .delete()
       .eq("user_id", user.id)
-      .eq("folder_type", "input");
+      .eq("folder_type", folderType);
     await reload();
     toast.success("התיקייה הוסרה");
   };
 
   return (
     <div className="space-y-3">
-      <Label>תיקיית עבודה ב-Drive</Label>
+      <Label>{label ?? "תיקיית עבודה ב-Drive"}</Label>
 
       {folder ? (
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border gap-2">
