@@ -75,6 +75,48 @@ async function transcribeIvritAi(file: File): Promise<{ text: string; duration?:
   return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined };
 }
 
+// Fallback: transcribe using Lovable AI Gateway (Gemini multimodal). Always available.
+async function transcribeLovableAi(file: File): Promise<{ text: string; duration?: number }> {
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+  const buf = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < buf.length; i += chunk) {
+    binary += String.fromCharCode(...buf.subarray(i, i + chunk));
+  }
+  const b64 = btoa(binary);
+  const mime = file.type || "audio/mpeg";
+  const format = (mime.split("/")[1] || "mp3").split(";")[0];
+
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: "אתה מערכת תמלול. תמלל את ההקלטה לעברית במדויק. החזר רק את הטקסט המתומלל, ללא הקדמות או הערות.",
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "תמלל את ההקלטה הבאה לעברית:" },
+            { type: "input_audio", input_audio: { data: b64, format } },
+          ],
+        },
+      ],
+    }),
+  });
+  if (!res.ok) throw new Error(`Lovable AI failed [${res.status}]: ${await res.text()}`);
+  const data = await res.json();
+  const text = data?.choices?.[0]?.message?.content ?? "";
+  return { text, duration: undefined };
+}
+
 async function logUsage(opts: {
   userId: string;
   service: Service;
