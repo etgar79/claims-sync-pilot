@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Cloud, CheckCircle2, FolderOpen, Sparkles, Key, RefreshCw, ExternalLink, ShieldCheck, HardDriveDownload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDriveConnection } from "@/hooks/useDriveConnection";
+import { WorkFolderPicker } from "@/components/WorkFolderPicker";
 
 interface DriveFolder {
   id: string;
