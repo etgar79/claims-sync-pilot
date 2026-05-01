@@ -206,6 +206,7 @@ ${photoCaptions ? `תמונות בתיק:\n${photoCaptions}\n` : ""}
 
     const aiData = await aiResp.json();
     const summary = aiData.choices?.[0]?.message?.content ?? "";
+    await logAiUsage(userData.user.id, aiData.usage, "case");
 
     // Save summary to case
     const { error: updateErr } = await supabase
