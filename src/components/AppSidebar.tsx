@@ -5,7 +5,13 @@ import { useUserRoles } from "@/hooks/useUserRoles";
 
 export function AppSidebar() {
   const location = useLocation();
-  const { isAppraiser, isArchitect, isAdmin } = useUserRoles();
+  const { isAppraiser, isArchitect, isAdmin, displayName, email } = useUserRoles();
+  const initial = (displayName || email || "U").trim().charAt(0).toUpperCase();
+  const subtitle = isAdmin
+    ? "מנהל מערכת"
+    : isArchitect && !isAppraiser
+    ? "ניהול פגישות"
+    : "תיקים ופגישות";
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -47,11 +53,11 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-bold text-lg">
-            ש
+            {initial}
           </div>
-          <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="font-bold text-sidebar-foreground">מערכת ניהול</span>
-            <span className="text-xs text-sidebar-foreground/70">תיקים ופגישות</span>
+          <div className="flex flex-col group-data-[collapsible=icon]:hidden min-w-0">
+            <span className="font-bold text-sidebar-foreground truncate">{displayName || "מערכת ניהול"}</span>
+            <span className="text-xs text-sidebar-foreground/70 truncate">{subtitle}</span>
           </div>
         </div>
       </SidebarHeader>
