@@ -1,1 +1,7 @@
 project_id = "penbfwrbikpkvchbohte"
+
+[functions.google-drive-auth]
+verify_jwt = true
+
+[functions.google-drive-callback]
+verify_jwt = false
