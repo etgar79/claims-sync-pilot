@@ -184,7 +184,7 @@ export default function Settings() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h2 className="font-semibold text-foreground">Google Drive</h2>
+                      <h2 className="font-semibold text-foreground">חשבון Google</h2>
                       {driveConnected && (
                         <Badge className="bg-success/10 text-success border-success/20 border gap-1">
                           <CheckCircle2 className="h-3 w-3" />
@@ -193,7 +193,7 @@ export default function Settings() {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      חבר את חשבון Google שלך ובחר תיקייה לסנכרון אוטומטי של הקלטות ותמונות
+                      חבר את חשבון Google שלך כדי לאפשר: סנכרון Drive, יצירת אירועים ביומן, ויצירת משימות אוטומטיות.
                     </p>
                   </div>
                 </div>
@@ -210,9 +210,14 @@ export default function Settings() {
                       )}
                       {connecting ? "מתחבר..." : "חבר חשבון Google"}
                     </Button>
-                    <p className="text-xs text-muted-foreground">
-                      תועבר ל-Google לאישור הרשאות. הקבצים נשארים בדרייב הפרטי שלך - האפליקציה רק מקבלת גישה לקריאה ולכתיבה לתיקיות שתבחר.
-                    </p>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p>תועבר ל-Google לאישור הרשאות. תתבקש לאשר:</p>
+                      <ul className="mr-4 space-y-0.5">
+                        <li>📁 <strong>Drive</strong> - גישה לקריאה ולכתיבה בתיקיות שתבחר</li>
+                        <li>📅 <strong>Calendar</strong> - יצירת אירועים ופגישות ביומן שלך</li>
+                        <li>✅ <strong>Tasks</strong> - יצירת משימות מעקב</li>
+                      </ul>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-4">

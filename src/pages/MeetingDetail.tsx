@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
 import { MergeTranscriptsDialog } from "@/components/MergeTranscriptsDialog";
+import { ActionItemsDialog } from "@/components/ActionItemsDialog";
 import { serviceLabel } from "@/lib/serviceLabels";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 
@@ -392,7 +393,15 @@ const MeetingDetail = () => {
                   )}
                 </div>
                 {meeting.ai_summary ? (
-                  <div className="text-sm whitespace-pre-wrap" dir="rtl">{meeting.ai_summary}</div>
+                  <>
+                    <div className="text-sm whitespace-pre-wrap mb-3" dir="rtl">{meeting.ai_summary}</div>
+                    <ActionItemsDialog
+                      meetingTitle={meeting.title}
+                      clientName={meeting.client_name ?? undefined}
+                      summary={meeting.ai_summary}
+                      transcript={recordings.map((r) => r.transcript).filter(Boolean).join("\n\n")}
+                    />
+                  </>
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-6">
                     תמלל הקלטות ולחץ "צור סיכום AI"

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { GenerateReportDialog } from "./GenerateReportDialog";
 import { TranscribeDialog } from "./TranscribeDialog";
 import { MergeTranscriptsDialog } from "./MergeTranscriptsDialog";
+import { ActionItemsDialog } from "./ActionItemsDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 
 interface CaseDetailProps {
@@ -167,11 +168,19 @@ export function CaseDetail({ appraisalCase, aiSummary, aiSummaryGeneratedAt, onS
               </Button>
             </div>
             {aiSummary ? (
-              <Card className="p-5">
-                <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                  {aiSummary}
-                </div>
-              </Card>
+              <>
+                <Card className="p-5">
+                  <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                    {aiSummary}
+                  </div>
+                </Card>
+                <ActionItemsDialog
+                  meetingTitle={appraisalCase.title}
+                  clientName={appraisalCase.clientName}
+                  summary={aiSummary}
+                  transcript={appraisalCase.recordings.map((r) => r.transcript).filter(Boolean).join("\n\n")}
+                />
+              </>
             ) : (
               <EmptyState icon={Sparkles} message='לחץ על "צור סיכום" כדי לקבל סיכום אוטומטי של התיק' />
             )}
