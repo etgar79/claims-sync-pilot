@@ -202,6 +202,14 @@ const MeetingDetail = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {meeting.drive_folder_url && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={meeting.drive_folder_url} target="_blank" rel="noopener noreferrer" title="תיקיית הפגישה ב-Drive">
+                    <FolderOpen className="h-4 w-4 ml-2" />
+                    Drive
+                  </a>
+                </Button>
+              )}
               <Select value={meeting.status} onValueChange={updateStatus} disabled={statusUpdating}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue />
