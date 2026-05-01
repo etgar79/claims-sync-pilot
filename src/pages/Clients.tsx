@@ -26,6 +26,7 @@ interface ClientGroup {
 
 const Clients = () => {
   const { cases, loading, reload } = useCases();
+  const { folderUrl: workFolderUrl, folder: workFolder } = useWorkFolder();
   const [search, setSearch] = useState("");
   const [selectedClient, setSelectedClient] = useState<ClientGroup | null>(null);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
