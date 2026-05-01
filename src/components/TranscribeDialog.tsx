@@ -131,12 +131,13 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `שגיאה ${res.status}`);
 
+      const usedService: TranscriptionService = data.service ?? service;
       const { error: updErr } = await supabase
         .from(table)
         .update({
           transcript: data.transcript,
           transcript_status: "completed",
-          transcription_service: service,
+          transcription_service: usedService,
         })
         .eq("id", recordingId);
       if (updErr) throw updErr;
@@ -147,15 +148,19 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
         await supabase.from("transcript_versions").insert({
           recording_id: recordingId,
           user_id: user.id,
-          service,
+          service: usedService,
           transcript: data.transcript,
           is_merged: false,
         });
       }
 
-      const label = SERVICES.find((s) => s.id === service)?.name ?? "תמלול";
-      toast.success(`התמלול הושלם בהצלחה (${label})`);
-      onCompleted?.(data.transcript, service);
+      const label = SERVICES.find((s) => s.id === usedService)?.name ?? "תמלול חלופי";
+      if (data.fallback_used) {
+        toast.warning(`השירות שנבחר לא היה זמין - בוצע תמלול חלופי (${label})`);
+      } else {
+        toast.success(`התמלול הושלם בהצלחה (${label})`);
+      }
+      onCompleted?.(data.transcript, usedService);
       setOpen(false);
     } catch (e: any) {
       toast.error(e?.message || "שגיאה בתמלול");
