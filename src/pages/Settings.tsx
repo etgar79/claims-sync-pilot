@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Cloud, CheckCircle2, FolderOpen, Sparkles, Key, RefreshCw, ExternalLink, ShieldCheck, HardDriveDownload } from "lucide-react";
+import { Cloud, CheckCircle2, FolderOpen, Sparkles, Key, RefreshCw, ExternalLink, ShieldCheck, HardDriveDownload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useDriveConnection } from "@/hooks/useDriveConnection";
 
 interface DriveFolder {
   id: string;
@@ -44,9 +45,9 @@ const SAMPLE_FOLDERS: DriveFolder[] = [
 ];
 
 export default function Settings() {
-  // Drive
-  const [driveConnected, setDriveConnected] = useState(false);
-  const [driveAccount, setDriveAccount] = useState<string>("");
+  // Drive - real connection via Google OAuth
+  const { isConnected: driveConnected, connection, connecting, connect, disconnect } = useDriveConnection();
+  const driveAccount = connection?.google_email ?? "";
   const [folderId, setFolderId] = useState<string>("");
   const [folderName, setFolderName] = useState<string>("");
 
@@ -63,9 +64,6 @@ export default function Settings() {
   const [backupRunning, setBackupRunning] = useState(false);
 
   useEffect(() => {
-    const connected = localStorage.getItem(STORAGE_KEYS.driveConnected) === "true";
-    setDriveConnected(connected);
-    setDriveAccount(localStorage.getItem(STORAGE_KEYS.driveAccount) ?? "");
     setFolderId(localStorage.getItem(STORAGE_KEYS.driveFolderId) ?? "");
     setFolderName(localStorage.getItem(STORAGE_KEYS.driveFolderName) ?? "");
     setGeminiSource((localStorage.getItem(STORAGE_KEYS.geminiSource) as "lovable" | "custom") ?? "lovable");
@@ -121,30 +119,16 @@ export default function Settings() {
   };
 
   const handleConnectDrive = () => {
-    // Demo: simulate OAuth flow. Real connection happens via Lovable Connector.
-    setTimeout(() => {
-      const account = "appraiser@gmail.com";
-      setDriveConnected(true);
-      setDriveAccount(account);
-      localStorage.setItem(STORAGE_KEYS.driveConnected, "true");
-      localStorage.setItem(STORAGE_KEYS.driveAccount, account);
-      toast.success("חשבון Google חובר בהצלחה", {
-        description: "כעת תוכל לבחור תיקייה לסנכרון",
-      });
-    }, 600);
-    toast.info("מתחבר ל-Google Drive...");
+    toast.info("מעביר ל-Google לאישור הרשאות...");
+    connect();
   };
 
-  const handleDisconnectDrive = () => {
-    setDriveConnected(false);
-    setDriveAccount("");
+  const handleDisconnectDrive = async () => {
+    await disconnect();
     setFolderId("");
     setFolderName("");
-    localStorage.removeItem(STORAGE_KEYS.driveConnected);
-    localStorage.removeItem(STORAGE_KEYS.driveAccount);
     localStorage.removeItem(STORAGE_KEYS.driveFolderId);
     localStorage.removeItem(STORAGE_KEYS.driveFolderName);
-    toast.success("החשבון נותק");
   };
 
   const handleFolderChange = (id: string) => {
@@ -218,12 +202,16 @@ export default function Settings() {
 
                 {!driveConnected ? (
                   <div className="space-y-3">
-                    <Button onClick={handleConnectDrive} className="gap-2">
-                      <Cloud className="h-4 w-4" />
-                      חבר חשבון Google
+                    <Button onClick={handleConnectDrive} className="gap-2" disabled={connecting}>
+                      {connecting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Cloud className="h-4 w-4" />
+                      )}
+                      {connecting ? "מתחבר..." : "חבר חשבון Google"}
                     </Button>
                     <p className="text-xs text-muted-foreground">
-                      לאחר החיבור תוכל לבחור תיקייה ספציפית לסנכרון. כל הקובץ שיתווסף לתיקייה ייכנס למערכת אוטומטית.
+                      תועבר ל-Google לאישור הרשאות. הקבצים נשארים בדרייב הפרטי שלך - האפליקציה רק מקבלת גישה לקריאה ולכתיבה לתיקיות שתבחר.
                     </p>
                   </div>
                 ) : (

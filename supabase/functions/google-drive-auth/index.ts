@@ -42,7 +42,13 @@ Deno.serve(async (req) => {
     }
 
     const url = new URL(req.url);
-    const returnTo = url.searchParams.get("return_to") ?? "";
+    let returnTo = url.searchParams.get("return_to") ?? "";
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        if (body?.return_to) returnTo = body.return_to;
+      } catch (_) { /* ignore */ }
+    }
 
     const clientId = Deno.env.get("GOOGLE_OAUTH_CLIENT_ID")!;
     const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/google-drive-callback`;
