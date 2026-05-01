@@ -20,6 +20,7 @@ interface ClientGroup {
   caseCount: number;
   totalValue: number;
   lastCaseDate: string;
+  driveFolderUrl?: string;
   cases: ReturnType<typeof useCases>["cases"];
 }
 
