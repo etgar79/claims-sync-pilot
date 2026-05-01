@@ -38,13 +38,6 @@ const BACKUP_FOLDERS: DriveFolder[] = [
   { id: "b_backup_archive", name: "ארכיון גיבויים" },
 ];
 
-const SAMPLE_FOLDERS: DriveFolder[] = [
-  { id: "f_appraisals", name: "תיקי שמאות 2026" },
-  { id: "f_recordings", name: "הקלטות שטח" },
-  { id: "f_photos", name: "תמונות לקוחות" },
-  { id: "f_archive", name: "ארכיון" },
-];
-
 export default function Settings() {
   // Drive - real connection via Google OAuth
   const { isConnected: driveConnected, connection, connecting, connect, disconnect } = useDriveConnection();
