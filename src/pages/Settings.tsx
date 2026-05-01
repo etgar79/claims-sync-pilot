@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Cloud, CheckCircle2, FolderOpen, Sparkles, Key, RefreshCw, ExternalLink, ShieldCheck, HardDriveDownload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDriveConnection } from "@/hooks/useDriveConnection";
+import { WorkFolderPicker } from "@/components/WorkFolderPicker";
 
 interface DriveFolder {
   id: string;
@@ -35,13 +36,6 @@ const BACKUP_FOLDERS: DriveFolder[] = [
   { id: "b_backup_main", name: "גיבוי מערכת שמאות" },
   { id: "b_backup_media", name: "גיבוי מדיה" },
   { id: "b_backup_archive", name: "ארכיון גיבויים" },
-];
-
-const SAMPLE_FOLDERS: DriveFolder[] = [
-  { id: "f_appraisals", name: "תיקי שמאות 2026" },
-  { id: "f_recordings", name: "הקלטות שטח" },
-  { id: "f_photos", name: "תמונות לקוחות" },
-  { id: "f_archive", name: "ארכיון" },
 ];
 
 export default function Settings() {
@@ -129,16 +123,6 @@ export default function Settings() {
     setFolderName("");
     localStorage.removeItem(STORAGE_KEYS.driveFolderId);
     localStorage.removeItem(STORAGE_KEYS.driveFolderName);
-  };
-
-  const handleFolderChange = (id: string) => {
-    const folder = SAMPLE_FOLDERS.find((f) => f.id === id);
-    if (!folder) return;
-    setFolderId(folder.id);
-    setFolderName(folder.name);
-    localStorage.setItem(STORAGE_KEYS.driveFolderId, folder.id);
-    localStorage.setItem(STORAGE_KEYS.driveFolderName, folder.name);
-    toast.success(`התיקייה "${folder.name}" נבחרה לסנכרון`);
   };
 
   const handleSaveGemini = () => {
@@ -231,36 +215,7 @@ export default function Settings() {
                       </Button>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="folder">תיקיית סנכרון</Label>
-                      <Select value={folderId} onValueChange={handleFolderChange}>
-                        <SelectTrigger id="folder">
-                          <SelectValue placeholder="בחר תיקייה מ-Drive..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SAMPLE_FOLDERS.map((f) => (
-                            <SelectItem key={f.id} value={f.id}>
-                              <div className="flex items-center gap-2">
-                                <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                                {f.name}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {folderName && (
-                        <p className="text-xs text-muted-foreground">
-                          סנכרון פעיל מהתיקייה <span className="font-medium text-foreground">{folderName}</span>
-                        </p>
-                      )}
-                    </div>
-
-                    {folderId && (
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <RefreshCw className="h-4 w-4" />
-                        סנכרן עכשיו
-                      </Button>
-                    )}
+                    <WorkFolderPicker />
                   </div>
                 )}
               </Card>
