@@ -40,8 +40,10 @@ const BACKUP_FOLDERS: DriveFolder[] = [
 ];
 
 export default function Settings() {
-  // Roles - backup section is admin-only
-  const { isAdmin } = useUserRoles();
+  // Roles - decide which folder pickers to show + admin-only sections
+  const { isAdmin, roles } = useUserRoles();
+  const isAppraiser = isAdmin || roles.includes("appraiser");
+  const isArchitect = isAdmin || roles.includes("architect");
   // Drive - real connection via Google OAuth
   const { isConnected: driveConnected, connection, connecting, connect, disconnect } = useDriveConnection();
   const driveAccount = connection?.google_email ?? "";
