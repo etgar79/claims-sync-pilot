@@ -25,6 +25,7 @@ import { AssignToMeetingDialog } from "@/components/AssignToMeetingDialog";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { RecordCallButton } from "@/components/RecordCallButton";
+import { useDriveSync } from "@/hooks/useDriveSync";
 
 interface Row {
   id: string;
@@ -54,6 +55,7 @@ const MeetingRecordings = () => {
   const [assignTarget, setAssignTarget] = useState<Row | null>(null);
   const [transcribeTarget, setTranscribeTarget] = useState<Row | null>(null);
   const { runAll, running } = useTranscribeAll();
+  const { sync, syncing } = useDriveSync("architect");
 
   const load = async () => {
     setLoading(true);
@@ -77,7 +79,15 @@ const MeetingRecordings = () => {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    void sync().then((r) => { if (r && r.added > 0) load(); });
+    const id = window.setInterval(() => {
+      void sync().then((r) => { if (r && r.added > 0) load(); });
+    }, 120_000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = items.filter((r) => {
     const q = search.trim().toLowerCase();
@@ -195,6 +205,12 @@ const MeetingRecordings = () => {
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input className="pr-9" placeholder="חיפוש לפי קובץ, פגישה או תגית..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
+            {syncing && (
+              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                מסנכרן מ-Drive...
+              </div>
+            )}
             {loading ? (
               <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
             ) : items.length === 0 ? (

@@ -37,6 +37,7 @@ import { AssignRecordingDialog } from "@/components/AssignRecordingDialog";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { RecordCallButton } from "@/components/RecordCallButton";
+import { useDriveSync } from "@/hooks/useDriveSync";
 
 interface RecordingRow {
   id: string;
@@ -65,10 +66,10 @@ const Recordings = () => {
   const [items, setItems] = useState<RecordingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [assignTarget, setAssignTarget] = useState<RecordingRow | null>(null);
   const [transcribeTarget, setTranscribeTarget] = useState<RecordingRow | null>(null);
   const { runAll, running } = useTranscribeAll();
+  const { sync, syncing } = useDriveSync("appraiser");
 
   const load = async () => {
     setLoading(true);
@@ -105,30 +106,29 @@ const Recordings = () => {
 
   useEffect(() => {
     load();
+    // Auto-sync from Drive on mount (silent — no toast spam)
+    void sync().then((r) => { if (r && r.added > 0) load(); });
+    // Re-sync periodically while page is open (every 2 minutes)
+    const id = window.setInterval(() => {
+      void sync().then((r) => { if (r && r.added > 0) load(); });
+    }, 120_000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // All unique tags across recordings
-  const allTags = Array.from(
-    new Set(items.flatMap((r) => r.tags ?? []))
-  ).sort();
 
   const filtered = items.filter((r) => {
     const q = search.trim().toLowerCase();
-    if (q) {
-      const hit =
-        r.filename.toLowerCase().includes(q) ||
-        (r.case_title ?? "").toLowerCase().includes(q) ||
-        (r.case_number ?? "").toLowerCase().includes(q) ||
-        (r.client_name ?? "").toLowerCase().includes(q) ||
-        (r.tags ?? []).some((t) => t.toLowerCase().includes(q));
-      if (!hit) return false;
-    }
-    if (tagFilter && !(r.tags ?? []).includes(tagFilter)) return false;
-    return true;
+    if (!q) return true;
+    const hit =
+      r.filename.toLowerCase().includes(q) ||
+      (r.case_title ?? "").toLowerCase().includes(q) ||
+      (r.case_number ?? "").toLowerCase().includes(q) ||
+      (r.client_name ?? "").toLowerCase().includes(q);
+    return hit;
   });
 
-  const unassigned = filtered.filter((r) => !r.case_id && (!r.tags || r.tags.length === 0));
-  const tagged = filtered.filter((r) => r.case_id || (r.tags && r.tags.length > 0));
+  const unassigned = filtered.filter((r) => !r.case_id);
+  const tagged = filtered.filter((r) => !!r.case_id);
 
   const handleQuickTranscribe = async (r: RecordingRow) => {
     if (!r.drive_url) {
@@ -182,29 +182,13 @@ const Recordings = () => {
               <Link to={`/cases?id=${r.case_id}`} className="hover:text-primary">
                 תיק {r.case_number} • {r.case_title}
               </Link>
-            ) : !r.tags || r.tags.length === 0 ? (
-              <span className="text-warning">ללא תיוג</span>
-            ) : null}
+            ) : (
+              <span className="text-warning">לא משויך לתיק</span>
+            )}
             {r.client_name && <span>לקוח: {r.client_name}</span>}
             <span>{new Date(r.recorded_at).toLocaleString("he-IL")}</span>
             {r.duration && <span>{r.duration}</span>}
           </div>
-
-          {r.tags && r.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {r.tags.map((t) => (
-                <Badge
-                  key={t}
-                  variant="outline"
-                  className="text-xs cursor-pointer hover:bg-primary/10"
-                  onClick={() => setTagFilter(t)}
-                >
-                  <Tag className="h-2.5 w-2.5 ml-1" />
-                  {t}
-                </Badge>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="flex flex-col gap-1.5 shrink-0">
@@ -245,7 +229,7 @@ const Recordings = () => {
 
           <Button size="sm" variant="outline" className="gap-1" onClick={() => setAssignTarget(r)}>
             <Tag className="h-3.5 w-3.5" />
-            {r.case_id || (r.tags && r.tags.length > 0) ? "ערוך תיוג" : "תייג"}
+            {r.case_id ? "החלף תיק" : "שייך לתיק"}
           </Button>
 
           {r.drive_url && (
@@ -291,30 +275,10 @@ const Recordings = () => {
             <div className="p-4 space-y-4">
               <WorkspaceFolderBanner workspace="appraiser" onSynced={load} />
 
-              {/* Tag filter chips */}
-              {allTags.length > 0 && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-muted-foreground">סינון לפי תווית:</span>
-                  {tagFilter && (
-                    <Badge
-                      variant="default"
-                      className="cursor-pointer gap-1"
-                      onClick={() => setTagFilter(null)}
-                    >
-                      {tagFilter} ✕
-                    </Badge>
-                  )}
-                  {!tagFilter &&
-                    allTags.slice(0, 12).map((t) => (
-                      <Badge
-                        key={t}
-                        variant="outline"
-                        className="cursor-pointer hover:bg-muted"
-                        onClick={() => setTagFilter(t)}
-                      >
-                        {t}
-                      </Badge>
-                    ))}
+              {syncing && (
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  מסנכרן מ-Drive...
                 </div>
               )}
 
