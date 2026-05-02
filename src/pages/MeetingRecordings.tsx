@@ -24,6 +24,7 @@ import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
 import { AssignToMeetingDialog } from "@/components/AssignToMeetingDialog";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
+import { RecordCallButton } from "@/components/RecordCallButton";
 
 interface Row {
   id: string;
@@ -185,7 +186,8 @@ const MeetingRecordings = () => {
           <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-3 shrink-0">
             <SidebarTrigger />
             <Mic className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-semibold">הקלטות פגישה</h1>
+            <h1 className="text-lg font-semibold flex-1">הקלטות פגישה</h1>
+            <RecordCallButton workspace="architect" onCreated={load} />
           </header>
           <div className="flex-1 overflow-auto p-4 lg:p-6 space-y-4">
             <WorkspaceFolderBanner workspace="architect" onSynced={load} />
