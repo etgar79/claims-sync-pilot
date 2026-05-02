@@ -9,6 +9,8 @@ import {
   DollarSign,
   Mic,
   ClipboardList,
+  Phone,
+  Image as ImageIcon,
 } from "lucide-react";
 import {
   Sidebar,
