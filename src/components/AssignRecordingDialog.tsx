@@ -3,10 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, FolderOpen, Plus, Tag, X, Calendar } from "lucide-react";
+import { Loader2, FolderOpen, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 interface CaseOption {
@@ -26,35 +25,27 @@ interface Props {
   onAssigned?: () => void;
 }
 
-const QUICK_TAGS = ["ביקור ראשון", "מדידה", "שיחה עם לקוח", "תיעוד נזק", "פגישה משפטית"];
-
 export function AssignRecordingDialog({
   open,
   onOpenChange,
   recordingId,
-  recordingFilename,
-  initialTags = [],
   initialCaseId = null,
   onAssigned,
 }: Props) {
   const [cases, setCases] = useState<CaseOption[]>([]);
   const [loadingCases, setLoadingCases] = useState(false);
   const [selectedCaseId, setSelectedCaseId] = useState<string>("");
-  const [mode, setMode] = useState<"existing" | "new" | "tagsOnly">("existing");
+  const [mode, setMode] = useState<"existing" | "new">("existing");
   const [newCase, setNewCase] = useState({ case_number: "", title: "", client_name: "" });
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setMode(initialCaseId ? "existing" : "existing");
+    setMode("existing");
     setSelectedCaseId(initialCaseId ?? "");
     setNewCase({ case_number: "", title: "", client_name: "" });
-    setTags(initialTags ?? []);
-    setTagInput("");
     void loadCases();
-  }, [open, initialCaseId, initialTags]);
+  }, [open, initialCaseId]);
 
   const loadCases = async () => {
     setLoadingCases(true);
@@ -65,21 +56,6 @@ export function AssignRecordingDialog({
     if (error) toast.error(error.message);
     setCases((data as CaseOption[]) ?? []);
     setLoadingCases(false);
-  };
-
-  const addTag = (raw: string) => {
-    const t = raw.trim();
-    if (!t) return;
-    if (tags.includes(t)) return;
-    setTags([...tags, t]);
-    setTagInput("");
-  };
-
-  const removeTag = (t: string) => setTags(tags.filter((x) => x !== t));
-
-  const todayTag = () => {
-    const d = new Date();
-    addTag(d.toLocaleDateString("he-IL"));
   };
 
   const handleAssign = async () => {
@@ -116,27 +92,21 @@ export function AssignRecordingDialog({
           .then(({ error }) => {
             if (error) console.warn("Drive folder creation skipped:", error);
           });
-      } else if (mode === "tagsOnly") {
-        caseId = null;
       }
 
-      // Must have either case or at least one tag
-      if (!caseId && tags.length === 0) {
-        toast.error("בחר תיק או הוסף לפחות תווית אחת");
+      if (!caseId) {
+        toast.error("בחר תיק או צור תיק חדש");
         setSaving(false);
         return;
       }
 
-      const update: any = { tags };
-      if (caseId) update.case_id = caseId;
-
       const { error: upErr } = await supabase
         .from("recordings")
-        .update(update)
+        .update({ case_id: caseId })
         .eq("id", recordingId);
       if (upErr) throw upErr;
 
-      toast.success("ההקלטה תויגה בהצלחה");
+      toast.success("ההקלטה שויכה לתיק");
       onOpenChange(false);
       onAssigned?.();
     } catch (e) {
@@ -152,16 +122,12 @@ export function AssignRecordingDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>תיוג הקלטה</DialogTitle>
-          <DialogDescription>שייך לתיק, הוסף תאריך, או תייג בחופשיות</DialogDescription>
+          <DialogTitle>שיוך הקלטה לתיק</DialogTitle>
+          <DialogDescription>בחר תיק קיים או צור תיק חדש</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="text-sm text-muted-foreground p-2 rounded bg-muted/40 truncate">
-            🎙️ {recordingFilename}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               variant={mode === "existing" ? "default" : "outline"}
               size="sm"
@@ -180,15 +146,6 @@ export function AssignRecordingDialog({
               <Plus className="h-3.5 w-3.5" />
               תיק חדש
             </Button>
-            <Button
-              variant={mode === "tagsOnly" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setMode("tagsOnly")}
-              className="gap-1"
-            >
-              <Tag className="h-3.5 w-3.5" />
-              תוויות בלבד
-            </Button>
           </div>
 
           {mode === "existing" && (
@@ -201,7 +158,7 @@ export function AssignRecordingDialog({
                 </div>
               ) : cases.length === 0 ? (
                 <div className="text-sm text-muted-foreground p-3 border rounded">
-                  אין תיקי שומה. צור תיק חדש או תייג בלבד.
+                  אין תיקי שומה. צור תיק חדש.
                 </div>
               ) : (
                 <Select value={selectedCaseId} onValueChange={setSelectedCaseId}>
@@ -247,61 +204,6 @@ export function AssignRecordingDialog({
               </div>
             </div>
           )}
-
-          {/* Free-form tags - always available */}
-          <div className="space-y-2 border-t pt-4">
-            <Label className="flex items-center gap-2">
-              <Tag className="h-3.5 w-3.5" />
-              תוויות חופשיות
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addTag(tagInput);
-                  }
-                }}
-                placeholder="הוסף תווית והקש Enter"
-              />
-              <Button type="button" size="sm" variant="outline" onClick={() => addTag(tagInput)}>
-                הוסף
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              <Button type="button" size="sm" variant="ghost" className="h-6 gap-1 text-xs" onClick={todayTag}>
-                <Calendar className="h-3 w-3" />
-                תאריך היום
-              </Button>
-              {QUICK_TAGS.map((t) => (
-                <Button
-                  key={t}
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 text-xs"
-                  onClick={() => addTag(t)}
-                  disabled={tags.includes(t)}
-                >
-                  + {t}
-                </Button>
-              ))}
-            </div>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {tags.map((t) => (
-                  <Badge key={t} variant="secondary" className="gap-1">
-                    {t}
-                    <button onClick={() => removeTag(t)} className="hover:text-destructive">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
 
         <DialogFooter>
