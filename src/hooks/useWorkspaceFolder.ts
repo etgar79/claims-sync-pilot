@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type WorkspaceKind = "appraiser" | "architect";
-export type FolderPurpose = "recordings" | "photos";
+export type FolderPurpose = "recordings" | "photos" | "calls";
 
 export interface WorkspaceFolder {
   id: string;
@@ -12,10 +12,8 @@ export interface WorkspaceFolder {
 }
 
 export const folderTypeFor = (workspace: WorkspaceKind, purpose: FolderPurpose = "recordings") => {
-  if (workspace === "appraiser") {
-    return purpose === "recordings" ? "appraiser_recordings" : "appraiser_photos";
-  }
-  return purpose === "recordings" ? "architect_recordings" : "architect_photos";
+  const prefix = workspace === "appraiser" ? "appraiser" : "architect";
+  return `${prefix}_${purpose}`;
 };
 
 /**
