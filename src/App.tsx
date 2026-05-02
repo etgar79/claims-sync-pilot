@@ -21,6 +21,8 @@ const MeetingDetail = lazy(() => import("./pages/MeetingDetail.tsx"));
 const Admin = lazy(() => import("./pages/Admin.tsx"));
 const Usage = lazy(() => import("./pages/Usage.tsx"));
 const Auth = lazy(() => import("./pages/Auth.tsx"));
+const PhoneCallsPage = lazy(() => import("./pages/PhoneCallsPage.tsx"));
+const PhotosPage = lazy(() => import("./pages/PhotosPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const queryClient = new QueryClient();
