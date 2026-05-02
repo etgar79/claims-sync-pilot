@@ -107,11 +107,11 @@ export function AssignRecordingDialog({
           .single();
         if (createErr) throw createErr;
         caseId = newC.id;
-        // Fire-and-forget: create matching Drive sub-folder
+        // Fire-and-forget: create matching Drive sub-folder (under client folder)
         const folderName = `${newC.case_number} - ${newC.title}`;
         supabase.functions
           .invoke("google-drive-create-case-folder", {
-            body: { kind: "case", id: newC.id, name: folderName },
+            body: { kind: "case", id: newC.id, name: folderName, clientName: newCase.client_name },
           })
           .then(({ error }) => {
             if (error) console.warn("Drive folder creation skipped:", error);

@@ -36,6 +36,7 @@ import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
 import { AssignRecordingDialog } from "@/components/AssignRecordingDialog";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
+import { RecordCallButton } from "@/components/RecordCallButton";
 
 interface RecordingRow {
   id: string;
@@ -283,6 +284,7 @@ const Recordings = () => {
                 className="pr-8"
               />
             </div>
+            <RecordCallButton workspace="appraiser" onCreated={load} />
           </header>
 
           <ScrollArea className="flex-1">
