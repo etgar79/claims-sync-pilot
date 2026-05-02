@@ -50,8 +50,9 @@ export function ProtectedRoute({ children, allow }: ProtectedRouteProps) {
     };
     // Explicit role match (no admin auto-grant)
     let hasAccess = allow.some((r) => explicit[r]);
-    // Admin gets access only if their active workspace is one of the allowed roles.
-    if (!hasAccess && isAdmin && workspace && allow.includes(workspace as AppRole)) {
+    // Admin gets access to ALL workspaces' routes — they work on their own Drive
+    // and RLS isolates their data. This lets admins test the full system end-to-end.
+    if (!hasAccess && isAdmin) {
       hasAccess = true;
     }
     if (!hasAccess) return <Navigate to="/" replace />;
