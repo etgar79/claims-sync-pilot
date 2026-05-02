@@ -228,6 +228,11 @@ export default function Settings() {
                         />
                         <WorkFolderPicker
                           workspace="appraiser"
+                          purpose="calls"
+                          label="📞 תיקיית שיחות טלפון"
+                        />
+                        <WorkFolderPicker
+                          workspace="appraiser"
                           purpose="photos"
                           label="🖼️ תיקיית תמונות"
                         />
@@ -240,6 +245,11 @@ export default function Settings() {
                           workspace="architect"
                           purpose="recordings"
                           label="🎙️ תיקיית הקלטות פגישות"
+                        />
+                        <WorkFolderPicker
+                          workspace="architect"
+                          purpose="calls"
+                          label="📞 תיקיית שיחות טלפון"
                         />
                         <WorkFolderPicker
                           workspace="architect"
