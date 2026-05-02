@@ -205,6 +205,12 @@ const MeetingRecordings = () => {
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input className="pr-9" placeholder="חיפוש לפי קובץ, פגישה או תגית..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
+            {syncing && (
+              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                מסנכרן מ-Drive...
+              </div>
+            )}
             {loading ? (
               <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
             ) : items.length === 0 ? (
