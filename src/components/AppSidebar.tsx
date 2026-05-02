@@ -59,6 +59,8 @@ export function AppSidebar() {
       { title: "תיקי שומה", url: "/cases", icon: FolderOpen },
       { title: "לקוחות", url: "/clients", icon: Users },
       { title: "הקלטות שטח", url: "/recordings", icon: Mic },
+      { title: "שיחות טלפון", url: "/phone-calls", icon: Phone },
+      { title: "תמונות", url: "/photos", icon: ImageIcon },
       { title: "תבניות דוחות", url: "/templates", icon: FileText },
     ];
   } else if (workspace === "architect") {
@@ -67,6 +69,8 @@ export function AppSidebar() {
       { title: "דשבורד פגישות", url: "/", icon: LayoutDashboard },
       { title: "פגישות", url: "/meetings", icon: Calendar },
       { title: "הקלטות פגישה", url: "/meeting-recordings", icon: Mic },
+      { title: "שיחות טלפון", url: "/meeting-phone-calls", icon: Phone },
+      { title: "תמונות", url: "/meeting-photos", icon: ImageIcon },
       { title: "לקוחות / פרויקטים", url: "/clients", icon: Users },
       { title: "תבניות סיכום פגישה", url: "/meeting-templates", icon: ClipboardList },
     ];
