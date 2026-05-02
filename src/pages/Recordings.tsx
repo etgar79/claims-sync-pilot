@@ -275,30 +275,10 @@ const Recordings = () => {
             <div className="p-4 space-y-4">
               <WorkspaceFolderBanner workspace="appraiser" onSynced={load} />
 
-              {/* Tag filter chips */}
-              {allTags.length > 0 && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-muted-foreground">סינון לפי תווית:</span>
-                  {tagFilter && (
-                    <Badge
-                      variant="default"
-                      className="cursor-pointer gap-1"
-                      onClick={() => setTagFilter(null)}
-                    >
-                      {tagFilter} ✕
-                    </Badge>
-                  )}
-                  {!tagFilter &&
-                    allTags.slice(0, 12).map((t) => (
-                      <Badge
-                        key={t}
-                        variant="outline"
-                        className="cursor-pointer hover:bg-muted"
-                        onClick={() => setTagFilter(t)}
-                      >
-                        {t}
-                      </Badge>
-                    ))}
+              {syncing && (
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  מסנכרן מ-Drive...
                 </div>
               )}
 
