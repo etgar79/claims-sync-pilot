@@ -115,7 +115,9 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json().catch(() => ({}));
-    const { kind, id, name } = body as { kind?: "case" | "meeting"; id?: string; name?: string };
+    const { kind, id, name, clientName } = body as {
+      kind?: "case" | "meeting"; id?: string; name?: string; clientName?: string;
+    };
 
     if (kind !== "case" && kind !== "meeting") {
       return new Response(JSON.stringify({ error: "kind חייב להיות case או meeting" }), {
@@ -156,8 +158,16 @@ Deno.serve(async (req) => {
     const accessToken = await getValidAccessToken(adminClient, user.id);
     const safeName = sanitizeFolderName(name);
 
+    // For appraiser cases: nest under a client-named folder when clientName is provided
+    let parentForRoot = parentFolder.folder_id;
+    if (kind === "case" && clientName) {
+      const safeClient = sanitizeFolderName(clientName);
+      const clientFolder = await createDriveFolder(accessToken, safeClient, parentFolder.folder_id);
+      parentForRoot = clientFolder.id;
+    }
+
     // Create the case/meeting root folder
-    const root = await createDriveFolder(accessToken, safeName, parentFolder.folder_id);
+    const root = await createDriveFolder(accessToken, safeName, parentForRoot);
     // Create the two sub-folders
     await createDriveFolder(accessToken, "הקלטות", root.id);
     await createDriveFolder(accessToken, "תמונות", root.id);
