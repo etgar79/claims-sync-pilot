@@ -21,6 +21,8 @@ const MeetingDetail = lazy(() => import("./pages/MeetingDetail.tsx"));
 const Admin = lazy(() => import("./pages/Admin.tsx"));
 const Usage = lazy(() => import("./pages/Usage.tsx"));
 const Auth = lazy(() => import("./pages/Auth.tsx"));
+const PhoneCallsPage = lazy(() => import("./pages/PhoneCallsPage.tsx"));
+const PhotosPage = lazy(() => import("./pages/PhotosPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const queryClient = new QueryClient();
@@ -44,6 +46,10 @@ const App = () => (
               <Route path="/meeting-recordings" element={<ProtectedRoute allow={["architect"]}><MeetingRecordings /></ProtectedRoute>} />
               <Route path="/meetings" element={<ProtectedRoute allow={["architect"]}><Meetings /></ProtectedRoute>} />
               <Route path="/meetings/:id" element={<ProtectedRoute allow={["architect"]}><MeetingDetail /></ProtectedRoute>} />
+              <Route path="/phone-calls" element={<ProtectedRoute allow={["appraiser"]}><PhoneCallsPage workspace="appraiser" title="שיחות טלפון" /></ProtectedRoute>} />
+              <Route path="/photos" element={<ProtectedRoute allow={["appraiser"]}><PhotosPage workspace="appraiser" title="תמונות" /></ProtectedRoute>} />
+              <Route path="/meeting-phone-calls" element={<ProtectedRoute allow={["architect"]}><PhoneCallsPage workspace="architect" title="שיחות טלפון" /></ProtectedRoute>} />
+              <Route path="/meeting-photos" element={<ProtectedRoute allow={["architect"]}><PhotosPage workspace="architect" title="תמונות פגישות" /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute allow={["admin"]}><Admin /></ProtectedRoute>} />
               <Route path="/usage" element={<ProtectedRoute allow={["admin"]}><Usage /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
