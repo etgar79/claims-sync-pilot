@@ -46,11 +46,16 @@ export function useActiveWorkspace() {
     if (stored && !available.includes(stored)) {
       try { localStorage.removeItem(STORAGE_KEY); } catch {}
     }
-    // Default selection — pick the most appropriate single workspace
-    if (isAdmin) setWorkspaceState("admin");
-    else if (available.length === 1) setWorkspaceState(available[0]);
-    else if (available.includes("architect")) setWorkspaceState("architect");
-    else setWorkspaceState(available[0]);
+    // Default selection — admin starts as a regular work mode (not admin panel).
+    // To enter admin panel they explicitly press "ניהול מערכת" in the sidebar.
+    const workModes = available.filter((w) => w !== "admin");
+    if (workModes.length >= 1) {
+      if (workModes.includes("architect")) setWorkspaceState("architect");
+      else setWorkspaceState(workModes[0]);
+    } else {
+      // Only admin role and nothing else — fall back to admin
+      setWorkspaceState(available[0]);
+    }
   }, [loading, isAdmin, available]);
 
   const setWorkspace = useCallback((w: Workspace) => {
