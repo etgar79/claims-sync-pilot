@@ -291,9 +291,15 @@ export function TranscriptViewerDialog({
                             />
                           </div>
                         ))}
-                        <Button size="sm" variant="secondary" onClick={applySpeakerRenames} className="w-full mt-1">
-                          החלף בטקסט
-                        </Button>
+                        <div className="flex gap-1.5 mt-1">
+                          <Button size="sm" variant="secondary" onClick={applySpeakerRenames} className="flex-1">
+                            החלף בטקסט
+                          </Button>
+                          <Button size="sm" onClick={applyAndSave} disabled={saving} className="flex-1 gap-1">
+                            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                            החלף ושמור
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>
