@@ -17,20 +17,20 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 30% 15%;
 
-    /* כחול עמוק - מקצועי, מעורר אמון */
-    --primary: 215 65% 28%;
-    --primary-foreground: 210 25% 98%;
-    --primary-glow: 215 70% 45%;
+    /* כתום עמוק - מקצועי, חם */
+    --primary: 24 90% 48%;
+    --primary-foreground: 30 25% 98%;
+    --primary-glow: 28 95% 60%;
 
     /* זהב רך - לפעולות חשובות */
     --accent: 38 65% 52%;
     --accent-foreground: 215 30% 15%;
 
-    --secondary: 210 25% 94%;
-    --secondary-foreground: 215 30% 25%;
+    --secondary: 30 25% 94%;
+    --secondary-foreground: 24 30% 25%;
 
-    --muted: 210 20% 95%;
-    --muted-foreground: 215 15% 45%;
+    --muted: 30 20% 95%;
+    --muted-foreground: 25 15% 45%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 210 25% 98%;
@@ -41,16 +41,16 @@
     --warning: 38 90% 50%;
     --warning-foreground: 215 30% 15%;
 
-    --border: 215 20% 88%;
-    --input: 215 20% 90%;
-    --ring: 215 65% 28%;
+    --border: 28 20% 88%;
+    --input: 28 20% 90%;
+    --ring: 24 90% 48%;
 
     --radius: 0.625rem;
 
-    --gradient-primary: linear-gradient(135deg, hsl(215 65% 28%), hsl(215 70% 38%));
-    --gradient-subtle: linear-gradient(180deg, hsl(210 25% 98%), hsl(210 20% 95%));
-    --shadow-card: 0 1px 3px 0 hsl(215 30% 15% / 0.05), 0 1px 2px -1px hsl(215 30% 15% / 0.05);
-    --shadow-elevated: 0 10px 30px -10px hsl(215 65% 28% / 0.15);
+    --gradient-primary: linear-gradient(135deg, hsl(24 90% 48%), hsl(28 95% 58%));
+    --gradient-subtle: linear-gradient(180deg, hsl(30 25% 98%), hsl(30 20% 95%));
+    --shadow-card: 0 1px 3px 0 hsl(24 30% 15% / 0.05), 0 1px 2px -1px hsl(24 30% 15% / 0.05);
+    --shadow-elevated: 0 10px 30px -10px hsl(24 90% 48% / 0.15);
 
     /* Sidebar — Warm Ceramic Glow */
     --sidebar-background: 30 25% 97%;          /* ceramic */
