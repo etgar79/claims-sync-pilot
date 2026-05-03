@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
 
     const form = await req.formData();
     const file = form.get("file") as File | null;
-    const service = (form.get("service") as Service) ?? "whisper";
+    const service = (form.get("service") as Service) ?? "lovable_ai";
     const clientDurationRaw = form.get("client_duration");
     const clientDuration = clientDurationRaw ? Number(clientDurationRaw) : NaN;
 
