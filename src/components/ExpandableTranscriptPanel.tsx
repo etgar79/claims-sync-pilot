@@ -520,23 +520,42 @@ export function ExpandableTranscriptPanel({
                   <ChevronDown className={`h-4 w-4 transition-transform ${showHistory ? "rotate-180" : ""}`} />
                 </button>
                 {showHistory && (
-                  <ScrollArea className="mt-3 max-h-44">
-                    <div className="space-y-2">
-                      {versions.length === 0 && <div className="text-xs text-muted-foreground">אין גרסאות עדיין</div>}
-                      {versions.map((version) => (
-                        <div key={version.id} className="rounded-lg border bg-card p-2 text-xs">
-                          <div className="mb-1 flex items-center justify-between gap-2">
-                            <Badge variant="secondary" className="text-[10px]">{serviceLabel(version.service)}</Badge>
-                            <span className="text-muted-foreground">{new Date(version.created_at).toLocaleString("he-IL")}</span>
-                          </div>
-                          <p className="line-clamp-2 text-muted-foreground">{version.transcript.slice(0, 120)}</p>
-                          <Button size="sm" variant="ghost" className="mt-1 h-7 text-xs" onClick={() => restoreVersion(version)}>
-                            טען לגרסה הזאת
+                  <div className="mt-3 space-y-2">
+                    <div className="flex justify-end">
+                      <MergeTranscriptsDialog
+                        recordingId={item.id}
+                        table={item.table}
+                        onMerged={async () => { await loadVersions(); onUpdated?.(); }}
+                        trigger={
+                          <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" disabled={versions.length < 2}>
+                            <Wand2 className="h-3 w-3" /> מזג גרסאות
                           </Button>
-                        </div>
-                      ))}
+                        }
+                      />
                     </div>
-                  </ScrollArea>
+                    <ScrollArea className="max-h-44">
+                      <div className="space-y-2">
+                        {versions.length === 0 && <div className="text-xs text-muted-foreground">אין גרסאות עדיין</div>}
+                        {versions.map((version) => (
+                          <div key={version.id} className="rounded-lg border bg-card p-2 text-xs">
+                            <div className="mb-1 flex items-center justify-between gap-2">
+                              <Badge variant="secondary" className="text-[10px]">{serviceLabel(version.service)}</Badge>
+                              <span className="text-muted-foreground">{new Date(version.created_at).toLocaleString("he-IL")}</span>
+                            </div>
+                            <p className="line-clamp-2 text-muted-foreground">{version.transcript.slice(0, 120)}</p>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => restoreVersion(version)}>
+                                טען לעריכה
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs text-primary" onClick={() => usePrimary(version)}>
+                                <CheckCircle2 className="h-3 w-3" /> השתמש כראשית
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
                 )}
               </div>
             </div>
