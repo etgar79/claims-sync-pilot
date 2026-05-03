@@ -109,60 +109,87 @@ export function AppSidebar() {
   managementItems.push({ title: "הגדרות", url: "/settings", icon: Settings });
 
   return (
-    <Sidebar side="right" collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-bold text-lg">
+    <Sidebar side="right" collapsible="icon" className="border-l border-sidebar-border">
+      <SidebarHeader className="p-4 pb-2">
+        <div className="flex items-center gap-3 px-1">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sidebar-primary to-[hsl(var(--sidebar-primary)/0.7)] text-sidebar-primary-foreground font-semibold text-base shadow-[0_4px_12px_hsl(var(--sidebar-glow)/0.3)]">
             {initial}
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden min-w-0">
-            <span className="font-bold text-sidebar-foreground truncate">{branding.systemName}</span>
-            <span className="text-xs text-sidebar-foreground/70 truncate">{branding.systemSubtitle}</span>
+            <span className="font-semibold tracking-tight text-sidebar-foreground truncate text-[15px]">
+              {branding.systemName}
+            </span>
+            <span className="text-[11px] text-[hsl(var(--sidebar-muted))] truncate">
+              {branding.systemSubtitle}
+            </span>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-2 gap-4">
         <SidebarGroup>
-          <SidebarGroupLabel>{mainLabel}</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] font-semibold tracking-[0.12em] uppercase text-[hsl(var(--sidebar-muted))] px-3">
+            {mainLabel}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {mainItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                    <NavLink to={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+            <SidebarMenu className="gap-0.5">
+              {mainItems.map((item) => {
+                const active = isActive(item.url);
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      tooltip={item.title}
+                      className={`relative h-10 rounded-xl px-3 font-medium text-[13.5px] transition-all duration-200
+                        text-[hsl(var(--sidebar-muted))] hover:text-sidebar-foreground hover:bg-sidebar-accent/60
+                        data-[active=true]:bg-gradient-to-l data-[active=true]:from-[hsl(var(--sidebar-primary)/0.12)] data-[active=true]:to-transparent
+                        data-[active=true]:text-[hsl(var(--sidebar-primary))]
+                        data-[active=true]:shadow-[0_4px_16px_-6px_hsl(var(--sidebar-glow)/0.25)]`}
+                    >
+                      <NavLink to={item.url}>
+                        {active && (
+                          <span className="absolute right-0 top-2 bottom-2 w-[3px] rounded-l-full bg-[hsl(var(--sidebar-primary))] shadow-[0_0_8px_hsl(var(--sidebar-glow)/0.6)]" />
+                        )}
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-
         {adminItems.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>אדמין</SidebarGroupLabel>
+            <div className="mx-3 h-px bg-gradient-to-l from-transparent via-sidebar-border to-transparent mb-2" />
             <SidebarGroupContent>
               <SidebarMenu>
                 <Collapsible defaultOpen={adminOpen} className="group/collapsible">
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip="כלי אדמין" className="w-full">
+                      <SidebarMenuButton
+                        tooltip="כלי אדמין"
+                        className="h-10 rounded-xl px-3 text-[10px] font-semibold tracking-[0.12em] uppercase text-[hsl(var(--sidebar-muted))] hover:text-sidebar-foreground hover:bg-sidebar-accent/60"
+                      >
                         <Shield className="h-4 w-4" />
                         <span>כלי אדמין</span>
                         <ChevronDown className="mr-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <SidebarMenuSub>
+                      <SidebarMenuSub className="border-r border-sidebar-border/60 mr-4 pr-3 gap-0.5">
                         {adminItems.map((item) => (
                           <SidebarMenuSubItem key={item.title}>
-                            <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={isActive(item.url)}
+                              className="h-9 rounded-lg text-[13px] text-[hsl(var(--sidebar-muted))] hover:text-sidebar-foreground hover:bg-sidebar-accent/60 data-[active=true]:bg-sidebar-accent data-[active=true]:text-[hsl(var(--sidebar-primary))]"
+                            >
                               <NavLink to={item.url}>
-                                <item.icon className="h-4 w-4" />
+                                <item.icon className="h-3.5 w-3.5" />
                                 <span>{item.title}</span>
                               </NavLink>
                             </SidebarMenuSubButton>
@@ -179,26 +206,39 @@ export function AppSidebar() {
 
         {managementItems.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>ניהול</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-[10px] font-semibold tracking-[0.12em] uppercase text-[hsl(var(--sidebar-muted))] px-3">
+              ניהול
+            </SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
-                {managementItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                      <NavLink to={item.url}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+              <SidebarMenu className="gap-0.5">
+                {managementItems.map((item) => {
+                  const active = isActive(item.url);
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={active}
+                        tooltip={item.title}
+                        className="relative h-10 rounded-xl px-3 font-medium text-[13.5px] text-[hsl(var(--sidebar-muted))] hover:text-sidebar-foreground hover:bg-sidebar-accent/60 data-[active=true]:bg-sidebar-accent data-[active=true]:text-[hsl(var(--sidebar-primary))]"
+                      >
+                        <NavLink to={item.url}>
+                          {active && (
+                            <span className="absolute right-0 top-2 bottom-2 w-[3px] rounded-l-full bg-[hsl(var(--sidebar-primary))]" />
+                          )}
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter className="border-t border-sidebar-border/60 p-3 bg-sidebar-accent/30">
         <WorkspaceSwitcher collapsed={collapsed} />
       </SidebarFooter>
     </Sidebar>
