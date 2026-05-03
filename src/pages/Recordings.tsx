@@ -1,30 +1,13 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RecordingCard } from "@/components/RecordingCard";
-import {
-  Mic,
-  Loader2,
-  Search,
-  FileText,
-  Clock,
-  AlertCircle,
-  CheckCircle2,
-  ExternalLink,
-  Tag,
-  Cloud,
-  Sparkles,
-  Zap,
-  ChevronDown,
-  Eye,
-  MoreVertical,
-} from "lucide-react";
+import { RecordingsHero } from "@/components/RecordingsHero";
+import { Mic, Loader2, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
@@ -34,6 +17,8 @@ import { TranscriptViewerDialog } from "@/components/TranscriptViewerDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { RecordCallButton } from "@/components/RecordCallButton";
 import { useDriveSync } from "@/hooks/useDriveSync";
+
+type FilterMode = "all" | "ready" | "pending";
 
 interface RecordingRow {
   id: string;
@@ -51,12 +36,6 @@ interface RecordingRow {
   client_name?: string;
 }
 
-const STATUS: Record<string, { label: string; icon: any; cls: string }> = {
-  pending: { label: "ממתין", icon: Clock, cls: "bg-muted text-muted-foreground" },
-  processing: { label: "מתמלל", icon: Loader2, cls: "bg-primary/10 text-primary" },
-  completed: { label: "הושלם", icon: CheckCircle2, cls: "bg-green-500/10 text-green-700" },
-  failed: { label: "נכשל", icon: AlertCircle, cls: "bg-destructive/10 text-destructive" },
-};
 
 const Recordings = () => {
   const [items, setItems] = useState<RecordingRow[]>([]);
@@ -65,6 +44,7 @@ const Recordings = () => {
   const [assignTarget, setAssignTarget] = useState<RecordingRow | null>(null);
   const [transcribeTarget, setTranscribeTarget] = useState<RecordingRow | null>(null);
   const [viewTarget, setViewTarget] = useState<RecordingRow | null>(null);
+  const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const { runAll, running } = useTranscribeAll();
   const { sync, syncing } = useDriveSync("appraiser");
 
@@ -114,14 +94,16 @@ const Recordings = () => {
   }, []);
 
   const filtered = items.filter((r) => {
+    if (filterMode === "ready" && !r.transcript) return false;
+    if (filterMode === "pending" && r.transcript) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
-    const hit =
+    return (
       r.filename.toLowerCase().includes(q) ||
       (r.case_title ?? "").toLowerCase().includes(q) ||
       (r.case_number ?? "").toLowerCase().includes(q) ||
-      (r.client_name ?? "").toLowerCase().includes(q);
-    return hit;
+      (r.client_name ?? "").toLowerCase().includes(q)
+    );
   });
 
   const unassigned = filtered.filter((r) => !r.case_id);
@@ -144,15 +126,6 @@ const Recordings = () => {
     });
   };
 
-  const handleCardClick = (r: RecordingRow) => {
-    if (r.transcript) {
-      setViewTarget(r);
-    } else {
-      // open viewer (which contains transcribe options) for unified flow
-      setViewTarget(r);
-    }
-  };
-
   const renderCard = (r: RecordingRow) => (
     <RecordingCard
       key={r.id}
@@ -169,41 +142,76 @@ const Recordings = () => {
 
   return (
     <SidebarProvider defaultOpen>
-      <div className="flex min-h-screen w-full bg-background">
+      <div className="flex min-h-screen w-full bg-gradient-to-b from-background via-background to-primary/[0.02]">
         <AppSidebar />
         <SidebarInset className="flex flex-col">
-          <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-4 shrink-0">
+          <header className="h-14 border-b border-border bg-card/80 backdrop-blur flex items-center px-4 gap-3 shrink-0 sticky top-0 z-20">
             <SidebarTrigger />
-            <div className="flex-1 flex items-center gap-2">
-              <Mic className="h-5 w-5 text-primary" />
-              <h1 className="text-lg font-semibold">הקלטות שטח</h1>
-              <Badge variant="secondary">{items.length}</Badge>
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center shrink-0">
+              <Mic className="h-4 w-4 text-primary-foreground" />
             </div>
-            <div className="relative w-72 max-w-full">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-semibold leading-tight truncate">הקלטות שטח</h1>
+              <p className="text-[11px] text-muted-foreground leading-tight truncate">
+                {items.length} פריטים
+              </p>
+            </div>
+            <div className="relative w-72 max-w-full hidden md:block">
               <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="חיפוש לפי קובץ, תיק, תווית..."
+                placeholder="חיפוש לפי קובץ, תיק, לקוח..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pr-8"
+                className="pr-8 h-9"
               />
             </div>
             <RecordCallButton workspace="appraiser" onCreated={load} />
           </header>
 
           <ScrollArea className="flex-1">
-            <div className="p-4 space-y-4">
+            <div className="p-4 lg:p-6 space-y-5 max-w-6xl mx-auto w-full">
+              <RecordingsHero title="הקלטות שטח" items={items} subjectLabel="ההקלטות" />
+
               <WorkspaceFolderBanner workspace="appraiser" onSynced={load} />
 
-              {syncing && (
-                <div className="text-xs text-muted-foreground flex items-center gap-2">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  מסנכרן מ-Drive...
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative flex-1 min-w-[200px] md:hidden">
+                  <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="חיפוש..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pr-8 h-9"
+                  />
                 </div>
-              )}
+                <div className="inline-flex items-center rounded-lg border bg-card p-0.5 text-xs">
+                  {([
+                    { k: "all", label: "הכל" },
+                    { k: "ready", label: "מוכנים" },
+                    { k: "pending", label: "ממתינים" },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.k}
+                      onClick={() => setFilterMode(opt.k)}
+                      className={`px-3 h-8 rounded-md transition-colors ${
+                        filterMode === opt.k
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {syncing && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> מסנכרן...
+                  </span>
+                )}
+              </div>
 
               {loading ? (
-                <div className="text-center py-12 text-muted-foreground">
+                <div className="text-center py-16 text-muted-foreground">
                   <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin" />
                   טוען הקלטות...
                 </div>
@@ -212,36 +220,40 @@ const Recordings = () => {
                   <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                     <Mic className="h-8 w-8 text-primary" />
                   </div>
-                  <h3 className="font-semibold text-base mb-1">אין הקלטות עדיין</h3>
+                  <h3 className="font-semibold text-base mb-1">
+                    {items.length === 0 ? "אין הקלטות עדיין" : "אין תוצאות מתאימות"}
+                  </h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    סנכרני מ-Drive או הקליטי שיחה חדשה כדי להתחיל
+                    {items.length === 0
+                      ? "סנכרני מ-Drive או הקליטי שיחה חדשה כדי להתחיל"
+                      : "נסי חיפוש אחר או שני את הסינון"}
                   </p>
-                  <div className="flex justify-center">
-                    <RecordCallButton workspace="appraiser" onCreated={load} />
-                  </div>
+                  {items.length === 0 && (
+                    <div className="flex justify-center">
+                      <RecordCallButton workspace="appraiser" onCreated={load} />
+                    </div>
+                  )}
                 </Card>
               ) : (
                 <>
                   {unassigned.length > 0 && (
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       <div className="flex items-center gap-2 px-1">
-                        <h2 className="text-sm font-semibold text-warning">
-                          הקלטות חדשות לתיוג
-                        </h2>
+                        <h2 className="text-sm font-semibold text-warning">הקלטות חדשות לתיוג</h2>
                         <Badge variant="outline">{unassigned.length}</Badge>
                       </div>
-                      <div className="space-y-2">{unassigned.map(renderCard)}</div>
+                      <div className="space-y-2.5">{unassigned.map(renderCard)}</div>
                     </div>
                   )}
 
                   {tagged.length > 0 && (
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {unassigned.length > 0 && (
                         <h2 className="text-sm font-semibold text-muted-foreground px-1 pt-2">
                           הקלטות מתויגות
                         </h2>
                       )}
-                      <div className="space-y-2">{tagged.map(renderCard)}</div>
+                      <div className="space-y-2.5">{tagged.map(renderCard)}</div>
                     </div>
                   )}
                 </>
