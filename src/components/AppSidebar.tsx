@@ -11,6 +11,7 @@ import {
   ClipboardList,
   Phone,
   Image as ImageIcon,
+  ChevronDown,
 } from "lucide-react";
 import {
   Sidebar,
@@ -22,9 +23,13 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { NavLink, useLocation } from "react-router-dom";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useBranding } from "@/hooks/useBranding";
