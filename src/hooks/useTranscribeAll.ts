@@ -6,6 +6,7 @@ import type { TranscriptionService } from "@/components/TranscribeDialog";
 const SERVICES: TranscriptionService[] = ["ivrit_ai", "whisper", "elevenlabs"];
 
 const SERVICE_NAMES: Record<TranscriptionService, string> = {
+  lovable_ai: "AI מובנה",
   ivrit_ai: "AI חסכוני",
   whisper: "AI מהיר",
   elevenlabs: "AI איכות גבוהה",
