@@ -10,9 +10,12 @@ import { toast } from "sonner";
 import { exportTranscriptToPdf, downloadTranscriptTxt } from "@/lib/exportTranscriptPdf";
 import { serviceLabel } from "@/lib/serviceLabels";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
+import { MergeTranscriptsDialog } from "@/components/MergeTranscriptsDialog";
+import { EditMeetingDialog } from "@/components/EditMeetingDialog";
 import {
   AudioLines,
   Check,
+  CheckCircle2,
   ChevronDown,
   Copy,
   Download,
@@ -56,6 +59,8 @@ export interface ExpandableTranscriptItem {
   context?: string | null;
   client?: string | null;
   assignLabel?: string;
+  meetingId?: string | null;
+  meetingTitle?: string | null;
 }
 
 interface Props {
