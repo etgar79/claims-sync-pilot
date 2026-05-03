@@ -85,8 +85,16 @@ async function transcribeLovableAi(file: File): Promise<{ text: string; duration
     binary += String.fromCharCode(...buf.subarray(i, i + chunk));
   }
   const b64 = btoa(binary);
-  const mime = file.type || "audio/mpeg";
-  const format = (mime.split("/")[1] || "mp3").split(";")[0];
+  const mime = (file.type || "audio/mpeg").toLowerCase();
+  const fname = (file.name || "").toLowerCase();
+  // Normalize to formats Gemini accepts: wav, mp3, aiff, aac, ogg, flac
+  let format = (mime.split("/")[1] || "mp3").split(";")[0].replace("x-", "");
+  if (format === "mpeg" || format === "mpg" || fname.endsWith(".mp3")) format = "mp3";
+  else if (format === "mp4" || format === "m4a" || fname.endsWith(".m4a") || fname.endsWith(".mp4")) format = "aac";
+  else if (fname.endsWith(".wav")) format = "wav";
+  else if (fname.endsWith(".ogg") || fname.endsWith(".opus")) format = "ogg";
+  else if (fname.endsWith(".flac")) format = "flac";
+  else if (fname.endsWith(".aac")) format = "aac";
 
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
