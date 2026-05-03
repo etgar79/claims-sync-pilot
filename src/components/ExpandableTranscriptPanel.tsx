@@ -130,6 +130,8 @@ export function ExpandableTranscriptPanel({
   const [audioLoading, setAudioLoading] = useState(false);
   const [speakerMap, setSpeakerMap] = useState<Record<string, string>>({});
   const [keywordPairs, setKeywordPairs] = useState<Array<{ from: string; to: string }>>([{ from: "", to: "" }]);
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [editMeetingOpen, setEditMeetingOpen] = useState(false);
   const lastSavedRef = useRef(item.transcript ?? "");
   const debounceRef = useRef<number | null>(null);
   const { runAll, running } = useTranscribeAll();
