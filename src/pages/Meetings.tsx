@@ -15,8 +15,9 @@ import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
 import { AssignToMeetingDialog } from "@/components/AssignToMeetingDialog";
+import { EditMeetingDialog } from "@/components/EditMeetingDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
-import { Mic, Tag, Cloud } from "lucide-react";
+import { Mic, Tag, Cloud, Pencil } from "lucide-react";
 
 interface Meeting {
   id: string;
@@ -54,6 +55,7 @@ const Meetings = () => {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState<UnassignedRecording | null>(null);
+  const [editTarget, setEditTarget] = useState<Meeting | null>(null);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -378,41 +380,52 @@ const Meetings = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtered.map((m) => (
-                  <Link key={m.id} to={`/meetings/${m.id}`}>
-                    <Card className="p-4 hover:border-primary transition-colors cursor-pointer h-full">
-                      <div className="flex items-start justify-between mb-2 gap-2">
-                        <h3 className="font-bold text-lg leading-tight">{m.title}</h3>
-                        <Badge variant={m.status === "completed" ? "secondary" : "default"} className="shrink-0">
-                          {STATUS_LABEL[m.status] || m.status}
-                        </Badge>
-                      </div>
-                      {m.project_name && <p className="text-sm font-medium">{m.project_name}</p>}
-                      {m.client_name && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                          <Users className="h-3 w-3" />
-                          {m.client_name}
-                        </p>
-                      )}
-                      {m.location && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                          <MapPin className="h-3 w-3" />
-                          {m.location}
-                        </p>
-                      )}
-                      {m.meeting_date && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(m.meeting_date).toLocaleString("he-IL")}
-                        </p>
-                      )}
-                      {m.ai_summary && (
-                        <Badge variant="outline" className="mt-3 gap-1">
-                          <Sparkles className="h-3 w-3" />
-                          סיכום AI מוכן
-                        </Badge>
-                      )}
-                    </Card>
-                  </Link>
+                  <div key={m.id} className="relative group">
+                    <Link to={`/meetings/${m.id}`}>
+                      <Card className="p-4 hover:border-primary transition-colors cursor-pointer h-full">
+                        <div className="flex items-start justify-between mb-2 gap-2">
+                          <h3 className="font-bold text-lg leading-tight">{m.title}</h3>
+                          <Badge variant={m.status === "completed" ? "secondary" : "default"} className="shrink-0">
+                            {STATUS_LABEL[m.status] || m.status}
+                          </Badge>
+                        </div>
+                        {m.project_name && <p className="text-sm font-medium">{m.project_name}</p>}
+                        {m.client_name && (
+                          <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                            <Users className="h-3 w-3" />
+                            {m.client_name}
+                          </p>
+                        )}
+                        {m.location && (
+                          <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                            <MapPin className="h-3 w-3" />
+                            {m.location}
+                          </p>
+                        )}
+                        {m.meeting_date && (
+                          <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(m.meeting_date).toLocaleString("he-IL")}
+                          </p>
+                        )}
+                        {m.ai_summary && (
+                          <Badge variant="outline" className="mt-3 gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            סיכום AI מוכן
+                          </Badge>
+                        )}
+                      </Card>
+                    </Link>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="absolute top-2 left-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity bg-card/80 backdrop-blur"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditTarget(m); }}
+                      title="ערוך פגישה"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 ))}
               </div>
             )}
@@ -426,6 +439,14 @@ const Meetings = () => {
           recordingId={assignTarget.id}
           recordingFilename={assignTarget.filename}
           onAssigned={load}
+        />
+      )}
+      {editTarget && (
+        <EditMeetingDialog
+          open={!!editTarget}
+          onOpenChange={(o) => !o && setEditTarget(null)}
+          meeting={editTarget}
+          onSaved={load}
         />
       )}
     </SidebarProvider>

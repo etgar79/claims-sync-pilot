@@ -10,9 +10,12 @@ import { toast } from "sonner";
 import { exportTranscriptToPdf, downloadTranscriptTxt } from "@/lib/exportTranscriptPdf";
 import { serviceLabel } from "@/lib/serviceLabels";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
+import { MergeTranscriptsDialog } from "@/components/MergeTranscriptsDialog";
+import { EditMeetingDialog } from "@/components/EditMeetingDialog";
 import {
   AudioLines,
   Check,
+  CheckCircle2,
   ChevronDown,
   Copy,
   Download,
@@ -56,6 +59,8 @@ export interface ExpandableTranscriptItem {
   context?: string | null;
   client?: string | null;
   assignLabel?: string;
+  meetingId?: string | null;
+  meetingTitle?: string | null;
 }
 
 interface Props {
@@ -125,6 +130,8 @@ export function ExpandableTranscriptPanel({
   const [audioLoading, setAudioLoading] = useState(false);
   const [speakerMap, setSpeakerMap] = useState<Record<string, string>>({});
   const [keywordPairs, setKeywordPairs] = useState<Array<{ from: string; to: string }>>([{ from: "", to: "" }]);
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [editMeetingOpen, setEditMeetingOpen] = useState(false);
   const lastSavedRef = useRef(item.transcript ?? "");
   const debounceRef = useRef<number | null>(null);
   const { runAll, running } = useTranscribeAll();
@@ -305,6 +312,26 @@ export function ExpandableTranscriptPanel({
     toast.success("הגרסה נטענה לעריכה");
   };
 
+  const usePrimary = async (version: Version) => {
+    try {
+      const { error } = await supabase
+        .from(item.table)
+        .update({
+          transcript: version.transcript,
+          transcript_status: "completed",
+          transcription_service: version.service,
+        })
+        .eq("id", item.id);
+      if (error) throw error;
+      setEdited(version.transcript);
+      lastSavedRef.current = version.transcript;
+      toast.success("הוגדרה כגרסה הראשית");
+      onUpdated?.();
+    } catch (e: any) {
+      toast.error("שגיאה בעדכון", { description: e?.message });
+    }
+  };
+
   const statusTone = item.transcriptStatus === "completed"
     ? "border-green-500/30 bg-green-500/10 text-green-700"
     : item.transcriptStatus === "processing"
@@ -346,6 +373,14 @@ export function ExpandableTranscriptPanel({
               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 {item.recordedAt && <span>{new Date(item.recordedAt).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}</span>}
                 {item.client && <span>לקוח: {item.client}</span>}
+                {item.meetingId && (
+                  <span className="inline-flex items-center gap-1">
+                    פגישה: {item.meetingTitle || "(ללא כותרת)"}
+                    <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setEditMeetingOpen(true)} title="ערוך שם פגישה">
+                      <PencilLine className="h-3 w-3" />
+                    </Button>
+                  </span>
+                )}
                 {saveState === "saving" && <span className="inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> שומר...</span>}
                 {saveState === "saved" && <span className="inline-flex items-center gap-1 text-green-700"><Check className="h-3 w-3" /> נשמר</span>}
               </div>
@@ -493,23 +528,42 @@ export function ExpandableTranscriptPanel({
                   <ChevronDown className={`h-4 w-4 transition-transform ${showHistory ? "rotate-180" : ""}`} />
                 </button>
                 {showHistory && (
-                  <ScrollArea className="mt-3 max-h-44">
-                    <div className="space-y-2">
-                      {versions.length === 0 && <div className="text-xs text-muted-foreground">אין גרסאות עדיין</div>}
-                      {versions.map((version) => (
-                        <div key={version.id} className="rounded-lg border bg-card p-2 text-xs">
-                          <div className="mb-1 flex items-center justify-between gap-2">
-                            <Badge variant="secondary" className="text-[10px]">{serviceLabel(version.service)}</Badge>
-                            <span className="text-muted-foreground">{new Date(version.created_at).toLocaleString("he-IL")}</span>
-                          </div>
-                          <p className="line-clamp-2 text-muted-foreground">{version.transcript.slice(0, 120)}</p>
-                          <Button size="sm" variant="ghost" className="mt-1 h-7 text-xs" onClick={() => restoreVersion(version)}>
-                            טען לגרסה הזאת
+                  <div className="mt-3 space-y-2">
+                    <div className="flex justify-end">
+                      <MergeTranscriptsDialog
+                        recordingId={item.id}
+                        table={item.table}
+                        onMerged={async () => { await loadVersions(); onUpdated?.(); }}
+                        trigger={
+                          <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" disabled={versions.length < 2}>
+                            <Wand2 className="h-3 w-3" /> מזג גרסאות
                           </Button>
-                        </div>
-                      ))}
+                        }
+                      />
                     </div>
-                  </ScrollArea>
+                    <ScrollArea className="max-h-44">
+                      <div className="space-y-2">
+                        {versions.length === 0 && <div className="text-xs text-muted-foreground">אין גרסאות עדיין</div>}
+                        {versions.map((version) => (
+                          <div key={version.id} className="rounded-lg border bg-card p-2 text-xs">
+                            <div className="mb-1 flex items-center justify-between gap-2">
+                              <Badge variant="secondary" className="text-[10px]">{serviceLabel(version.service)}</Badge>
+                              <span className="text-muted-foreground">{new Date(version.created_at).toLocaleString("he-IL")}</span>
+                            </div>
+                            <p className="line-clamp-2 text-muted-foreground">{version.transcript.slice(0, 120)}</p>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => restoreVersion(version)}>
+                                טען לעריכה
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs text-primary" onClick={() => usePrimary(version)}>
+                                <CheckCircle2 className="h-3 w-3" /> השתמש כראשית
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
                 )}
               </div>
             </div>
@@ -550,6 +604,15 @@ export function ExpandableTranscriptPanel({
           </div>
         </div>
       </div>
+      {item.meetingId && (
+        <EditMeetingDialog
+          open={editMeetingOpen}
+          onOpenChange={setEditMeetingOpen}
+          meeting={{ id: item.meetingId, title: item.meetingTitle ?? "" }}
+          titleOnly
+          onSaved={() => onUpdated?.()}
+        />
+      )}
     </Card>
   );
 }

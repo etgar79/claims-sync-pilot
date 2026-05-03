@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -45,10 +46,13 @@ interface Props {
   onAssign: () => void;
   onSuperTranscribe: () => void;
   onQuickTranscribe: () => void;
+  expanded?: boolean;
+  expandedSlot?: ReactNode;
 }
 
 export function RecordingCard({
   data: r, isRunning, workspace, onView, onEdit, onAssign, onSuperTranscribe, onQuickTranscribe,
+  expanded, expandedSlot,
 }: Props) {
   const st = STATUS[r.transcript_status as keyof typeof STATUS] ?? STATUS.pending;
   const Icon = st.icon;
@@ -105,8 +109,8 @@ export function RecordingCard({
   return (
     <TooltipProvider delayDuration={200}>
       <Card
-        onClick={hasTranscript ? onView : undefined}
-        className={`group relative overflow-hidden border-border/60 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 ${hasTranscript ? "cursor-pointer" : ""}`}
+        onClick={hasTranscript && !expanded ? onView : undefined}
+        className={`group relative overflow-hidden border-border/60 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 ${hasTranscript && !expanded ? "cursor-pointer" : ""} ${expanded ? "border-primary/40 shadow-md shadow-primary/10" : ""}`}
       >
         {/* Status accent bar */}
         <div className={`absolute top-0 right-0 left-0 h-0.5 ${
@@ -237,6 +241,11 @@ export function RecordingCard({
             </TooltipTrigger><TooltipContent>פתח ב-Drive</TooltipContent></Tooltip>
           )}
         </div>
+        {expanded && expandedSlot && (
+          <div onClick={(e) => e.stopPropagation()} className="border-t border-border/40">
+            {expandedSlot}
+          </div>
+        )}
       </Card>
     </TooltipProvider>
   );
