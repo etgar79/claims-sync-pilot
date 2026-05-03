@@ -59,6 +59,7 @@ export default function TranscriptsPage({ workspace, title }: Props) {
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedMode, setExpandedMode] = useState<"view" | "edit">("view");
   const [openTarget, setOpenTarget] = useState<Item | null>(null);
   const [openMode, setOpenMode] = useState<"view" | "edit">("view");
   const [assignTarget, setAssignTarget] = useState<Item | null>(null);
@@ -319,7 +320,10 @@ export default function TranscriptsPage({ workspace, title }: Props) {
                           workspace={workspace}
                           isRunning={running === r.id}
                           expanded={expandedId === `${r.table}-${r.id}`}
-                          onToggleExpand={() => setExpandedId((prev) => prev === `${r.table}-${r.id}` ? null : `${r.table}-${r.id}`)}
+                          onToggleExpand={() => {
+                            setExpandedMode("view");
+                            setExpandedId((prev) => prev === `${r.table}-${r.id}` ? null : `${r.table}-${r.id}`);
+                          }}
                           onView={() => openView(r)}
                           onEdit={() => openEdit(r)}
                           onPdf={() => downloadPdf(r)}
@@ -331,7 +335,7 @@ export default function TranscriptsPage({ workspace, title }: Props) {
                         />
                         <ExpandableTranscriptPanel
                           open={expandedId === `${r.table}-${r.id}`}
-                          mode="view"
+                          mode={expandedId === `${r.table}-${r.id}` ? expandedMode : "view"}
                           item={{
                             id: r.id,
                             table: r.table,
@@ -508,7 +512,7 @@ function TranscriptRow({
             </TooltipTrigger><TooltipContent>פתח את סביבת העבודה המורחבת</TooltipContent></Tooltip>
 
             <Tooltip><TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" onClick={() => { onToggleExpand(); onEdit(); }} className="h-8 gap-1.5 text-xs">
+              <Button size="sm" variant="ghost" onClick={() => { setExpandedMode("edit"); setExpandedId(`${r.table}-${r.id}`); }} className="h-8 gap-1.5 text-xs">
                 <Pencil className="h-3.5 w-3.5" /> ערוך
               </Button>
             </TooltipTrigger><TooltipContent>עריכה עם שמירה אוטומטית</TooltipContent></Tooltip>
