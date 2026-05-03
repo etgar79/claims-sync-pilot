@@ -107,15 +107,16 @@ export function AppSidebar() {
     mainItems = [];
   }
 
-  // Management
+  // Admin items — collapsed under one menu
+  const adminItems: Item[] = isAdmin ? [
+    { title: "משתמשים והרשאות", url: "/admin", icon: Shield },
+    { title: "תוכן לפי משתמש", url: "/admin/users", icon: Users },
+    { title: "חיובים ועלויות", url: "/usage", icon: DollarSign },
+  ] : [];
+  const adminOpen = adminItems.some((i) => isActive(i.url)) || location.pathname.startsWith("/admin");
+
+  // Common management
   const managementItems: Item[] = [];
-  if (isAdmin) {
-    managementItems.push(
-      { title: "ניהול משתמשים", url: "/admin", icon: Shield },
-      { title: "תוכן לפי משתמש", url: "/admin/users", icon: Users },
-      { title: "צריכה ועלויות", url: "/usage", icon: DollarSign },
-    );
-  }
   // תמלולים — זמין לכל משתמש מחובר (לא רק לפי תפקיד)
   const transcriptsUrl = workspace === "architect" ? "/meeting-transcripts" : "/transcripts";
   const transcriptsAlreadyShown = mainItems.some((i) => i.url === transcriptsUrl || i.url === "/transcripts" || i.url === "/meeting-transcripts");
