@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, Copy, Download, Save, Sparkles, Zap, Loader2, History, RotateCcw, Users, Replace, Plus, X } from "lucide-react";
+import { FileText, Copy, Download, Save, Sparkles, Zap, Loader2, History, RotateCcw, Users, Replace, Plus, X, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { exportTranscriptToPdf, downloadTranscriptTxt } from "@/lib/exportTranscriptPdf";
