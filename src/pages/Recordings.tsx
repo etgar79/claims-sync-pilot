@@ -29,12 +29,14 @@ import {
   Sparkles,
   Zap,
   ChevronDown,
+  Eye,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
 import { AssignRecordingDialog } from "@/components/AssignRecordingDialog";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
+import { TranscriptViewerDialog } from "@/components/TranscriptViewerDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { RecordCallButton } from "@/components/RecordCallButton";
 import { useDriveSync } from "@/hooks/useDriveSync";
@@ -68,6 +70,7 @@ const Recordings = () => {
   const [search, setSearch] = useState("");
   const [assignTarget, setAssignTarget] = useState<RecordingRow | null>(null);
   const [transcribeTarget, setTranscribeTarget] = useState<RecordingRow | null>(null);
+  const [viewTarget, setViewTarget] = useState<RecordingRow | null>(null);
   const { runAll, running } = useTranscribeAll();
   const { sync, syncing } = useDriveSync("appraiser");
 
@@ -192,7 +195,15 @@ const Recordings = () => {
         </div>
 
         <div className="flex flex-col gap-1.5 shrink-0">
-          {/* Transcribe split-button */}
+          {/* View transcript button — always available when transcript exists */}
+          {r.transcript && (
+            <Button size="sm" variant="default" className="gap-1" onClick={() => setViewTarget(r)}>
+              <Eye className="h-3.5 w-3.5" />
+              צפה בתמלול
+            </Button>
+          )}
+
+          {/* Transcribe split-button (only when no transcript yet) */}
           {!r.transcript && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -347,6 +358,23 @@ const Recordings = () => {
             setTranscribeTarget(null);
             load();
           }}
+        />
+      )}
+
+      {viewTarget && (
+        <TranscriptViewerDialog
+          open={!!viewTarget}
+          onOpenChange={(o) => !o && setViewTarget(null)}
+          recordingId={viewTarget.id}
+          table="recordings"
+          filename={viewTarget.filename}
+          recordedAt={viewTarget.recorded_at}
+          audioUrl={viewTarget.drive_url}
+          transcript={viewTarget.transcript}
+          context={viewTarget.case_id && viewTarget.case_number ? `תיק ${viewTarget.case_number} • ${viewTarget.case_title ?? ""}` : null}
+          client={viewTarget.client_name ?? null}
+          defaultTab="view"
+          onUpdated={load}
         />
       )}
     </SidebarProvider>

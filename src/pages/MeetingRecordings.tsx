@@ -16,13 +16,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Mic, Loader2, Search, FileText, Clock, AlertCircle, CheckCircle2,
-  ExternalLink, Tag, Cloud, Sparkles, Zap, ChevronDown,
+  ExternalLink, Tag, Cloud, Sparkles, Zap, ChevronDown, Eye,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
 import { AssignToMeetingDialog } from "@/components/AssignToMeetingDialog";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
+import { TranscriptViewerDialog } from "@/components/TranscriptViewerDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { RecordCallButton } from "@/components/RecordCallButton";
 import { useDriveSync } from "@/hooks/useDriveSync";
@@ -54,6 +55,7 @@ const MeetingRecordings = () => {
   const [search, setSearch] = useState("");
   const [assignTarget, setAssignTarget] = useState<Row | null>(null);
   const [transcribeTarget, setTranscribeTarget] = useState<Row | null>(null);
+  const [viewTarget, setViewTarget] = useState<Row | null>(null);
   const { runAll, running } = useTranscribeAll();
   const { sync, syncing } = useDriveSync("architect");
 
@@ -145,6 +147,12 @@ const MeetingRecordings = () => {
           </div>
         </div>
         <div className="flex flex-col gap-1.5 shrink-0">
+          {r.transcript && (
+            <Button size="sm" variant="default" className="gap-1" onClick={() => setViewTarget(r)}>
+              <Eye className="h-3.5 w-3.5" />
+              צפה בתמלול
+            </Button>
+          )}
           {!r.transcript && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -254,6 +262,21 @@ const MeetingRecordings = () => {
           audioUrl={transcribeTarget.drive_url ?? ""}
           table="meeting_recordings"
           onCompleted={load}
+        />
+      )}
+      {viewTarget && (
+        <TranscriptViewerDialog
+          open={!!viewTarget}
+          onOpenChange={(o) => !o && setViewTarget(null)}
+          recordingId={viewTarget.id}
+          table="meeting_recordings"
+          filename={viewTarget.filename}
+          recordedAt={viewTarget.recorded_at}
+          audioUrl={viewTarget.drive_url}
+          transcript={viewTarget.transcript}
+          context={viewTarget.meeting_title ? `פגישה: ${viewTarget.meeting_title}` : null}
+          defaultTab="view"
+          onUpdated={load}
         />
       )}
     </SidebarProvider>
