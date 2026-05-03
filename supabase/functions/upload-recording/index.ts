@@ -9,6 +9,7 @@ interface Payload {
   // base64-encoded audio (without data: prefix)
   dataBase64: string;
   durationSeconds?: number;
+  purpose?: "recordings" | "calls";
 }
 
 function decodeBase64(b64: string): Uint8Array {
