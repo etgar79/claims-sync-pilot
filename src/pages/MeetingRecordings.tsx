@@ -6,18 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Mic, Loader2, Search, FileText, Clock, AlertCircle, CheckCircle2,
-  ExternalLink, Tag, Cloud, Sparkles, Zap, Eye, MoreVertical,
-} from "lucide-react";
+import { Mic, Loader2, Search } from "lucide-react";
+import { RecordingCard } from "@/components/RecordingCard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
