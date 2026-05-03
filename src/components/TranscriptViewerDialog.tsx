@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, Copy, Download, Save, Sparkles, Zap, Loader2, History, RotateCcw, Users } from "lucide-react";
+import { FileText, Copy, Download, Save, Sparkles, Zap, Loader2, History, RotateCcw, Users, Replace, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { exportTranscriptToPdf, downloadTranscriptTxt } from "@/lib/exportTranscriptPdf";
@@ -104,9 +104,17 @@ export function TranscriptViewerDialog({
     });
   }, [detectedSpeakers.join("|")]);
 
+  // Free-form keyword find/replace pairs
+  const [keywordPairs, setKeywordPairs] = useState<Array<{ from: string; to: string }>>([{ from: "", to: "" }]);
+  const updatePair = (i: number, k: "from" | "to", v: string) =>
+    setKeywordPairs((prev) => prev.map((p, idx) => (idx === i ? { ...p, [k]: v } : p)));
+  const addPair = () => setKeywordPairs((prev) => [...prev, { from: "", to: "" }]);
+  const removePair = (i: number) => setKeywordPairs((prev) => prev.filter((_, idx) => idx !== i));
+
   const computeRenamed = () => {
     let next = edited;
     let changed = 0;
+    // Speakers first
     Object.entries(speakerMap).forEach(([orig, name]) => {
       if (!name.trim() || name.trim() === orig) return;
       const re = new RegExp(orig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
@@ -114,19 +122,27 @@ export function TranscriptViewerDialog({
       next = next.replace(re, name.trim());
       if (before !== next) changed++;
     });
+    // Keywords
+    keywordPairs.forEach(({ from, to }) => {
+      if (!from.trim()) return;
+      const re = new RegExp(from.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
+      const before = next;
+      next = next.replace(re, to);
+      if (before !== next) changed++;
+    });
     return { next, changed };
   };
 
   const applySpeakerRenames = () => {
     const { next, changed } = computeRenamed();
-    if (changed === 0) { toast.info("אין שמות חדשים להחליף"); return; }
+    if (changed === 0) { toast.info("אין שינויים להחליף"); return; }
     setEdited(next);
-    toast.success(`הוחלפו ${changed} דוברים (לחץ 'שמור' כדי להחיל לכולם)`);
+    toast.success(`הוחלפו ${changed} פריטים (לחץ 'שמור' כדי להחיל לכולם)`);
   };
 
   const applyAndSave = async () => {
     const { next, changed } = computeRenamed();
-    if (changed === 0) { toast.info("אין שמות חדשים להחליף"); return; }
+    if (changed === 0) { toast.info("אין שינויים להחליף"); return; }
     setEdited(next);
     await saveEditWithText(next);
   };
@@ -302,6 +318,57 @@ export function TranscriptViewerDialog({
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  <div className="border rounded-md p-3">
+                    <div className="flex items-center gap-2 mb-2 text-sm font-semibold">
+                      <Replace className="h-4 w-4" /> מילות מפתח
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mb-2">
+                      החלף כל מופע של מילה/ביטוי בטקסט (למשל תיקון שם, מונח מקצועי). פועל יחד עם "החלף ושמור" של הדוברים.
+                    </p>
+                    <div className="space-y-2">
+                      {keywordPairs.map((p, i) => (
+                        <div key={i} className="flex gap-1.5 items-center">
+                          <Input
+                            dir="rtl"
+                            placeholder="חפש..."
+                            value={p.from}
+                            onChange={(e) => updatePair(i, "from", e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                          <span className="text-muted-foreground text-xs">→</span>
+                          <Input
+                            dir="rtl"
+                            placeholder="החלף ל..."
+                            value={p.to}
+                            onChange={(e) => updatePair(i, "to", e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removePair(i)}
+                            disabled={keywordPairs.length === 1}
+                            className="h-8 w-8 shrink-0"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                      <Button size="sm" variant="ghost" onClick={addPair} className="w-full gap-1 h-8">
+                        <Plus className="h-3.5 w-3.5" /> הוסף מילה
+                      </Button>
+                      <div className="flex gap-1.5">
+                        <Button size="sm" variant="secondary" onClick={applySpeakerRenames} className="flex-1">
+                          החלף בטקסט
+                        </Button>
+                        <Button size="sm" onClick={applyAndSave} disabled={saving} className="flex-1 gap-1">
+                          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                          החלף ושמור
+                        </Button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="border rounded-md p-3 flex-1 min-h-0 flex flex-col">
