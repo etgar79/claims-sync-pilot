@@ -14,6 +14,7 @@ import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
 import { AssignRecordingDialog } from "@/components/AssignRecordingDialog";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
 import { TranscriptViewerDialog } from "@/components/TranscriptViewerDialog";
+import { ExpandableTranscriptPanel } from "@/components/ExpandableTranscriptPanel";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { RecordCallButton } from "@/components/RecordCallButton";
 import { useDriveSync } from "@/hooks/useDriveSync";
@@ -44,6 +45,8 @@ const Recordings = () => {
   const [assignTarget, setAssignTarget] = useState<RecordingRow | null>(null);
   const [transcribeTarget, setTranscribeTarget] = useState<RecordingRow | null>(null);
   const [viewTarget, setViewTarget] = useState<RecordingRow | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedMode, setExpandedMode] = useState<"view" | "edit">("view");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const { runAll, running } = useTranscribeAll();
   const { sync, syncing } = useDriveSync("appraiser");
@@ -126,19 +129,51 @@ const Recordings = () => {
     });
   };
 
-  const renderCard = (r: RecordingRow) => (
-    <RecordingCard
-      key={r.id}
-      data={r}
-      isRunning={running === r.id}
-      workspace="appraiser"
-      onView={() => setViewTarget(r)}
-      onEdit={() => setViewTarget(r)}
-      onAssign={() => setAssignTarget(r)}
-      onSuperTranscribe={() => handleQuickTranscribe(r)}
-      onQuickTranscribe={() => setTranscribeTarget(r)}
-    />
-  );
+  const renderCard = (r: RecordingRow) => {
+    const isExpanded = expandedId === r.id;
+    const toggleExpand = (mode: "view" | "edit") => {
+      if (isExpanded && expandedMode === mode) setExpandedId(null);
+      else { setExpandedMode(mode); setExpandedId(r.id); }
+    };
+    return (
+      <RecordingCard
+        key={r.id}
+        data={r}
+        isRunning={running === r.id}
+        workspace="appraiser"
+        onView={() => toggleExpand("view")}
+        onEdit={() => toggleExpand("edit")}
+        onAssign={() => setAssignTarget(r)}
+        onSuperTranscribe={() => handleQuickTranscribe(r)}
+        onQuickTranscribe={() => setTranscribeTarget(r)}
+        expanded={isExpanded}
+        expandedSlot={
+          <ExpandableTranscriptPanel
+            open={isExpanded}
+            mode={expandedMode}
+            item={{
+              id: r.id,
+              table: "recordings",
+              filename: r.filename,
+              recordedAt: r.recorded_at,
+              duration: r.duration,
+              transcript: r.transcript,
+              transcriptStatus: r.transcript_status,
+              audioUrl: r.drive_url,
+              context: r.case_id && r.case_number ? `תיק ${r.case_number} • ${r.case_title ?? ""}` : null,
+              client: r.client_name ?? null,
+              assignLabel: r.case_id ? "החלף תיק" : "שייך",
+            }}
+            onToggle={() => setExpandedId(null)}
+            onAssign={() => setAssignTarget(r)}
+            onOpenDialog={() => setViewTarget(r)}
+            onQuickTranscribe={() => setTranscribeTarget(r)}
+            onUpdated={load}
+          />
+        }
+      />
+    );
+  };
 
   return (
     <SidebarProvider defaultOpen>
