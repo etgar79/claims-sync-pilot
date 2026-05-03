@@ -109,8 +109,8 @@ export function RecordingCard({
   return (
     <TooltipProvider delayDuration={200}>
       <Card
-        onClick={hasTranscript ? onView : undefined}
-        className={`group relative overflow-hidden border-border/60 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 ${hasTranscript ? "cursor-pointer" : ""}`}
+        onClick={hasTranscript && !expanded ? onView : undefined}
+        className={`group relative overflow-hidden border-border/60 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 ${hasTranscript && !expanded ? "cursor-pointer" : ""} ${expanded ? "border-primary/40 shadow-md shadow-primary/10" : ""}`}
       >
         {/* Status accent bar */}
         <div className={`absolute top-0 right-0 left-0 h-0.5 ${
