@@ -318,6 +318,8 @@ const AdminUsers = () => {
           transcript={viewTarget.rec.transcript}
           transcriptionService={viewTarget.rec.transcription_service}
           defaultTab="view"
+          adminMode
+          ownerLabel={users.find(u => u.user_id === selectedId)?.display_name ?? "משתמש"}
           onUpdated={() => selectedId && loadContent(selectedId)}
         />
       )}
