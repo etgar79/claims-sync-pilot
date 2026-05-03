@@ -55,6 +55,7 @@ const App = () => (
               <Route path="/transcripts" element={<ProtectedRoute><TranscriptsPage workspace="appraiser" /></ProtectedRoute>} />
               <Route path="/meeting-transcripts" element={<ProtectedRoute><TranscriptsPage workspace="architect" title="תמלולי פגישות" /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute allow={["admin"]}><Admin /></ProtectedRoute>} />
+              <Route path="/admin/users" element={<ProtectedRoute allow={["admin"]}><AdminUsers /></ProtectedRoute>} />
               <Route path="/usage" element={<ProtectedRoute allow={["admin"]}><Usage /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
