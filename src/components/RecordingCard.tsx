@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -45,10 +46,13 @@ interface Props {
   onAssign: () => void;
   onSuperTranscribe: () => void;
   onQuickTranscribe: () => void;
+  expanded?: boolean;
+  expandedSlot?: ReactNode;
 }
 
 export function RecordingCard({
   data: r, isRunning, workspace, onView, onEdit, onAssign, onSuperTranscribe, onQuickTranscribe,
+  expanded, expandedSlot,
 }: Props) {
   const st = STATUS[r.transcript_status as keyof typeof STATUS] ?? STATUS.pending;
   const Icon = st.icon;
