@@ -18,7 +18,9 @@ serve(async (req) => {
       });
     }
 
-    const folderType = workspace === "appraiser" ? "appraiser_recordings" : "architect_meetings";
+    const folderTypes = workspace === "appraiser"
+      ? ["appraiser_recordings"]
+      : ["architect_recordings", "architect_meetings"]; // legacy fallback
     const admin = adminSupabase();
 
     // Find user's folder for this workspace
@@ -26,7 +28,7 @@ serve(async (req) => {
       .from("drive_work_folders")
       .select("folder_id, folder_name")
       .eq("user_id", userId)
-      .eq("folder_type", folderType)
+      .in("folder_type", folderTypes)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
