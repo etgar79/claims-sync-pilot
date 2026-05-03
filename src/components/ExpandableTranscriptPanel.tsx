@@ -249,7 +249,45 @@ export function ExpandableTranscriptPanel({
     toast.success("נשמרה גרסה חדשה");
   };
 
-  const applyReplacements = () => {
+  const applyAndSave = async (text: string, message: string) => {
+    setEdited(text);
+    try {
+      const { error } = await supabase
+        .from(item.table)
+        .update({ transcript: text, transcript_status: "completed" })
+        .eq("id", item.id);
+      if (error) throw error;
+      lastSavedRef.current = text;
+      setSaveState("saved");
+      toast.success(message);
+      onUpdated?.();
+      window.setTimeout(() => setSaveState((s) => (s === "saved" ? "idle" : s)), 1400);
+    } catch (e: any) {
+      toast.error("שגיאה בשמירה", { description: e?.message });
+    }
+  };
+
+  const replaceSingleSpeaker = async (orig: string, newName: string) => {
+    const name = newName.trim();
+    if (!name) {
+      toast.info("יש להזין שם חדש");
+      return;
+    }
+    if (name === orig) {
+      toast.info("השם זהה");
+      return;
+    }
+    const re = new RegExp(escapeRegExp(orig), "g");
+    const next = edited.replace(re, name);
+    if (next === edited) {
+      toast.info("לא נמצאו מופעים");
+      return;
+    }
+    await applyAndSave(next, `הוחלף "${orig}" → "${name}" בכל התמלול ונשמר`);
+    setSpeakerMap((prev) => ({ ...prev, [orig]: "" }));
+  };
+
+  const applyReplacements = async () => {
     let next = edited;
     let changed = 0;
 
@@ -274,8 +312,12 @@ export function ExpandableTranscriptPanel({
       return;
     }
 
-    setEdited(next);
-    toast.success(`עודכנו ${changed} החלפות`);
+    await applyAndSave(next, `עודכנו ${changed} החלפות ונשמרו`);
+    setSpeakerMap((prev) => {
+      const cleared: Record<string, string> = {};
+      Object.keys(prev).forEach((k) => { cleared[k] = ""; });
+      return cleared;
+    });
   };
 
   const copyText = async () => {
