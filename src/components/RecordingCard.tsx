@@ -241,6 +241,11 @@ export function RecordingCard({
             </TooltipTrigger><TooltipContent>פתח ב-Drive</TooltipContent></Tooltip>
           )}
         </div>
+        {expanded && expandedSlot && (
+          <div onClick={(e) => e.stopPropagation()} className="border-t border-border/40">
+            {expandedSlot}
+          </div>
+        )}
       </Card>
     </TooltipProvider>
   );
