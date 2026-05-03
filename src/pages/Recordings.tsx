@@ -7,14 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { RecordingCard } from "@/components/RecordingCard";
 import {
   Mic,
   Loader2,
@@ -160,111 +153,19 @@ const Recordings = () => {
     }
   };
 
-  const renderCard = (r: RecordingRow) => {
-    const st = STATUS[r.transcript_status] ?? STATUS.pending;
-    const Icon = st.icon;
-    const isRunning = running === r.id;
-    return (
-      <Card
-        key={r.id}
-        onClick={() => handleCardClick(r)}
-        className="p-4 flex items-start gap-4 hover:border-primary hover:shadow-md transition-all cursor-pointer group"
-      >
-        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-          <Mic className="h-5 w-5 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium truncate">{r.filename}</span>
-            <Badge className={`gap-1 ${st.cls}`} variant="secondary">
-              <Icon className={`h-3 w-3 ${r.transcript_status === "processing" || isRunning ? "animate-spin" : ""}`} />
-              {isRunning ? "מתמלל..." : st.label}
-            </Badge>
-            {r.transcript && (
-              <Badge variant="outline" className="gap-1">
-                <FileText className="h-3 w-3" />
-                תמלול
-              </Badge>
-            )}
-            {r.source === "drive_sync" && (
-              <Badge variant="outline" className="gap-1 text-xs">
-                <Cloud className="h-3 w-3" />
-                Drive
-              </Badge>
-            )}
-          </div>
-
-          <div className="text-xs text-muted-foreground mt-1 flex items-center gap-3 flex-wrap">
-            {r.case_id && r.case_number ? (
-              <Link to={`/cases?id=${r.case_id}`} onClick={(e) => e.stopPropagation()} className="hover:text-primary">
-                תיק {r.case_number} • {r.case_title}
-              </Link>
-            ) : (
-              <span className="text-warning">לא משויך לתיק</span>
-            )}
-            {r.client_name && <span>לקוח: {r.client_name}</span>}
-            <span>{new Date(r.recorded_at).toLocaleString("he-IL")}</span>
-            {r.duration && <span>{r.duration}</span>}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-          {!r.transcript && (
-            <Button
-              size="sm"
-              variant="default"
-              className="gap-1"
-              disabled={isRunning}
-              onClick={() => handleQuickTranscribe(r)}
-            >
-              {isRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-              תמלל-על
-            </Button>
-          )}
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="icon" variant="ghost" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              {r.transcript && (
-                <>
-                  <DropdownMenuItem onClick={() => setViewTarget(r)}>
-                    <Eye className="h-4 w-4 ml-2" /> פתח תמלול לעריכה
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              {!r.transcript && (
-                <>
-                  <DropdownMenuLabel>תמלול</DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => handleQuickTranscribe(r)}>
-                    <Sparkles className="h-4 w-4 ml-2 text-primary" /> תמלול-על
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setTranscribeTarget(r)}>
-                    <Zap className="h-4 w-4 ml-2 text-primary" /> תמלול מהיר
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              <DropdownMenuItem onClick={() => setAssignTarget(r)}>
-                <Tag className="h-4 w-4 ml-2" /> {r.case_id ? "החלף תיק" : "שייך לתיק"}
-              </DropdownMenuItem>
-              {r.drive_url && (
-                <DropdownMenuItem asChild>
-                  <a href={r.drive_url} target="_blank" rel="noreferrer">
-                    <ExternalLink className="h-4 w-4 ml-2" /> פתח ב-Drive
-                  </a>
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </Card>
-    );
-  };
+  const renderCard = (r: RecordingRow) => (
+    <RecordingCard
+      key={r.id}
+      data={r}
+      isRunning={running === r.id}
+      workspace="appraiser"
+      onView={() => setViewTarget(r)}
+      onEdit={() => setViewTarget(r)}
+      onAssign={() => setAssignTarget(r)}
+      onSuperTranscribe={() => handleQuickTranscribe(r)}
+      onQuickTranscribe={() => setTranscribeTarget(r)}
+    />
+  );
 
   return (
     <SidebarProvider defaultOpen>
