@@ -52,14 +52,17 @@
     --shadow-card: 0 1px 3px 0 hsl(215 30% 15% / 0.05), 0 1px 2px -1px hsl(215 30% 15% / 0.05);
     --shadow-elevated: 0 10px 30px -10px hsl(215 65% 28% / 0.15);
 
-    --sidebar-background: 215 65% 28%;
-    --sidebar-foreground: 210 25% 95%;
-    --sidebar-primary: 38 65% 52%;
-    --sidebar-primary-foreground: 215 30% 15%;
-    --sidebar-accent: 215 60% 35%;
-    --sidebar-accent-foreground: 210 25% 98%;
-    --sidebar-border: 215 55% 35%;
-    --sidebar-ring: 38 65% 52%;
+    /* Sidebar — Warm Ceramic Glow */
+    --sidebar-background: 30 25% 97%;          /* ceramic */
+    --sidebar-foreground: 25 18% 25%;          /* clay */
+    --sidebar-primary: 18 72% 64%;             /* golden */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 30 30% 94%;              /* sand */
+    --sidebar-accent-foreground: 25 18% 25%;
+    --sidebar-border: 28 18% 88%;
+    --sidebar-ring: 18 72% 64%;
+    --sidebar-muted: 25 12% 55%;               /* taupe */
+    --sidebar-glow: 18 72% 64%;
   }
 
   .dark {
