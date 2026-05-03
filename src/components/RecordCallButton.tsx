@@ -12,6 +12,8 @@ interface Props {
   workspace: WorkspaceKind;
   onCreated?: () => void;
   size?: "sm" | "default";
+  purpose?: "recordings" | "calls";
+  label?: string;
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
