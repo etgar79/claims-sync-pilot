@@ -14,6 +14,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TranscriptViewerDialog } from "@/components/TranscriptViewerDialog";
+import { ExpandableTranscriptPanel } from "@/components/ExpandableTranscriptPanel";
 import { exportTranscriptToPdf, downloadTranscriptTxt } from "@/lib/exportTranscriptPdf";
 import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
 import { useDriveSync } from "@/hooks/useDriveSync";
@@ -57,6 +58,8 @@ export default function TranscriptsPage({ workspace, title }: Props) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedMode, setExpandedMode] = useState<"view" | "edit">("view");
   const [openTarget, setOpenTarget] = useState<Item | null>(null);
   const [openMode, setOpenMode] = useState<"view" | "edit">("view");
   const [assignTarget, setAssignTarget] = useState<Item | null>(null);
@@ -311,20 +314,52 @@ export default function TranscriptsPage({ workspace, title }: Props) {
                 ) : (
                   <div className="space-y-2.5">
                     {filtered.map((r) => (
-                      <TranscriptRow
-                        key={`${r.table}-${r.id}`}
-                        item={r}
-                        workspace={workspace}
-                        isRunning={running === r.id}
-                        onView={() => openView(r)}
-                        onEdit={() => openEdit(r)}
-                        onPdf={() => downloadPdf(r)}
-                        onTxt={() => downloadTxt(r)}
-                        onCopy={() => copyText(r)}
-                        onAssign={() => setAssignTarget(r)}
-                        onSuperTranscribe={() => runSuper(r)}
-                        onQuickTranscribe={() => setTranscribeTarget(r)}
-                      />
+                      <div key={`${r.table}-${r.id}`}>
+                        <TranscriptRow
+                          item={r}
+                          workspace={workspace}
+                          isRunning={running === r.id}
+                          expanded={expandedId === `${r.table}-${r.id}`}
+                          onToggleExpand={() => {
+                            setExpandedMode("view");
+                            setExpandedId((prev) => prev === `${r.table}-${r.id}` ? null : `${r.table}-${r.id}`);
+                          }}
+                          onView={() => openView(r)}
+                          onEdit={() => openEdit(r)}
+                          onInlineEditOpen={() => {
+                            setExpandedMode("edit");
+                            setExpandedId(`${r.table}-${r.id}`);
+                          }}
+                          onPdf={() => downloadPdf(r)}
+                          onTxt={() => downloadTxt(r)}
+                          onCopy={() => copyText(r)}
+                          onAssign={() => setAssignTarget(r)}
+                          onSuperTranscribe={() => runSuper(r)}
+                          onQuickTranscribe={() => setTranscribeTarget(r)}
+                        />
+                        <ExpandableTranscriptPanel
+                          open={expandedId === `${r.table}-${r.id}`}
+                          mode={expandedId === `${r.table}-${r.id}` ? expandedMode : "view"}
+                          item={{
+                            id: r.id,
+                            table: r.table,
+                            filename: r.filename,
+                            recordedAt: r.recorded_at,
+                            transcript: r.transcript,
+                            transcriptStatus: r.transcript_status,
+                            transcriptionService: r.transcription_service,
+                            audioUrl: r.drive_url,
+                            context: r.context,
+                            client: r.client,
+                            assignLabel: r.context_id ? "החלף שיוך" : workspace === "appraiser" ? "שייך לתיק" : "שייך לפגישה",
+                          }}
+                          onToggle={() => setExpandedId((prev) => prev === `${r.table}-${r.id}` ? null : `${r.table}-${r.id}`)}
+                          onAssign={() => setAssignTarget(r)}
+                          onOpenDialog={() => openEdit(r)}
+                          onQuickTranscribe={() => setTranscribeTarget(r)}
+                          onUpdated={load}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}
@@ -393,8 +428,11 @@ interface RowProps {
   item: Item;
   workspace: Workspace;
   isRunning: boolean;
+  expanded: boolean;
+  onToggleExpand: () => void;
   onView: () => void;
   onEdit: () => void;
+  onInlineEditOpen: () => void;
   onPdf: () => void;
   onTxt: () => void;
   onCopy: () => void;
@@ -404,7 +442,7 @@ interface RowProps {
 }
 
 function TranscriptRow({
-  item: r, workspace, isRunning, onView, onEdit, onPdf, onTxt, onCopy, onAssign,
+  item: r, workspace, isRunning, expanded, onToggleExpand, onView, onEdit, onInlineEditOpen, onPdf, onTxt, onCopy, onAssign,
   onSuperTranscribe, onQuickTranscribe,
 }: RowProps) {
   const has = !!r.transcript;
@@ -473,13 +511,13 @@ function TranscriptRow({
         {has ? (
           <>
             <Tooltip><TooltipTrigger asChild>
-              <Button size="sm" onClick={onView} className="h-8 gap-1.5 text-xs">
-                <Eye className="h-3.5 w-3.5" /> צפה
+              <Button size="sm" onClick={onToggleExpand} className="h-8 gap-1.5 text-xs">
+                <Eye className="h-3.5 w-3.5" /> {expanded ? "סגור" : "צפה"}
               </Button>
-            </TooltipTrigger><TooltipContent>פתח לקריאה</TooltipContent></Tooltip>
+            </TooltipTrigger><TooltipContent>פתח את סביבת העבודה המורחבת</TooltipContent></Tooltip>
 
             <Tooltip><TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" onClick={onEdit} className="h-8 gap-1.5 text-xs">
+              <Button size="sm" variant="ghost" onClick={onInlineEditOpen} className="h-8 gap-1.5 text-xs">
                 <Pencil className="h-3.5 w-3.5" /> ערוך
               </Button>
             </TooltipTrigger><TooltipContent>עריכה עם שמירה אוטומטית</TooltipContent></Tooltip>
