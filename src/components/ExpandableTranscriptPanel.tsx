@@ -312,6 +312,26 @@ export function ExpandableTranscriptPanel({
     toast.success("הגרסה נטענה לעריכה");
   };
 
+  const usePrimary = async (version: Version) => {
+    try {
+      const { error } = await supabase
+        .from(item.table)
+        .update({
+          transcript: version.transcript,
+          transcript_status: "completed",
+          transcription_service: version.service,
+        })
+        .eq("id", item.id);
+      if (error) throw error;
+      setEdited(version.transcript);
+      lastSavedRef.current = version.transcript;
+      toast.success("הוגדרה כגרסה הראשית");
+      onUpdated?.();
+    } catch (e: any) {
+      toast.error("שגיאה בעדכון", { description: e?.message });
+    }
+  };
+
   const statusTone = item.transcriptStatus === "completed"
     ? "border-green-500/30 bg-green-500/10 text-green-700"
     : item.transcriptStatus === "processing"
