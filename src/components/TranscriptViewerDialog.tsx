@@ -35,6 +35,9 @@ interface Props {
   context?: string | null;
   client?: string | null;
   defaultTab?: "view" | "edit" | "regenerate";
+  /** Admin mode: auto-opens speaker editing panel & shows owner banner */
+  adminMode?: boolean;
+  ownerLabel?: string | null;
   onUpdated?: () => void;
 }
 
@@ -57,13 +60,13 @@ type SaveState = "idle" | "saving" | "saved";
 
 export function TranscriptViewerDialog({
   open, onOpenChange, recordingId, table, filename, recordedAt, audioUrl,
-  transcript, transcriptionService, context, client, onUpdated,
+  transcript, transcriptionService, context, client, adminMode, ownerLabel, onUpdated,
 }: Props) {
   const [edited, setEdited] = useState(transcript ?? "");
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [versions, setVersions] = useState<Version[]>([]);
   const [showQuickPick, setShowQuickPick] = useState(false);
-  const [showReplacements, setShowReplacements] = useState(false);
+  const [showReplacements, setShowReplacements] = useState(!!adminMode);
   const [showHistory, setShowHistory] = useState(false);
   const { runAll, running } = useTranscribeAll();
   const lastSavedRef = useRef<string>(transcript ?? "");
@@ -236,6 +239,11 @@ export function TranscriptViewerDialog({
                   <Badge variant="secondary" className="text-[10px] py-0">{serviceLabel(transcriptionService)}</Badge>
                   {recordedAt && <span>{new Date(recordedAt).toLocaleString("he-IL")}</span>}
                   {context && <span>• {context}</span>}
+                  {adminMode && ownerLabel && (
+                    <Badge variant="outline" className="text-[10px] py-0 border-primary/50 text-primary">
+                      <Users className="h-3 w-3 ml-1" /> {ownerLabel}
+                    </Badge>
+                  )}
                   <StatusChip />
                 </DialogDescription>
               </div>
