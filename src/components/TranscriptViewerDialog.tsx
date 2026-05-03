@@ -239,6 +239,11 @@ export function TranscriptViewerDialog({
                   <Badge variant="secondary" className="text-[10px] py-0">{serviceLabel(transcriptionService)}</Badge>
                   {recordedAt && <span>{new Date(recordedAt).toLocaleString("he-IL")}</span>}
                   {context && <span>• {context}</span>}
+                  {adminMode && ownerLabel && (
+                    <Badge variant="outline" className="text-[10px] py-0 border-primary/50 text-primary">
+                      <Users className="h-3 w-3 ml-1" /> {ownerLabel}
+                    </Badge>
+                  )}
                   <StatusChip />
                 </DialogDescription>
               </div>
