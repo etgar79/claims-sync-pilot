@@ -16,6 +16,7 @@ import { TranscribeDialog } from "@/components/TranscribeDialog";
 import { MergeTranscriptsDialog } from "@/components/MergeTranscriptsDialog";
 import { ActionItemsDialog } from "@/components/ActionItemsDialog";
 import { EditMeetingDialog } from "@/components/EditMeetingDialog";
+import { ExpandableTranscriptPanel } from "@/components/ExpandableTranscriptPanel";
 import { serviceLabel } from "@/lib/serviceLabels";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 
