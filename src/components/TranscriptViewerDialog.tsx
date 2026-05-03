@@ -79,13 +79,20 @@ export function TranscriptViewerDialog({
     setVersions(data ?? []);
   };
 
-  // Detect speakers ("דובר 1:", "Speaker 2:", "S1:", etc.)
+  // Detect speakers — supports digits, Hebrew letters, English, and renamed labels
   const detectedSpeakers = useMemo(() => {
     const set = new Set<string>();
-    const re = /(?:^|\n)\s*((?:דובר|Speaker|S)\s*\d+)\s*[:\-]/g;
+    const re1 = /(?:^|\n)\s*((?:דובר|דוברת|Speaker|S)\s*[\u05D0-\u05EA0-9]+)\s*[:\-]/g;
+    const re2 = /(?:^|\n)\s*([^\n:]{1,30}?)\s*:/g;
     let m;
-    while ((m = re.exec(edited)) !== null) set.add(m[1].trim());
-    return Array.from(set);
+    while ((m = re1.exec(edited)) !== null) set.add(m[1].trim());
+    while ((m = re2.exec(edited)) !== null) {
+      const candidate = m[1].trim();
+      if (!candidate || candidate.length > 30) continue;
+      if (/[.?!]/.test(candidate)) continue;
+      set.add(candidate);
+    }
+    return Array.from(set).slice(0, 20);
   }, [edited]);
 
   const [speakerMap, setSpeakerMap] = useState<Record<string, string>>({});
@@ -97,16 +104,33 @@ export function TranscriptViewerDialog({
     });
   }, [detectedSpeakers.join("|")]);
 
-  const applySpeakerRenames = () => {
+  const computeRenamed = () => {
     let next = edited;
+    let changed = 0;
     Object.entries(speakerMap).forEach(([orig, name]) => {
-      if (!name.trim()) return;
+      if (!name.trim() || name.trim() === orig) return;
       const re = new RegExp(orig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
+      const before = next;
       next = next.replace(re, name.trim());
+      if (before !== next) changed++;
     });
-    setEdited(next);
-    toast.success("השמות הוחלפו בטקסט");
+    return { next, changed };
   };
+
+  const applySpeakerRenames = () => {
+    const { next, changed } = computeRenamed();
+    if (changed === 0) { toast.info("אין שמות חדשים להחליף"); return; }
+    setEdited(next);
+    toast.success(`הוחלפו ${changed} דוברים (לחץ 'שמור' כדי להחיל לכולם)`);
+  };
+
+  const applyAndSave = async () => {
+    const { next, changed } = computeRenamed();
+    if (changed === 0) { toast.info("אין שמות חדשים להחליף"); return; }
+    setEdited(next);
+    await saveEditWithText(next);
+  };
+
 
   const copyToClipboard = async () => {
     try {
@@ -127,7 +151,7 @@ export function TranscriptViewerDialog({
     downloadTranscriptTxt(transcript, filename);
   };
 
-  const saveEdit = async () => {
+  const saveEditWithText = async (text: string) => {
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -135,7 +159,7 @@ export function TranscriptViewerDialog({
 
       const { error } = await supabase
         .from(table)
-        .update({ transcript: edited, transcript_status: "completed" })
+        .update({ transcript: text, transcript_status: "completed" })
         .eq("id", recordingId);
       if (error) throw error;
 
@@ -143,20 +167,25 @@ export function TranscriptViewerDialog({
         recording_id: recordingId,
         user_id: user.id,
         service: "edited",
-        transcript: edited,
+        transcript: text,
         is_merged: false,
       });
 
       toast.success("התמלול נשמר");
       onUpdated?.();
       await loadVersions();
-      setTab("view");
     } catch (e: any) {
       toast.error("שגיאה בשמירה", { description: e?.message });
     } finally {
       setSaving(false);
     }
   };
+
+  const saveEdit = async () => {
+    await saveEditWithText(edited);
+    setTab("view");
+  };
+
 
   const restoreVersion = async (v: Version) => {
     setEdited(v.transcript);
@@ -262,9 +291,15 @@ export function TranscriptViewerDialog({
                             />
                           </div>
                         ))}
-                        <Button size="sm" variant="secondary" onClick={applySpeakerRenames} className="w-full mt-1">
-                          החלף בטקסט
-                        </Button>
+                        <div className="flex gap-1.5 mt-1">
+                          <Button size="sm" variant="secondary" onClick={applySpeakerRenames} className="flex-1">
+                            החלף בטקסט
+                          </Button>
+                          <Button size="sm" onClick={applyAndSave} disabled={saving} className="flex-1 gap-1">
+                            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                            החלף ושמור
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>
