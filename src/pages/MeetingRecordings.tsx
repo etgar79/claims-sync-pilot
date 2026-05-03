@@ -14,6 +14,7 @@ import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
 import { AssignToMeetingDialog } from "@/components/AssignToMeetingDialog";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
 import { TranscriptViewerDialog } from "@/components/TranscriptViewerDialog";
+import { ExpandableTranscriptPanel } from "@/components/ExpandableTranscriptPanel";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { RecordCallButton } from "@/components/RecordCallButton";
 import { useDriveSync } from "@/hooks/useDriveSync";
@@ -42,6 +43,8 @@ const MeetingRecordings = () => {
   const [assignTarget, setAssignTarget] = useState<Row | null>(null);
   const [transcribeTarget, setTranscribeTarget] = useState<Row | null>(null);
   const [viewTarget, setViewTarget] = useState<Row | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedMode, setExpandedMode] = useState<"view" | "edit">("view");
   const { runAll, running } = useTranscribeAll();
   const { sync, syncing } = useDriveSync("architect");
 
@@ -105,19 +108,52 @@ const MeetingRecordings = () => {
     });
   };
 
-  const renderCard = (r: Row) => (
-    <RecordingCard
-      key={r.id}
-      data={r}
-      isRunning={running === r.id}
-      workspace="architect"
-      onView={() => setViewTarget(r)}
-      onEdit={() => setViewTarget(r)}
-      onAssign={() => setAssignTarget(r)}
-      onSuperTranscribe={() => handleQuickTranscribe(r)}
-      onQuickTranscribe={() => setTranscribeTarget(r)}
-    />
-  );
+  const renderCard = (r: Row) => {
+    const isExpanded = expandedId === r.id;
+    const toggleExpand = (mode: "view" | "edit") => {
+      if (isExpanded && expandedMode === mode) setExpandedId(null);
+      else { setExpandedMode(mode); setExpandedId(r.id); }
+    };
+    return (
+      <RecordingCard
+        key={r.id}
+        data={r}
+        isRunning={running === r.id}
+        workspace="architect"
+        onView={() => toggleExpand("view")}
+        onEdit={() => toggleExpand("edit")}
+        onAssign={() => setAssignTarget(r)}
+        onSuperTranscribe={() => handleQuickTranscribe(r)}
+        onQuickTranscribe={() => setTranscribeTarget(r)}
+        expanded={isExpanded}
+        expandedSlot={
+          <ExpandableTranscriptPanel
+            open={isExpanded}
+            mode={expandedMode}
+            item={{
+              id: r.id,
+              table: "meeting_recordings",
+              filename: r.filename,
+              recordedAt: r.recorded_at,
+              duration: r.duration,
+              transcript: r.transcript,
+              transcriptStatus: r.transcript_status,
+              audioUrl: r.drive_url,
+              context: r.meeting_title ? `פגישה: ${r.meeting_title}` : null,
+              meetingId: r.meeting_id,
+              meetingTitle: r.meeting_title ?? null,
+              assignLabel: r.meeting_id ? "החלף" : "שייך",
+            }}
+            onToggle={() => setExpandedId(null)}
+            onAssign={() => setAssignTarget(r)}
+            onOpenDialog={() => setViewTarget(r)}
+            onQuickTranscribe={() => setTranscribeTarget(r)}
+            onUpdated={load}
+          />
+        }
+      />
+    );
+  };
 
   return (
     <SidebarProvider defaultOpen>
