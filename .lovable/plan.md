@@ -1,32 +1,51 @@
-## מה ייעשה
+## המצב היום
+במצב `workspace=admin` הסיידבר מציג גם את קבוצת השמאות וגם את קבוצת האדריכלות יחד עם כלי האדמין — מה שיוצר עומס ובלבול. ה-WorkspaceSwitcher (מתג מצב העבודה) נמצא בתחתית, אבל "ניהול מערכת" מוצג בו כאופציה רגילה לצד שמאי/אדריכל.
 
-הפיכת קטע האדמין בסיידבר לתפריט נפתח (collapsible) עם תתי־פריטים מקובצים לפי תחום.
+## מה נשנה
 
-### מבנה חדש לסיידבר (אדמין בלבד)
+### 1. במצב אדמין — להציג *רק* את כלי האדמין
+ב-`src/components/AppSidebar.tsx`:
+- ב-`ADMIN_WORKSPACE_MODULES` להשאיר רק את הקבוצה `overview` + קבוצה חדשה `admin-tools` (שמכילה את `ADMIN_TOOLS_ITEMS`).
+- להסיר את קבוצות `appraiser` ו-`architect` מהמצב admin (במצב admin לא רואים תיקים/פגישות בצד — רק ניהול).
+- אם האדמין רוצה לעבוד כשמאי/אדריכל — מחליף mode דרך המתג בתחתית (כבר עובד).
 
-במקום 3 פריטים שטוחים תחת "ניהול":
-- ניהול משתמשים
-- תוכן לפי משתמש
-- צריכה ועלויות
+### 2. הפרדת מתג האדמין מהמתג של מצבי העבודה
+ב-`src/components/WorkspaceSwitcher.tsx`:
+- להציג ב-dropdown רק את `appraiser` ו-`architect` (הסרת `admin` מהרשימה הראשית).
+- להוסיף **כפתור נפרד "ניהול מערכת"** מתחת ל-WorkspaceSwitcher בסיידבר (`SidebarFooter`), שמופיע רק ל-`isAdmin`. לחיצה עליו מעבירה ל-workspace=admin ומנווטת ל-`/`.
+- כשהמשתמש כבר במצב admin — הכפתור מוצג כ"חזור למצב עבודה" שמחזיר ל-workspace הקודם (appraiser/architect לפי הזמינות).
 
-יהיה פריט יחיד בולט: **🛡️ אדמין** עם chevron, ובלחיצה נפתחת רשימה:
-- משתמשים והרשאות → `/admin`
-- תוכן לפי משתמש → `/admin/users`
-- חיובים ועלויות → `/usage`
+### 3. ברירת מחדל לאדמין
+ב-`src/hooks/useActiveWorkspace.ts`:
+- לשנות את ברירת המחדל לאדמין מ-`admin` ל-`appraiser` (או `architect` אם זה היחיד שיש לו). כך אדמין נכנס למערכת כיוזר רגיל ועובר ל"ניהול מערכת" רק כשהוא רוצה.
 
-הקבוצה תיפתח אוטומטית כשהמשתמש נמצא באחד ממסכי האדמין (`/admin*` או `/usage`).
+### תוצאה ויזואלית
 
-במצב collapsed (סיידבר מצומצם) — מוצג כפתור עם אייקון Shield בלבד, ולחיצה פותחת popover עם הרשימה (ברירת מחדל של shadcn).
+```text
+┌─ סיידבר ────────────────┐
+│ [לוגו]                  │
+│                         │
+│ — ראשי (לפי workspace) —│
+│   דשבורד / תיקים / ...  │
+│                         │
+│ — ניהול —               │
+│   תמלולים / הגדרות      │
+│                         │
+│ ═══════════════════════ │
+│ [מתג: שמאי / אדריכל]    │  ← רק מצבי עבודה
+│ [🛡 ניהול מערכת]         │  ← כפתור נפרד (אדמין בלבד)
+└─────────────────────────┘
+```
 
-### פרטים טכניים
+במצב admin הסיידבר העליון יציג רק:
+- סקירה כללית
+- כלי אדמין (משתמשים והרשאות / תוכן לפי משתמש / חיובים ועלויות)
+- הגדרות
 
-- `src/components/AppSidebar.tsx`:
-  - מייבא `Collapsible, CollapsibleTrigger, CollapsibleContent` מ-shadcn.
-  - מפצל את `managementItems` ל-`adminItems` (3 פריטי אדמין) + `commonItems` (תמלולים + הגדרות).
-  - בונה `<SidebarGroup>` חדש עם `<Collapsible defaultOpen={pathname.startsWith('/admin') || pathname==='/usage'}>` שעוטף `SidebarMenuButton` עם chevron, ו-`<CollapsibleContent>` עם `SidebarMenuSub` המכיל את 3 הפריטים.
-  - שאר הפריטים (תמלולים, הגדרות) נשארים בקבוצת "ניהול" הרגילה.
-- ללא שינוי ב-DB וללא שינוי במסכי האדמין עצמם.
+והכפתור התחתון ישתנה ל"חזור למצב עבודה".
 
 ## קבצים שיתעדכנו
-
-- `src/components/AppSidebar.tsx`
+- `src/components/AppSidebar.tsx` — הסרת קבוצות שמאי/אדריכל ממצב admin, הוספת קבוצה לכלי אדמין.
+- `src/config/adminMenu.ts` — הסרת `ADMIN_WORKSPACE_MODULES` של appraiser/architect (ישארו רק overview + admin-tools).
+- `src/components/WorkspaceSwitcher.tsx` — סינון admin מהרשימה + כפתור נפרד לכניסה/יציאה ממצב ניהול.
+- `src/hooks/useActiveWorkspace.ts` — ברירת מחדל לאדמין: לא admin אלא תפקיד עבודה.
