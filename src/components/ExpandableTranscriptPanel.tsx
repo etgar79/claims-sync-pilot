@@ -373,6 +373,14 @@ export function ExpandableTranscriptPanel({
               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 {item.recordedAt && <span>{new Date(item.recordedAt).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}</span>}
                 {item.client && <span>לקוח: {item.client}</span>}
+                {item.meetingId && (
+                  <span className="inline-flex items-center gap-1">
+                    פגישה: {item.meetingTitle || "(ללא כותרת)"}
+                    <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setEditMeetingOpen(true)} title="ערוך שם פגישה">
+                      <PencilLine className="h-3 w-3" />
+                    </Button>
+                  </span>
+                )}
                 {saveState === "saving" && <span className="inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> שומר...</span>}
                 {saveState === "saved" && <span className="inline-flex items-center gap-1 text-green-700"><Check className="h-3 w-3" /> נשמר</span>}
               </div>
