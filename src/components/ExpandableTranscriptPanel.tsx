@@ -604,6 +604,15 @@ export function ExpandableTranscriptPanel({
           </div>
         </div>
       </div>
+      {item.meetingId && (
+        <EditMeetingDialog
+          open={editMeetingOpen}
+          onOpenChange={setEditMeetingOpen}
+          meeting={{ id: item.meetingId, title: item.meetingTitle ?? "" }}
+          titleOnly
+          onSaved={() => onUpdated?.()}
+        />
+      )}
     </Card>
   );
 }
