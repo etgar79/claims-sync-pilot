@@ -97,6 +97,7 @@ serve(async (req) => {
     const existingSet = new Set((existing ?? []).map((r: { drive_file_id: string }) => r.drive_file_id));
 
     const toInsert = driveFiles.filter((f) => !existingSet.has(f.id));
+    const sourceTag = purpose === "calls" ? "phone_call" : "drive_sync";
 
     let added = 0;
     if (toInsert.length > 0) {
@@ -106,7 +107,7 @@ serve(async (req) => {
         recorded_at: f.modifiedTime ?? new Date().toISOString(),
         drive_url: f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`,
         drive_file_id: f.id,
-        source: "drive_sync",
+        source: sourceTag,
         transcript_status: "pending",
         // case_id / meeting_id intentionally NULL (unassigned)
       }));
