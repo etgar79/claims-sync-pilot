@@ -420,6 +420,8 @@ interface RowProps {
   item: Item;
   workspace: Workspace;
   isRunning: boolean;
+  expanded: boolean;
+  onToggleExpand: () => void;
   onView: () => void;
   onEdit: () => void;
   onPdf: () => void;
@@ -431,7 +433,7 @@ interface RowProps {
 }
 
 function TranscriptRow({
-  item: r, workspace, isRunning, onView, onEdit, onPdf, onTxt, onCopy, onAssign,
+  item: r, workspace, isRunning, expanded, onToggleExpand, onView, onEdit, onPdf, onTxt, onCopy, onAssign,
   onSuperTranscribe, onQuickTranscribe,
 }: RowProps) {
   const has = !!r.transcript;
