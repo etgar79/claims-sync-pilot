@@ -1,30 +1,13 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RecordingCard } from "@/components/RecordingCard";
-import {
-  Mic,
-  Loader2,
-  Search,
-  FileText,
-  Clock,
-  AlertCircle,
-  CheckCircle2,
-  ExternalLink,
-  Tag,
-  Cloud,
-  Sparkles,
-  Zap,
-  ChevronDown,
-  Eye,
-  MoreVertical,
-} from "lucide-react";
+import { RecordingsHero } from "@/components/RecordingsHero";
+import { Mic, Loader2, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
@@ -34,6 +17,8 @@ import { TranscriptViewerDialog } from "@/components/TranscriptViewerDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { RecordCallButton } from "@/components/RecordCallButton";
 import { useDriveSync } from "@/hooks/useDriveSync";
+
+type FilterMode = "all" | "ready" | "pending";
 
 interface RecordingRow {
   id: string;
