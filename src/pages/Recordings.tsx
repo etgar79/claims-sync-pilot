@@ -44,6 +44,7 @@ const Recordings = () => {
   const [assignTarget, setAssignTarget] = useState<RecordingRow | null>(null);
   const [transcribeTarget, setTranscribeTarget] = useState<RecordingRow | null>(null);
   const [viewTarget, setViewTarget] = useState<RecordingRow | null>(null);
+  const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const { runAll, running } = useTranscribeAll();
   const { sync, syncing } = useDriveSync("appraiser");
 
