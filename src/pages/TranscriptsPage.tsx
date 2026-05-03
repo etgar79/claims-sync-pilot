@@ -313,20 +313,45 @@ export default function TranscriptsPage({ workspace, title }: Props) {
                 ) : (
                   <div className="space-y-2.5">
                     {filtered.map((r) => (
-                      <TranscriptRow
-                        key={`${r.table}-${r.id}`}
-                        item={r}
-                        workspace={workspace}
-                        isRunning={running === r.id}
-                        onView={() => openView(r)}
-                        onEdit={() => openEdit(r)}
-                        onPdf={() => downloadPdf(r)}
-                        onTxt={() => downloadTxt(r)}
-                        onCopy={() => copyText(r)}
-                        onAssign={() => setAssignTarget(r)}
-                        onSuperTranscribe={() => runSuper(r)}
-                        onQuickTranscribe={() => setTranscribeTarget(r)}
-                      />
+                      <div key={`${r.table}-${r.id}`}>
+                        <TranscriptRow
+                          item={r}
+                          workspace={workspace}
+                          isRunning={running === r.id}
+                          expanded={expandedId === `${r.table}-${r.id}`}
+                          onToggleExpand={() => setExpandedId((prev) => prev === `${r.table}-${r.id}` ? null : `${r.table}-${r.id}`)}
+                          onView={() => openView(r)}
+                          onEdit={() => openEdit(r)}
+                          onPdf={() => downloadPdf(r)}
+                          onTxt={() => downloadTxt(r)}
+                          onCopy={() => copyText(r)}
+                          onAssign={() => setAssignTarget(r)}
+                          onSuperTranscribe={() => runSuper(r)}
+                          onQuickTranscribe={() => setTranscribeTarget(r)}
+                        />
+                        <ExpandableTranscriptPanel
+                          open={expandedId === `${r.table}-${r.id}`}
+                          mode="view"
+                          item={{
+                            id: r.id,
+                            table: r.table,
+                            filename: r.filename,
+                            recordedAt: r.recorded_at,
+                            transcript: r.transcript,
+                            transcriptStatus: r.transcript_status,
+                            transcriptionService: r.transcription_service,
+                            audioUrl: r.drive_url,
+                            context: r.context,
+                            client: r.client,
+                            assignLabel: r.context_id ? "החלף שיוך" : workspace === "appraiser" ? "שייך לתיק" : "שייך לפגישה",
+                          }}
+                          onToggle={() => setExpandedId((prev) => prev === `${r.table}-${r.id}` ? null : `${r.table}-${r.id}`)}
+                          onAssign={() => setAssignTarget(r)}
+                          onOpenDialog={() => openEdit(r)}
+                          onQuickTranscribe={() => setTranscribeTarget(r)}
+                          onUpdated={load}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}
