@@ -140,6 +140,7 @@ export function RecordCallButton({ workspace, onCreated, size = "sm", purpose = 
           mimeType: blob.type || "audio/webm",
           dataBase64,
           durationSeconds,
+          purpose,
         },
       });
       if (error) {
