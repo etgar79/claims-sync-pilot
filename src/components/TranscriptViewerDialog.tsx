@@ -60,13 +60,13 @@ type SaveState = "idle" | "saving" | "saved";
 
 export function TranscriptViewerDialog({
   open, onOpenChange, recordingId, table, filename, recordedAt, audioUrl,
-  transcript, transcriptionService, context, client, onUpdated,
+  transcript, transcriptionService, context, client, adminMode, ownerLabel, onUpdated,
 }: Props) {
   const [edited, setEdited] = useState(transcript ?? "");
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [versions, setVersions] = useState<Version[]>([]);
   const [showQuickPick, setShowQuickPick] = useState(false);
-  const [showReplacements, setShowReplacements] = useState(false);
+  const [showReplacements, setShowReplacements] = useState(!!adminMode);
   const [showHistory, setShowHistory] = useState(false);
   const { runAll, running } = useTranscribeAll();
   const lastSavedRef = useRef<string>(transcript ?? "");
