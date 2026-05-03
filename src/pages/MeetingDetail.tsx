@@ -16,6 +16,7 @@ import { TranscribeDialog } from "@/components/TranscribeDialog";
 import { MergeTranscriptsDialog } from "@/components/MergeTranscriptsDialog";
 import { ActionItemsDialog } from "@/components/ActionItemsDialog";
 import { EditMeetingDialog } from "@/components/EditMeetingDialog";
+import { ExpandableTranscriptPanel } from "@/components/ExpandableTranscriptPanel";
 import { serviceLabel } from "@/lib/serviceLabels";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 
@@ -54,6 +55,8 @@ const MeetingDetail = () => {
   const [summarizing, setSummarizing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedMode, setExpandedMode] = useState<"view" | "edit">("view");
 
   const [statusUpdating, setStatusUpdating] = useState(false);
   const { runAll, running: runningAll } = useTranscribeAll();
@@ -375,6 +378,49 @@ const MeetingDetail = () => {
                             </Button>
                           </div>
                         )}
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              const isOpen = expandedId === r.id && expandedMode === "view";
+                              setExpandedMode("view");
+                              setExpandedId(isOpen ? null : r.id);
+                            }}
+                          >
+                            {expandedId === r.id ? "סגור פאנל" : "פתח פאנל מלא"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setExpandedMode("edit");
+                              setExpandedId(r.id);
+                            }}
+                          >
+                            ערוך תמלול
+                          </Button>
+                        </div>
+                        <ExpandableTranscriptPanel
+                          open={expandedId === r.id}
+                          mode={expandedMode}
+                          item={{
+                            id: r.id,
+                            table: "meeting_recordings",
+                            filename: r.filename,
+                            recordedAt: r.recorded_at,
+                            duration: r.duration,
+                            transcript: r.transcript,
+                            transcriptStatus: r.transcript_status,
+                            transcriptionService: r.transcription_service,
+                            audioUrl: r.drive_url,
+                            context: meeting?.title ? `פגישה: ${meeting.title}` : null,
+                            meetingId: id ?? null,
+                            meetingTitle: meeting?.title ?? null,
+                          }}
+                          onToggle={() => setExpandedId(null)}
+                          onUpdated={load}
+                        />
                       </div>
                     ))}
                   </div>
