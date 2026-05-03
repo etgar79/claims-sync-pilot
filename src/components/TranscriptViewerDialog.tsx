@@ -288,46 +288,34 @@ export function TranscriptViewerDialog({
 
                 <div className="flex flex-col min-h-0 gap-3">
                   <div className="border rounded-md p-3">
-                    <div className="flex items-center gap-2 mb-2 text-sm font-semibold">
-                      <Users className="h-4 w-4" /> דוברים
+                    <div className="flex items-center gap-2 mb-1 text-sm font-semibold">
+                      <Replace className="h-4 w-4" /> החלפות בטקסט
                     </div>
-                    {detectedSpeakers.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">לא זוהו תוויות דוברים בטקסט.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {detectedSpeakers.map((s) => (
-                          <div key={s} className="flex gap-2 items-center">
-                            <Badge variant="outline" className="shrink-0 min-w-[70px] justify-center">{s}</Badge>
-                            <Input
-                              dir="rtl"
-                              placeholder="שם חדש..."
-                              value={speakerMap[s] ?? ""}
-                              onChange={(e) => setSpeakerMap((p) => ({ ...p, [s]: e.target.value }))}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                        ))}
-                        <div className="flex gap-1.5 mt-1">
-                          <Button size="sm" variant="secondary" onClick={applySpeakerRenames} className="flex-1">
-                            החלף בטקסט
-                          </Button>
-                          <Button size="sm" onClick={applyAndSave} disabled={saving} className="flex-1 gap-1">
-                            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                            החלף ושמור
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="border rounded-md p-3">
-                    <div className="flex items-center gap-2 mb-2 text-sm font-semibold">
-                      <Replace className="h-4 w-4" /> מילות מפתח
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mb-2">
-                      החלף כל מופע של מילה/ביטוי בטקסט (למשל תיקון שם, מונח מקצועי). פועל יחד עם "החלף ושמור" של הדוברים.
+                    <p className="text-[11px] text-muted-foreground mb-3">
+                      תני שם לדוברים או החליפי מילים — הכל בלחיצה אחת.
                     </p>
-                    <div className="space-y-2">
+
+                    <div className="space-y-1.5">
+                      {detectedSpeakers.map((s) => (
+                        <div key={s} className="flex gap-1.5 items-center">
+                          <Badge variant="outline" className="shrink-0 min-w-[64px] justify-center text-[11px] py-0.5">
+                            {s}
+                          </Badge>
+                          <span className="text-muted-foreground text-xs">→</span>
+                          <Input
+                            dir="rtl"
+                            placeholder="שם חדש..."
+                            value={speakerMap[s] ?? ""}
+                            onChange={(e) => setSpeakerMap((p) => ({ ...p, [s]: e.target.value }))}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      ))}
+
+                      {detectedSpeakers.length > 0 && keywordPairs.length > 0 && (
+                        <div className="border-t my-2" />
+                      )}
+
                       {keywordPairs.map((p, i) => (
                         <div key={i} className="flex gap-1.5 items-center">
                           <Input
@@ -356,26 +344,30 @@ export function TranscriptViewerDialog({
                           </Button>
                         </div>
                       ))}
+
                       <Button size="sm" variant="ghost" onClick={addPair} className="w-full gap-1 h-8">
-                        <Plus className="h-3.5 w-3.5" /> הוסף מילה
+                        <Plus className="h-3.5 w-3.5" /> הוסף מילה להחלפה
                       </Button>
-                      <div className="flex gap-1.5">
-                        <Button size="sm" variant="secondary" onClick={applySpeakerRenames} className="flex-1">
-                          החלף בטקסט
-                        </Button>
-                        <Button size="sm" onClick={applyAndSave} disabled={saving} className="flex-1 gap-1">
-                          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                          החלף ושמור
-                        </Button>
-                      </div>
+
+                      <Button
+                        size="sm"
+                        onClick={applyAndSave}
+                        disabled={saving}
+                        className="w-full gap-1 mt-2"
+                      >
+                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        החלף בכל הטקסט ושמור
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="border rounded-md p-3 flex-1 min-h-0 flex flex-col">
-                    <div className="flex items-center gap-2 mb-2 text-sm font-semibold">
-                      <History className="h-4 w-4" /> גרסאות ({versions.length})
-                    </div>
-                    <ScrollArea className="flex-1 min-h-[120px]">
+                  <details className="border rounded-md p-3 flex-1 min-h-0 flex flex-col group">
+                    <summary className="flex items-center gap-2 text-sm font-semibold cursor-pointer list-none">
+                      <History className="h-4 w-4" />
+                      היסטוריית גרסאות ({versions.length})
+                      <ChevronDown className="h-4 w-4 mr-auto group-open:rotate-180 transition-transform" />
+                    </summary>
+                    <ScrollArea className="flex-1 min-h-[120px] mt-2">
                       <div className="space-y-2">
                         {versions.map((v) => (
                           <div key={v.id} className="border rounded p-2 text-xs space-y-1">
@@ -394,7 +386,7 @@ export function TranscriptViewerDialog({
                         )}
                       </div>
                     </ScrollArea>
-                  </div>
+                  </details>
                 </div>
               </div>
             </TabsContent>
