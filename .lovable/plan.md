@@ -1,98 +1,71 @@
-## ההחלטה: לא להפריד למערכות
+# שליטה משופרת על תמלולים
 
-נשארים עם **ליבה אחת**. ה-UI כבר מופרד דרך workspace (שמאי/אדריכל), המסד מבודד דרך RLS, וכל הליבה (Drive, תמלול, AI) משותפת. הפרדה לשתי מערכות תכפיל את הקוד בלי תועלת.
+## מטרה
+1. כפתור פעיל לצפייה/עריכה/הורדה של כל תמלול בכל מסך הקלטות.
+2. מסך מרכזי **"תמלולים"** — ריכוז של כל התמלולים מכל ההקלטות במקום אחד.
 
----
+## 1. דיאלוג תמלול (TranscriptViewerDialog)
 
-## מה נבנה
+קומפוננטה חדשה `src/components/TranscriptViewerDialog.tsx` עם 3 לשוניות:
 
-### 1. שתי תיקיות סנכרון נפרדות בהגדרות
+### תצוגה
+- הטקסט המלא, מחולק לפסקאות לפי דובר אם קיים.
+- תג עם רמת התמלול (`serviceLabel()`).
+- כפתורים: **העתק**, **הורד PDF**, **הורד TXT**.
 
-לכל user (שמאי/אדריכל/אדמין) שתי בחירות עצמאיות:
+### עריכה
+- Textarea לעריכת התמלול.
+- **עריכת דוברים**: זיהוי אוטומטי של תוויות "דובר 1:", "דובר 2:" → רשימה עם שדות לשנות שם → "מחפש והחלף" אוטומטי.
+- כפתור **שמור**: מעדכן `transcript` בטבלה + שומר גרסה ב-`transcript_versions` עם `service='edited'`.
+- היסטוריית גרסאות בצד — ניתן לחזור לגרסה קודמת.
 
-- **תיקיית הקלטות** ב-Drive — ממנה מסונכרנים קבצי אודיו
-- **תיקיית תמונות** ב-Drive — ממנה מסונכרנים קבצי תמונה (חדש)
+### הפקה מחדש
+- תמלול מהיר (מנוע אחד) או תמלול-על (3 מנועים + מיזוג).
+- אזהרה שזה ידרוס (אך הישן נשמר ב-versions).
 
-כל אחת עם הכפתור הקיים (`WorkFolderPicker`): רשימה / חיפוש / הדבקת קישור.
+## 2. כפתור פעיל בכל שורה
 
-### 2. תת-תיקייה אוטומטית לכל תיק/פגישה
+בכל שורת הקלטה ב-`Recordings.tsx`, `MeetingRecordings.tsx`, `MeetingDetail.tsx`, `CaseDetail.tsx`:
 
-כשנוצר תיק שמאות חדש או פגישה חדשה:
-- המערכת יוצרת אוטומטית תת-תיקייה ב-Drive של ה-user, **בתוך תיקיית ההקלטות שלו**, בשם של התיק/הפגישה
-- בתוך התת-תיקייה הזו תיווצרנה שתי תת-תיקיות: `הקלטות` ו-`תמונות`
-- ה-URL של התיקייה נשמר ב-`cases.drive_folder_url` (כבר קיים) ובעמודה חדשה `meetings.drive_folder_url`
-- כפתור "פתח ב-Drive" יופיע בכרטיס התיק/הפגישה
+- אם יש תמלול → כפתור **"צפה בתמלול"** פותח את הדיאלוג בלשונית "תצוגה".
+- אם אין → כפתור **"תמלל"** פותח את הדיאלוג בלשונית "הפקה".
 
-### 3. סנכרון לפי תיק
+## 3. מסך מרכזי "תמלולים"
 
-- כשמייבאים הקלטה/תמונה דרך `ImportFromDriveDialog` ובוחרים תיק יעד — הקובץ מועתק לתת-תיקייה של אותו תיק (תחת `הקלטות` או `תמונות`)
-- תמלולים, סיכומי AI ודוחות — אופציה "שמור עותק ב-Drive" שמעלה PDF/TXT לתת-תיקייה של התיק
-- כך שהשמאי נכנס ל-Drive האישי שלו ורואה תיקייה לכל מקרה עם **כל** החומר בפנים
+### נתיבים חדשים
+- `/transcripts` (שמאי)
+- `/meeting-transcripts` (אדריכל)
 
----
+### תצוגה
+- כותרת + סרגל חיפוש (חיפוש בתוך הטקסט + שם קובץ + לקוח).
+- מסננים: סטטוס (הושלם/ממתין/נכשל), רמת תמלול, תאריך.
+- רשימת כרטיסי תמלול:
+  - שם הקובץ + שיוך (תיק/פגישה/לקוח)
+  - תאריך + רמת תמלול + אורך התמלול במילים
+  - תקציר 2 שורות מההתחלה
+  - כפתורים: **צפה** (פותח TranscriptViewerDialog), **הורד PDF**, **מחק**
+- מצב ריק נחמד.
 
-## פרטים טכניים
+### סיידבר
+- שמאי: פריט חדש "תמלולים" → `/transcripts`
+- אדריכל: פריט חדש "תמלולים" → `/meeting-transcripts`
+- אדמין רואה את שניהם (כמו היום).
 
-### שינויי DB (migration)
+## 4. הפקת PDF
 
-```sql
--- תוסיף folder_type חדש לתמונות + עמודה לפגישות
-ALTER TABLE public.meetings
-  ADD COLUMN IF NOT EXISTS drive_folder_id text,
-  ADD COLUMN IF NOT EXISTS drive_folder_url text;
+`src/lib/exportTranscriptPdf.ts` — פונקציה `exportTranscriptToPdf(transcript, meta)`.
+- ספרייה: `jspdf`.
+- RTL מלא, כותרת (שם קובץ, תאריך, לקוח/תיק/פגישה), גוף הטקסט בפסקאות לפי דובר.
+- שם קובץ אוטומטי: `transcript-{filename}.pdf`.
 
-ALTER TABLE public.cases
-  ADD COLUMN IF NOT EXISTS drive_folder_id text;
--- (drive_folder_url כבר קיים)
-```
+## טכני
 
-`drive_work_folders.folder_type` יקבל ערכים חדשים:
-- `appraiser_recordings` (קיים) | `appraiser_photos` (חדש)
-- `architect_recordings` (קיים, היום נקרא `architect_meetings` — נשנה label בלבד) | `architect_photos` (חדש)
+- **אין שינוי DB** — `transcript_versions` כבר קיים ומתאים.
+- חבילה חדשה: `jspdf`.
+- שאיבת רשימת תמלולים: שאילתה אחודה ל-`recordings` + `meeting_recordings` (לפי workspace), ניקוי לפי `transcript_status='completed' AND transcript IS NOT NULL`.
+- קומפוננטת `TranscriptViewerDialog` נשענת על `MergeTranscriptsDialog` הקיים (לא דורסים — קוראים אליו לרגנרציה).
 
-### Edge function — `google-drive-create-case-folder` (חדש)
-
-Input: `{ kind: "case" | "meeting", id: uuid, name: string }`
-- מוצא את `appraiser_recordings`/`architect_recordings` של ה-user (parent)
-- יוצר ב-Drive תיקייה בשם `name` תחת ה-parent
-- בתוכה יוצר `הקלטות` ו-`תמונות`
-- מעדכן `cases.drive_folder_id/url` או `meetings.drive_folder_id/url`
-- מחזיר את ה-IDs
-
-### יצירה אוטומטית
-
-- ב-`useCases.createCase` — אחרי insert מצליח, fire-and-forget קריאה ל-edge function
-- במסך יצירת פגישה — אותו דבר
-- אם ה-user עוד לא הגדיר תיקיית הקלטות → toast עדין "הגדר תיקיית הקלטות ב-Drive כדי שניצור תת-תיקייה לתיק זה"
-
-### UI
-
-**Settings.tsx** — בכל workspace (שמאי/אדריכל) שני `WorkFolderPicker`:
-```
-תיקיית הקלטות [📁 בחר]
-תיקיית תמונות [📁 בחר]
-```
-
-**CaseCard / CaseDetail / MeetingDetail** — כפתור "פתח תיקייה ב-Drive" (אם `drive_folder_url` קיים).
-
-**ImportFromDriveDialog** — אחרי בחירת תיק, אופציה "העתק גם ל-Drive של התיק".
-
----
-
-## קבצים שיושפעו
-
-- migration חדשה (עמודות + folder_types)
-- `supabase/functions/google-drive-create-case-folder/index.ts` — חדשה
-- `src/hooks/useWorkspaceFolder.ts` — תמיכה ב-`recordings`/`photos`
-- `src/components/WorkFolderPicker.tsx` — קבלת `purpose: "recordings" | "photos"`
-- `src/pages/Settings.tsx` — שני pickers לכל workspace
-- `src/hooks/useCases.ts` — קריאה ל-edge function אחרי יצירת תיק
-- `src/pages/Meetings.tsx` — אותו דבר אחרי יצירת פגישה
-- `src/components/CaseCard.tsx` + `CaseDetail.tsx` + `MeetingDetail.tsx` — כפתור "פתח ב-Drive"
-
----
-
-## מה לא נעשה עכשיו
-
-- סנכרון רקע אוטומטי דו-כיווני (זה עתיד) — עכשיו רק יצירת תיקייה + העתקה ידנית בייבוא
-- העלאת תמלולים/דוחות אוטומטית ל-Drive (אפשר להוסיף בשלב הבא, כשהבסיס יציב)
+## מה לא נכלל באיטרציה הזו
+- חותמות זמן ברמת מילה.
+- השמעת אודיו תוך כדי קריאה.
+- ייצוא DOCX (אפשר להוסיף בהמשך).
