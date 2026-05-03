@@ -192,11 +192,10 @@ export function ExpandableTranscriptPanel({
 
   const detectedSpeakers = useMemo(() => {
     const set = new Set<string>();
-    // Catches "דובר א", "דוברת ב", "Speaker 1", "S2" anywhere in the text
-    // (including inside [..] or **..**)
-    const re = /((?:דובר|דוברת|Speaker|SPEAKER|S)\s*[\u05D0-\u05EA0-9A-Za-z]{1,4})/g;
+    // Catches "דובר א", "דוברת ב", "Speaker 1", "S2" — including inside [..] or **..**
+    const re = /(?:דובר(?:ת)?|Speaker|SPEAKER)\s*[\u05D0-\u05EA0-9A-Za-z]{1,5}|S\d{1,3}/g;
     let m;
-    while ((m = re.exec(edited)) !== null) set.add(m[1].trim());
+    while ((m = re.exec(edited)) !== null) set.add(m[0].trim());
     return Array.from(set).slice(0, 30);
   }, [edited]);
 
