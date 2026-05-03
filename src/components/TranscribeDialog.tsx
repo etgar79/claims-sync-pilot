@@ -193,48 +193,40 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
           )}
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>בחר רמת תמלול</DialogTitle>
-          <DialogDescription>3 רמות תמלול - בחר את המתאימה לצרכים שלך</DialogDescription>
+          <DialogTitle>תמלול מהיר</DialogTitle>
+          <DialogDescription>בחרי איכות — והמערכת תתחיל</DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+        <div className="space-y-2 mt-2">
           {SERVICES.map((svc) => (
-            <Card key={svc.id} className="p-4 flex flex-col gap-3 border-2 hover:border-primary transition-colors">
-              <div className="flex items-start justify-between">
-                <h3 className="font-bold text-lg">{svc.name}</h3>
-                {svc.badge && (
-                  <Badge className={`gap-1 ${svc.badge.className}`}>
-                    {svc.badge.icon}
-                    {svc.badge.label}
-                  </Badge>
+            <button
+              key={svc.id}
+              onClick={() => handleSelect(svc.id)}
+              disabled={loading !== null}
+              className="w-full text-right border rounded-lg p-3 hover:border-primary hover:bg-muted/30 transition-all disabled:opacity-50 flex items-center gap-3"
+            >
+              <div className="h-9 w-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                {loading === svc.id ? (
+                  <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                ) : (
+                  <Mic className="h-4 w-4 text-primary" />
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">{svc.tagline}</p>
-              <ul className="text-sm space-y-1 flex-1">
-                {svc.pros.map((p) => (
-                  <li key={p} className="flex gap-2">
-                    <span className="text-primary">✓</span>
-                    <span>{p}</span>
-                  </li>
-                ))}
-              </ul>
-              <Button
-                onClick={() => handleSelect(svc.id)}
-                disabled={loading !== null}
-                className="w-full"
-              >
-                {loading === svc.id ? (
-                  <>
-                    <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-                    מתמלל...
-                  </>
-                ) : (
-                  "בחר ותמלל"
-                )}
-              </Button>
-            </Card>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm">{svc.name}</span>
+                  {svc.badge && (
+                    <Badge className={`gap-1 text-[10px] py-0 ${svc.badge.className}`}>
+                      {svc.badge.icon}
+                      {svc.badge.label}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{svc.tagline}</p>
+              </div>
+            </button>
           ))}
         </div>
       </DialogContent>
