@@ -51,8 +51,8 @@ const App = () => (
               <Route path="/photos" element={<ProtectedRoute allow={["appraiser"]}><PhotosPage workspace="appraiser" title="תמונות" /></ProtectedRoute>} />
               <Route path="/meeting-phone-calls" element={<ProtectedRoute allow={["architect"]}><PhoneCallsPage workspace="architect" title="שיחות טלפון" /></ProtectedRoute>} />
               <Route path="/meeting-photos" element={<ProtectedRoute allow={["architect"]}><PhotosPage workspace="architect" title="תמונות פגישות" /></ProtectedRoute>} />
-              <Route path="/transcripts" element={<ProtectedRoute allow={["appraiser"]}><TranscriptsPage workspace="appraiser" /></ProtectedRoute>} />
-              <Route path="/meeting-transcripts" element={<ProtectedRoute allow={["architect"]}><TranscriptsPage workspace="architect" title="תמלולי פגישות" /></ProtectedRoute>} />
+              <Route path="/transcripts" element={<ProtectedRoute><TranscriptsPage workspace="appraiser" /></ProtectedRoute>} />
+              <Route path="/meeting-transcripts" element={<ProtectedRoute><TranscriptsPage workspace="architect" title="תמלולי פגישות" /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute allow={["admin"]}><Admin /></ProtectedRoute>} />
               <Route path="/usage" element={<ProtectedRoute allow={["admin"]}><Usage /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
