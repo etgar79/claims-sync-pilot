@@ -307,9 +307,17 @@ const Recordings = () => {
                   טוען הקלטות...
                 </div>
               ) : filtered.length === 0 ? (
-                <Card className="p-8 text-center text-muted-foreground">
-                  <Mic className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                  אין הקלטות עדיין. הגדר תיקיית Drive וסנכרן, או הוסף הקלטה מתיק.
+                <Card className="p-12 text-center border-dashed">
+                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <Mic className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-base mb-1">אין הקלטות עדיין</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    סנכרני מ-Drive או הקליטי שיחה חדשה כדי להתחיל
+                  </p>
+                  <div className="flex justify-center">
+                    <RecordCallButton workspace="appraiser" onCreated={load} />
+                  </div>
                 </Card>
               ) : (
                 <>
