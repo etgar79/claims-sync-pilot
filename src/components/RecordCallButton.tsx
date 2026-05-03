@@ -36,7 +36,7 @@ function fmtTime(sec: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export function RecordCallButton({ workspace, onCreated, size = "sm" }: Props) {
+export function RecordCallButton({ workspace, onCreated, size = "sm", purpose = "recordings", label }: Props) {
   const [open, setOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [paused, setPaused] = useState(false);
