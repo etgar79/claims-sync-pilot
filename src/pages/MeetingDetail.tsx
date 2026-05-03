@@ -55,6 +55,8 @@ const MeetingDetail = () => {
   const [summarizing, setSummarizing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedMode, setExpandedMode] = useState<"view" | "edit">("view");
 
   const [statusUpdating, setStatusUpdating] = useState(false);
   const { runAll, running: runningAll } = useTranscribeAll();
