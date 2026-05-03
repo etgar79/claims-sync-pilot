@@ -32,12 +32,6 @@ interface Row {
   meeting_title?: string;
 }
 
-const STATUS: Record<string, { label: string; icon: any; cls: string }> = {
-  pending: { label: "ממתין", icon: Clock, cls: "bg-muted text-muted-foreground" },
-  processing: { label: "מתמלל", icon: Loader2, cls: "bg-primary/10 text-primary" },
-  completed: { label: "הושלם", icon: CheckCircle2, cls: "bg-green-500/10 text-green-700" },
-  failed: { label: "נכשל", icon: AlertCircle, cls: "bg-destructive/10 text-destructive" },
-};
 
 const MeetingRecordings = () => {
   const [items, setItems] = useState<Row[]>([]);
