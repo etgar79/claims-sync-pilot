@@ -92,7 +92,29 @@ export function useTranscribeAll() {
     try {
       // Resolve file
       let file: File | undefined = audioFile;
-      if (!file && audioUrl) {
+
+      // Detect Google Drive URLs and fetch via authenticated edge function (avoids CORS)
+      const driveMatch = audioUrl?.match(/\/file\/d\/([^/]+)|[?&]id=([^&]+)/);
+      const driveFileId = driveMatch ? (driveMatch[1] || driveMatch[2]) : null;
+
+      if (!file && driveFileId) {
+        const { data: sess } = await supabase.auth.getSession();
+        const token = sess.session?.access_token;
+        if (!token) throw new Error("נדרשת התחברות");
+        const dlUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-drive-api`;
+        const dlRes = await fetch(dlUrl, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "download_file", fileId: driveFileId }),
+        });
+        if (!dlRes.ok) {
+          const errText = await dlRes.text();
+          throw new Error(`הורדה מ-Drive נכשלה: ${errText}`);
+        }
+        const blob = await dlRes.blob();
+        const fname = decodeURIComponent(dlRes.headers.get("X-Filename") || "audio.mp3");
+        file = new File([blob], fname, { type: blob.type || "audio/mpeg" });
+      } else if (!file && audioUrl) {
         const r = await fetch(audioUrl);
         const blob = await r.blob();
         file = new File([blob], "audio.mp3", { type: blob.type || "audio/mpeg" });
