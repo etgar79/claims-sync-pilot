@@ -80,15 +80,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Resolve user's recordings parent folder for this workspace
-    const folderType = body.workspace === "appraiser" ? "appraiser_recordings" : "architect_recordings";
+    // Resolve user's parent folder for this workspace + purpose
+    const purpose: "recordings" | "calls" = body.purpose === "calls" ? "calls" : "recordings";
+    let folderTypes: string[];
+    if (purpose === "calls") {
+      folderTypes = body.workspace === "appraiser" ? ["appraiser_calls"] : ["architect_calls"];
+    } else {
+      folderTypes = body.workspace === "architect"
+        ? ["architect_recordings", "architect_meetings"]
+        : ["appraiser_recordings"];
+    }
+
     const { data: folder } = await admin
       .from("drive_work_folders")
       .select("folder_id")
       .eq("user_id", userId)
-      .in("folder_type", folderType === "architect_recordings"
-        ? ["architect_recordings", "architect_meetings"]
-        : [folderType])
+      .in("folder_type", folderTypes)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -96,7 +103,9 @@ Deno.serve(async (req) => {
     if (!folder?.folder_id) {
       return new Response(JSON.stringify({
         error: "no_parent_folder",
-        message: "לא הוגדרה תיקיית הקלטות ב-Drive. עבור להגדרות והגדר תיקיית הקלטות.",
+        message: purpose === "calls"
+          ? "לא הוגדרה תיקיית שיחות טלפון ב-Drive. עבור להגדרות והגדר תיקיית שיחות."
+          : "לא הוגדרה תיקיית הקלטות ב-Drive. עבור להגדרות והגדר תיקיית הקלטות.",
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -114,7 +123,7 @@ Deno.serve(async (req) => {
       filename: body.filename,
       drive_url: driveUrl,
       drive_file_id: uploaded.id,
-      source: "manual_upload",
+      source: purpose === "calls" ? "phone_call" : "manual_upload",
       transcript_status: "pending",
       duration,
       recorded_at: new Date().toISOString(),
