@@ -219,38 +219,23 @@ export function RecordingCard({
             </Button>
           </TooltipTrigger><TooltipContent>{workspace === "appraiser" ? "שייך לתיק" : "שייך לפגישה"}</TooltipContent></Tooltip>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="icon" variant="ghost" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
+          {hasTranscript && (
+            <Tooltip><TooltipTrigger asChild>
+              <Button size="sm" variant="ghost" onClick={onSuperTranscribe} disabled={!r.drive_url} className="h-8 gap-1.5 text-xs">
+                <RefreshCw className="h-3.5 w-3.5" /> תמלל מחדש
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              {hasTranscript && (
-                <>
-                  <DropdownMenuLabel>הפק מחדש</DropdownMenuLabel>
-                  <DropdownMenuItem onClick={onSuperTranscribe} disabled={!r.drive_url}>
-                    <Sparkles className="h-4 w-4 ml-2 text-primary" /> תמלול-על
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onQuickTranscribe} disabled={!r.drive_url}>
-                    <Zap className="h-4 w-4 ml-2 text-primary" /> תמלול מהיר
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              <DropdownMenuItem disabled>
-                <FileText className="h-4 w-4 ml-2" />
-                <span className="text-xs">{r.filename}</span>
-              </DropdownMenuItem>
-              {r.drive_url && (
-                <DropdownMenuItem asChild>
-                  <a href={r.drive_url} target="_blank" rel="noreferrer">
-                    <ExternalLink className="h-4 w-4 ml-2" /> פתח ב-Drive
-                  </a>
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </TooltipTrigger><TooltipContent>הפק תמלול-על מחדש</TooltipContent></Tooltip>
+          )}
+
+          {r.drive_url && (
+            <Tooltip><TooltipTrigger asChild>
+              <Button size="icon" variant="ghost" asChild className="h-8 w-8">
+                <a href={r.drive_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </Button>
+            </TooltipTrigger><TooltipContent>פתח ב-Drive</TooltipContent></Tooltip>
+          )}
         </div>
       </Card>
     </TooltipProvider>
