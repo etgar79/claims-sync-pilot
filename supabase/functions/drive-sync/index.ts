@@ -10,20 +10,27 @@ serve(async (req) => {
 
   try {
     const userId = await authedUser(req);
-    const { workspace } = await req.json().catch(() => ({}));
+    const { workspace, purpose: rawPurpose } = await req.json().catch(() => ({}));
     if (workspace !== "appraiser" && workspace !== "architect") {
       return new Response(JSON.stringify({ error: "workspace חייב להיות appraiser או architect" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const purpose: "recordings" | "calls" =
+      rawPurpose === "calls" ? "calls" : "recordings";
 
-    const folderTypes = workspace === "appraiser"
-      ? ["appraiser_recordings"]
-      : ["architect_recordings", "architect_meetings"]; // legacy fallback
+    let folderTypes: string[];
+    if (purpose === "calls") {
+      folderTypes = workspace === "appraiser" ? ["appraiser_calls"] : ["architect_calls"];
+    } else {
+      folderTypes = workspace === "appraiser"
+        ? ["appraiser_recordings"]
+        : ["architect_recordings", "architect_meetings"]; // legacy fallback
+    }
     const admin = adminSupabase();
 
-    // Find user's folder for this workspace
+    // Find user's folder for this workspace + purpose
     const { data: folderRow } = await admin
       .from("drive_work_folders")
       .select("folder_id, folder_name")
