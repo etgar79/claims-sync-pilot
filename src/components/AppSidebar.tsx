@@ -107,6 +107,7 @@ export function AppSidebar() {
   if (isAdmin) {
     managementItems.push(
       { title: "ניהול משתמשים", url: "/admin", icon: Shield },
+      { title: "תוכן לפי משתמש", url: "/admin/users", icon: Users },
       { title: "צריכה ועלויות", url: "/usage", icon: DollarSign },
     );
   }
