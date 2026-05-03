@@ -58,6 +58,7 @@ export default function TranscriptsPage({ workspace, title }: Props) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [openTarget, setOpenTarget] = useState<Item | null>(null);
   const [openMode, setOpenMode] = useState<"view" | "edit">("view");
   const [assignTarget, setAssignTarget] = useState<Item | null>(null);
