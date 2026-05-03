@@ -326,6 +326,10 @@ export default function TranscriptsPage({ workspace, title }: Props) {
                           }}
                           onView={() => openView(r)}
                           onEdit={() => openEdit(r)}
+                          onInlineEditOpen={() => {
+                            setExpandedMode("edit");
+                            setExpandedId(`${r.table}-${r.id}`);
+                          }}
                           onPdf={() => downloadPdf(r)}
                           onTxt={() => downloadTxt(r)}
                           onCopy={() => copyText(r)}
@@ -428,6 +432,7 @@ interface RowProps {
   onToggleExpand: () => void;
   onView: () => void;
   onEdit: () => void;
+  onInlineEditOpen: () => void;
   onPdf: () => void;
   onTxt: () => void;
   onCopy: () => void;
@@ -437,7 +442,7 @@ interface RowProps {
 }
 
 function TranscriptRow({
-  item: r, workspace, isRunning, expanded, onToggleExpand, onView, onEdit, onPdf, onTxt, onCopy, onAssign,
+  item: r, workspace, isRunning, expanded, onToggleExpand, onView, onEdit, onInlineEditOpen, onPdf, onTxt, onCopy, onAssign,
   onSuperTranscribe, onQuickTranscribe,
 }: RowProps) {
   const has = !!r.transcript;
@@ -512,7 +517,7 @@ function TranscriptRow({
             </TooltipTrigger><TooltipContent>פתח את סביבת העבודה המורחבת</TooltipContent></Tooltip>
 
             <Tooltip><TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" onClick={() => { setExpandedMode("edit"); setExpandedId(`${r.table}-${r.id}`); }} className="h-8 gap-1.5 text-xs">
+              <Button size="sm" variant="ghost" onClick={onInlineEditOpen} className="h-8 gap-1.5 text-xs">
                 <Pencil className="h-3.5 w-3.5" /> ערוך
               </Button>
             </TooltipTrigger><TooltipContent>עריכה עם שמירה אוטומטית</TooltipContent></Tooltip>
