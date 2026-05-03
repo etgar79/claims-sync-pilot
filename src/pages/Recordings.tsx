@@ -360,6 +360,23 @@ const Recordings = () => {
           }}
         />
       )}
+
+      {viewTarget && (
+        <TranscriptViewerDialog
+          open={!!viewTarget}
+          onOpenChange={(o) => !o && setViewTarget(null)}
+          recordingId={viewTarget.id}
+          table="recordings"
+          filename={viewTarget.filename}
+          recordedAt={viewTarget.recorded_at}
+          audioUrl={viewTarget.drive_url}
+          transcript={viewTarget.transcript}
+          context={viewTarget.case_id && viewTarget.case_number ? `תיק ${viewTarget.case_number} • ${viewTarget.case_title ?? ""}` : null}
+          client={viewTarget.client_name ?? null}
+          defaultTab="view"
+          onUpdated={load}
+        />
+      )}
     </SidebarProvider>
   );
 };
