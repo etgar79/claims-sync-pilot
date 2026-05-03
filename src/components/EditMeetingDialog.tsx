@@ -51,13 +51,15 @@ export function EditMeetingDialog({ open, onOpenChange, meeting, onSaved, titleO
       return;
     }
     setSaving(true);
-    const payload: Record<string, any> = { title: form.title.trim() };
-    if (!titleOnly) {
-      payload.client_name = form.client_name || null;
-      payload.project_name = form.project_name || null;
-      payload.location = form.location || null;
-      payload.meeting_date = form.meeting_date || null;
-    }
+    const payload = titleOnly
+      ? { title: form.title.trim() }
+      : {
+          title: form.title.trim(),
+          client_name: form.client_name || null,
+          project_name: form.project_name || null,
+          location: form.location || null,
+          meeting_date: form.meeting_date || null,
+        };
     const { error } = await supabase.from("meetings").update(payload).eq("id", meeting.id);
     setSaving(false);
     if (error) {
