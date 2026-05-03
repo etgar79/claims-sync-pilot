@@ -82,25 +82,11 @@ export function AppSidebar() {
       { title: "תבניות סיכום פגישה", url: "/meeting-templates", icon: ClipboardList },
     ];
   } else if (workspace === "admin") {
-    mainLabel = "סקירת מערכת (אדמין)";
+    mainLabel = "ממשק אדמין";
     mainItems = [
       { title: "סקירה כללית", url: "/", icon: LayoutDashboard },
-      // Appraiser tools (on admin's own Drive)
-      { title: "תיקי שומה", url: "/cases", icon: FolderOpen },
-      { title: "הקלטות שטח", url: "/recordings", icon: Mic },
-      { title: "תמלולים (שמאי)", url: "/transcripts", icon: FileText },
-      { title: "שיחות טלפון (שמאי)", url: "/phone-calls", icon: Phone },
-      { title: "תמונות (שמאי)", url: "/photos", icon: ImageIcon },
-      { title: "תבניות דוחות", url: "/templates", icon: FileText },
-      // Architect tools (on admin's own Drive)
-      { title: "פגישות", url: "/meetings", icon: Calendar },
-      { title: "הקלטות פגישה", url: "/meeting-recordings", icon: Mic },
-      { title: "תמלולי פגישות", url: "/meeting-transcripts", icon: FileText },
-      { title: "שיחות טלפון (פגישה)", url: "/meeting-phone-calls", icon: Phone },
-      { title: "תמונות (פגישה)", url: "/meeting-photos", icon: ImageIcon },
-      { title: "תבניות סיכום פגישה", url: "/meeting-templates", icon: ClipboardList },
-      { title: "לקוחות / פרויקטים", url: "/clients", icon: Users },
     ];
+    // כדי לעבוד כשמאי/אדריכל — החלף workspace דרך מתג מצב העבודה למטה.
   } else {
     // No role yet — show only Settings/Logout in management; keep main empty
     mainLabel = "אין תפקיד פעיל";
