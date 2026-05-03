@@ -30,6 +30,7 @@ import {
   Zap,
   ChevronDown,
   Eye,
+  MoreVertical,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -150,13 +151,26 @@ const Recordings = () => {
     });
   };
 
+  const handleCardClick = (r: RecordingRow) => {
+    if (r.transcript) {
+      setViewTarget(r);
+    } else {
+      // open viewer (which contains transcribe options) for unified flow
+      setViewTarget(r);
+    }
+  };
+
   const renderCard = (r: RecordingRow) => {
     const st = STATUS[r.transcript_status] ?? STATUS.pending;
     const Icon = st.icon;
     const isRunning = running === r.id;
     return (
-      <Card key={r.id} className="p-4 flex items-start gap-4 hover:border-primary/50 transition-colors">
-        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+      <Card
+        key={r.id}
+        onClick={() => handleCardClick(r)}
+        className="p-4 flex items-start gap-4 hover:border-primary hover:shadow-md transition-all cursor-pointer group"
+      >
+        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
           <Mic className="h-5 w-5 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
@@ -164,7 +178,7 @@ const Recordings = () => {
             <span className="font-medium truncate">{r.filename}</span>
             <Badge className={`gap-1 ${st.cls}`} variant="secondary">
               <Icon className={`h-3 w-3 ${r.transcript_status === "processing" || isRunning ? "animate-spin" : ""}`} />
-              {isRunning ? "מתמלל-על..." : st.label}
+              {isRunning ? "מתמלל..." : st.label}
             </Badge>
             {r.transcript && (
               <Badge variant="outline" className="gap-1">
@@ -182,7 +196,7 @@ const Recordings = () => {
 
           <div className="text-xs text-muted-foreground mt-1 flex items-center gap-3 flex-wrap">
             {r.case_id && r.case_number ? (
-              <Link to={`/cases?id=${r.case_id}`} className="hover:text-primary">
+              <Link to={`/cases?id=${r.case_id}`} onClick={(e) => e.stopPropagation()} className="hover:text-primary">
                 תיק {r.case_number} • {r.case_title}
               </Link>
             ) : (
@@ -194,65 +208,59 @@ const Recordings = () => {
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5 shrink-0">
-          {/* View transcript button — always available when transcript exists */}
-          {r.transcript && (
-            <Button size="sm" variant="default" className="gap-1" onClick={() => setViewTarget(r)}>
-              <Eye className="h-3.5 w-3.5" />
-              צפה בתמלול
+        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+          {!r.transcript && (
+            <Button
+              size="sm"
+              variant="default"
+              className="gap-1"
+              disabled={isRunning}
+              onClick={() => handleQuickTranscribe(r)}
+            >
+              {isRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              תמלל-על
             </Button>
           )}
 
-          {/* Transcribe split-button (only when no transcript yet) */}
-          {!r.transcript && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="default" className="gap-1" disabled={isRunning}>
-                  {isRunning ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Mic className="h-3.5 w-3.5" />
-                  )}
-                  תמלל
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>בחר רמת תמלול</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleQuickTranscribe(r)} className="gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  <div className="flex flex-col">
-                    <span className="font-medium">תמלול-על</span>
-                    <span className="text-xs text-muted-foreground">3 מנועים + מיזוג AI</span>
-                  </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="ghost" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {r.transcript && (
+                <>
+                  <DropdownMenuItem onClick={() => setViewTarget(r)}>
+                    <Eye className="h-4 w-4 ml-2" /> פתח תמלול לעריכה
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              {!r.transcript && (
+                <>
+                  <DropdownMenuLabel>תמלול</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => handleQuickTranscribe(r)}>
+                    <Sparkles className="h-4 w-4 ml-2 text-primary" /> תמלול-על
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTranscribeTarget(r)}>
+                    <Zap className="h-4 w-4 ml-2 text-primary" /> תמלול מהיר
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuItem onClick={() => setAssignTarget(r)}>
+                <Tag className="h-4 w-4 ml-2" /> {r.case_id ? "החלף תיק" : "שייך לתיק"}
+              </DropdownMenuItem>
+              {r.drive_url && (
+                <DropdownMenuItem asChild>
+                  <a href={r.drive_url} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-4 w-4 ml-2" /> פתח ב-Drive
+                  </a>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTranscribeTarget(r)} className="gap-2">
-                  <Zap className="h-4 w-4 text-primary" />
-                  <div className="flex flex-col">
-                    <span className="font-medium">תמלול מהיר</span>
-                    <span className="text-xs text-muted-foreground">בחר מנוע יחיד</span>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
-          <Button size="sm" variant="outline" className="gap-1" onClick={() => setAssignTarget(r)}>
-            <Tag className="h-3.5 w-3.5" />
-            {r.case_id ? "החלף תיק" : "שייך לתיק"}
-          </Button>
-
-          {r.drive_url && (
-            <a
-              href={r.drive_url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-primary inline-flex items-center gap-1 justify-center"
-            >
-              Drive <ExternalLink className="h-3 w-3" />
-            </a>
-          )}
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </Card>
     );
