@@ -82,24 +82,18 @@ export function AppSidebar() {
       { title: "תבניות סיכום פגישה", url: "/meeting-templates", icon: ClipboardList },
     ];
   } else if (workspace === "admin") {
-    mainLabel = "ממשק אדמין";
-    mainItems = []; // אדמין משתמש בקבוצות מודולים מתחת — ראה adminModuleGroups
+    mainLabel = "סקירה כללית";
+    mainItems = [
+      { title: "סקירה כללית", url: "/", icon: LayoutDashboard },
+    ];
   } else {
     // No role yet — show only Settings/Logout in management; keep main empty
     mainLabel = "אין תפקיד פעיל";
     mainItems = [];
   }
 
-  // קבוצות מודולים שמוצגות לאדמין (נשלט מ-src/config/adminMenu.ts)
-  const adminModuleGroups = workspace === "admin" && !stillLoading
-    ? ADMIN_WORKSPACE_MODULES
-        .filter((g) => !g.hidden)
-        .map((g) => ({ ...g, items: g.items.filter((i) => !i.hidden) }))
-        .filter((g) => g.items.length > 0)
-    : [];
-
-  // Admin tools — collapsed under one menu (סדר נשלט מ-src/config/adminMenu.ts)
-  const adminItems: Item[] = isAdmin
+  // Admin tools — show as a group only when in admin workspace.
+  const adminItems: Item[] = (isAdmin && workspace === "admin")
     ? ADMIN_TOOLS_ITEMS.filter((i) => !i.hidden).map((i) => ({ title: i.title, url: i.url, icon: i.icon }))
     : [];
   const adminOpen = adminItems.some((i) => isActive(i.url)) || location.pathname.startsWith("/admin");
