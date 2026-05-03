@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
 
     const form = await req.formData();
     const file = form.get("file") as File | null;
-    const service = (form.get("service") as Service) ?? "whisper";
+    const service = (form.get("service") as Service) ?? "lovable_ai";
     const clientDurationRaw = form.get("client_duration");
     const clientDuration = clientDurationRaw ? Number(clientDurationRaw) : NaN;
 
@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
       lovable_ai: () => transcribeLovableAi(file),
     };
     const order: Service[] = [service];
-    for (const s of ["ivrit_ai", "whisper", "elevenlabs", "lovable_ai"] as Service[]) {
+    for (const s of ["lovable_ai", "ivrit_ai", "whisper", "elevenlabs"] as Service[]) {
       if (!order.includes(s)) order.push(s);
     }
 
