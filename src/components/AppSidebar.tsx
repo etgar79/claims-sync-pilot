@@ -6,7 +6,6 @@ import {
   FileText,
   Calendar,
   Shield,
-  DollarSign,
   Mic,
   ClipboardList,
   Phone,
