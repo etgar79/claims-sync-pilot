@@ -19,6 +19,7 @@ const MeetingRecordings = lazy(() => import("./pages/MeetingRecordings.tsx"));
 const Meetings = lazy(() => import("./pages/Meetings.tsx"));
 const MeetingDetail = lazy(() => import("./pages/MeetingDetail.tsx"));
 const Admin = lazy(() => import("./pages/Admin.tsx"));
+const AdminUsers = lazy(() => import("./pages/AdminUsers.tsx"));
 const Usage = lazy(() => import("./pages/Usage.tsx"));
 const Auth = lazy(() => import("./pages/Auth.tsx"));
 const PhoneCallsPage = lazy(() => import("./pages/PhoneCallsPage.tsx"));
