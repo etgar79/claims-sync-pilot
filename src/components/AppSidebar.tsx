@@ -106,12 +106,10 @@ export function AppSidebar() {
     mainItems = [];
   }
 
-  // Admin items — collapsed under one menu
-  const adminItems: Item[] = isAdmin ? [
-    { title: "משתמשים והרשאות", url: "/admin", icon: Shield },
-    { title: "תוכן לפי משתמש", url: "/admin/users", icon: Users },
-    { title: "חיובים ועלויות", url: "/usage", icon: DollarSign },
-  ] : [];
+  // Admin items — collapsed under one menu (סדר נשלט מ-src/config/adminMenu.ts)
+  const adminItems: Item[] = isAdmin
+    ? ADMIN_MENU_ITEMS.filter((i) => !i.hidden).map((i) => ({ title: i.title, url: i.url, icon: i.icon }))
+    : [];
   const adminOpen = adminItems.some((i) => isActive(i.url)) || location.pathname.startsWith("/admin");
 
   // Common management
