@@ -195,7 +195,15 @@ const Recordings = () => {
         </div>
 
         <div className="flex flex-col gap-1.5 shrink-0">
-          {/* Transcribe split-button */}
+          {/* View transcript button — always available when transcript exists */}
+          {r.transcript && (
+            <Button size="sm" variant="default" className="gap-1" onClick={() => setViewTarget(r)}>
+              <Eye className="h-3.5 w-3.5" />
+              צפה בתמלול
+            </Button>
+          )}
+
+          {/* Transcribe split-button (only when no transcript yet) */}
           {!r.transcript && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
