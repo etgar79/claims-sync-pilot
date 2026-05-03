@@ -2,15 +2,10 @@ import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  Mic, Loader2, Clock, AlertCircle, CheckCircle2, FileText, Cloud,
-  Eye, Download, FileDown, Pencil, Sparkles, Zap, Tag, ExternalLink,
-  MoreVertical, Copy,
+  Mic, Loader2, Clock, AlertCircle, CheckCircle2, Cloud,
+  Eye, Download, FileDown, Pencil, Sparkles, Zap, Tag, ExternalLink, Copy, RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { exportTranscriptToPdf, downloadTranscriptTxt } from "@/lib/exportTranscriptPdf";
