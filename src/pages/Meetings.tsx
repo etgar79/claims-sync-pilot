@@ -15,8 +15,9 @@ import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
 import { AssignToMeetingDialog } from "@/components/AssignToMeetingDialog";
+import { EditMeetingDialog } from "@/components/EditMeetingDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
-import { Mic, Tag, Cloud } from "lucide-react";
+import { Mic, Tag, Cloud, Pencil } from "lucide-react";
 
 interface Meeting {
   id: string;
@@ -54,6 +55,7 @@ const Meetings = () => {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState<UnassignedRecording | null>(null);
+  const [editTarget, setEditTarget] = useState<Meeting | null>(null);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
