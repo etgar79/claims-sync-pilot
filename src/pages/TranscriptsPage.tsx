@@ -502,13 +502,13 @@ function TranscriptRow({
         {has ? (
           <>
             <Tooltip><TooltipTrigger asChild>
-              <Button size="sm" onClick={onView} className="h-8 gap-1.5 text-xs">
-                <Eye className="h-3.5 w-3.5" /> צפה
+              <Button size="sm" onClick={onToggleExpand} className="h-8 gap-1.5 text-xs">
+                <Eye className="h-3.5 w-3.5" /> {expanded ? "סגור" : "צפה"}
               </Button>
-            </TooltipTrigger><TooltipContent>פתח לקריאה</TooltipContent></Tooltip>
+            </TooltipTrigger><TooltipContent>פתח את סביבת העבודה המורחבת</TooltipContent></Tooltip>
 
             <Tooltip><TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" onClick={onEdit} className="h-8 gap-1.5 text-xs">
+              <Button size="sm" variant="ghost" onClick={() => { onToggleExpand(); onEdit(); }} className="h-8 gap-1.5 text-xs">
                 <Pencil className="h-3.5 w-3.5" /> ערוך
               </Button>
             </TooltipTrigger><TooltipContent>עריכה עם שמירה אוטומטית</TooltipContent></Tooltip>
