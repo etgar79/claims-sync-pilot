@@ -7,7 +7,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export type TranscriptionService = "ivrit_ai" | "whisper" | "elevenlabs";
+export type TranscriptionService = "lovable_ai" | "ivrit_ai" | "whisper" | "elevenlabs";
 
 interface ServiceOption {
   id: TranscriptionService;
@@ -20,6 +20,13 @@ interface ServiceOption {
 // Generic, white-label tiers - no third-party brand names exposed to users.
 const SERVICES: ServiceOption[] = [
   {
+    id: "lovable_ai",
+    name: "AI מובנה",
+    tagline: "תמלול חכם ללא הגדרות נוספות ⭐",
+    pros: ["פועל מיידית — ללא צורך במפתחות API", "עברית מדויקת עם הבנת הקשר", "כלול במערכת"],
+    badge: { label: "מומלץ", icon: <Sparkles className="h-3 w-3" />, className: "bg-primary text-primary-foreground" },
+  },
+  {
     id: "ivrit_ai",
     name: "AI חסכוני",
     tagline: "המחיר המשתלם ביותר 💰",
@@ -31,14 +38,14 @@ const SERVICES: ServiceOption[] = [
     name: "AI מהיר",
     tagline: "תמלול מהיר ואמין",
     pros: ["דיוק מצוין בעברית", "מהירות גבוהה במיוחד", "מתאים לרוב המקרים"],
-    badge: { label: "מהיר", icon: <Zap className="h-3 w-3" />, className: "bg-primary text-primary-foreground" },
+    badge: { label: "מהיר", icon: <Zap className="h-3 w-3" />, className: "bg-accent text-accent-foreground" },
   },
   {
     id: "elevenlabs",
     name: "AI איכות גבוהה",
     tagline: "התמלול המתקדם ביותר ✨",
     pros: ["זיהוי דוברים אוטומטי", "תיוג אירועי שמע", "חותמות זמן מדויקות"],
-    badge: { label: "איכות גבוהה", icon: <Sparkles className="h-3 w-3" />, className: "bg-accent text-accent-foreground" },
+    badge: { label: "איכות גבוהה", icon: <Sparkles className="h-3 w-3" />, className: "bg-secondary text-secondary-foreground" },
   },
 ];
 
