@@ -29,12 +29,14 @@ import {
   Sparkles,
   Zap,
   ChevronDown,
+  Eye,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
 import { AssignRecordingDialog } from "@/components/AssignRecordingDialog";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
+import { TranscriptViewerDialog } from "@/components/TranscriptViewerDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { RecordCallButton } from "@/components/RecordCallButton";
 import { useDriveSync } from "@/hooks/useDriveSync";
@@ -68,6 +70,7 @@ const Recordings = () => {
   const [search, setSearch] = useState("");
   const [assignTarget, setAssignTarget] = useState<RecordingRow | null>(null);
   const [transcribeTarget, setTranscribeTarget] = useState<RecordingRow | null>(null);
+  const [viewTarget, setViewTarget] = useState<RecordingRow | null>(null);
   const { runAll, running } = useTranscribeAll();
   const { sync, syncing } = useDriveSync("appraiser");
 
