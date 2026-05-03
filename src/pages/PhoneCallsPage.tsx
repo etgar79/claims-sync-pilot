@@ -76,7 +76,7 @@ export default function PhoneCallsPage({ workspace, title }: PhoneCallsPageProps
       setLoading(false);
       return;
     }
-    const rows = (data ?? []) as Row[];
+    const rows = (data ?? []) as unknown as Row[];
     if (workspace === "appraiser") {
       const ids = Array.from(new Set(rows.map((r) => r.case_id).filter(Boolean) as string[]));
       if (ids.length) {
