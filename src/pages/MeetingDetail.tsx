@@ -432,6 +432,14 @@ const MeetingDetail = () => {
           </div>
         </main>
       </div>
+      {meeting && (
+        <EditMeetingDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          meeting={meeting}
+          onSaved={load}
+        />
+      )}
     </SidebarProvider>
   );
 };
