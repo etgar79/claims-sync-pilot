@@ -110,6 +110,12 @@ export function AppSidebar() {
       { title: "צריכה ועלויות", url: "/usage", icon: DollarSign },
     );
   }
+  // תמלולים — זמין לכל משתמש מחובר (לא רק לפי תפקיד)
+  const transcriptsUrl = workspace === "architect" ? "/meeting-transcripts" : "/transcripts";
+  const transcriptsAlreadyShown = mainItems.some((i) => i.url === transcriptsUrl || i.url === "/transcripts" || i.url === "/meeting-transcripts");
+  if (!stillLoading && !transcriptsAlreadyShown) {
+    managementItems.unshift({ title: "תמלולים", url: transcriptsUrl, icon: FileText });
+  }
   managementItems.push({ title: "הגדרות", url: "/settings", icon: Settings });
 
   return (
