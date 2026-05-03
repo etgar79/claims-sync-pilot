@@ -378,6 +378,49 @@ const MeetingDetail = () => {
                             </Button>
                           </div>
                         )}
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              const isOpen = expandedId === r.id && expandedMode === "view";
+                              setExpandedMode("view");
+                              setExpandedId(isOpen ? null : r.id);
+                            }}
+                          >
+                            {expandedId === r.id ? "סגור פאנל" : "פתח פאנל מלא"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setExpandedMode("edit");
+                              setExpandedId(r.id);
+                            }}
+                          >
+                            ערוך תמלול
+                          </Button>
+                        </div>
+                        <ExpandableTranscriptPanel
+                          open={expandedId === r.id}
+                          mode={expandedMode}
+                          item={{
+                            id: r.id,
+                            table: "meeting_recordings",
+                            filename: r.filename,
+                            recordedAt: r.recorded_at,
+                            duration: r.duration,
+                            transcript: r.transcript,
+                            transcriptStatus: r.transcript_status,
+                            transcriptionService: r.transcription_service,
+                            audioUrl: r.drive_url,
+                            context: meeting?.title ? `פגישה: ${meeting.title}` : null,
+                            meetingId: id ?? null,
+                            meetingTitle: meeting?.title ?? null,
+                          }}
+                          onToggle={() => setExpandedId(null)}
+                          onUpdated={load}
+                        />
                       </div>
                     ))}
                   </div>
