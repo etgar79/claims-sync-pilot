@@ -94,14 +94,16 @@ const Recordings = () => {
   }, []);
 
   const filtered = items.filter((r) => {
+    if (filterMode === "ready" && !r.transcript) return false;
+    if (filterMode === "pending" && r.transcript) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
-    const hit =
+    return (
       r.filename.toLowerCase().includes(q) ||
       (r.case_title ?? "").toLowerCase().includes(q) ||
       (r.case_number ?? "").toLowerCase().includes(q) ||
-      (r.client_name ?? "").toLowerCase().includes(q);
-    return hit;
+      (r.client_name ?? "").toLowerCase().includes(q)
+    );
   });
 
   const unassigned = filtered.filter((r) => !r.case_id);
