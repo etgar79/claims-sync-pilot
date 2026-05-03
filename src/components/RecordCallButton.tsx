@@ -188,7 +188,7 @@ export function RecordCallButton({ workspace, onCreated, size = "sm", purpose = 
       <DialogTrigger asChild>
         <Button size={size} variant="default" className="gap-2">
           <Mic className="h-4 w-4" />
-          הקלט שיחה
+          {label ?? "הקלט שיחה"}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
