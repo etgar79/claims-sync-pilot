@@ -9,12 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, Upload, Loader2, Sparkles, FileAudio, Save, CheckCircle2, Wand2, FolderOpen } from "lucide-react";
+import { ArrowRight, Upload, Loader2, Sparkles, FileAudio, Save, CheckCircle2, Wand2, FolderOpen, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
 import { MergeTranscriptsDialog } from "@/components/MergeTranscriptsDialog";
 import { ActionItemsDialog } from "@/components/ActionItemsDialog";
+import { EditMeetingDialog } from "@/components/EditMeetingDialog";
 import { serviceLabel } from "@/lib/serviceLabels";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 
@@ -52,6 +53,7 @@ const MeetingDetail = () => {
   const [savingNotes, setSavingNotes] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const [statusUpdating, setStatusUpdating] = useState(false);
   const { runAll, running: runningAll } = useTranscribeAll();
@@ -195,7 +197,12 @@ const MeetingDetail = () => {
               <SidebarTrigger />
               <Link to="/meetings"><Button variant="ghost" size="sm"><ArrowRight className="h-4 w-4" /></Button></Link>
               <div>
-                <h1 className="text-2xl font-bold">{meeting.title}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold">{meeting.title}</h1>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditOpen(true)} title="ערוך פגישה">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   {meeting.client_name} {meeting.project_name && `• ${meeting.project_name}`}
                 </p>
