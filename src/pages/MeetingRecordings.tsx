@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Mic, Loader2, Search, FileText, Clock, AlertCircle, CheckCircle2,
-  ExternalLink, Tag, Cloud, Sparkles, Zap, ChevronDown, Eye,
+  ExternalLink, Tag, Cloud, Sparkles, Zap, Eye, MoreVertical,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
