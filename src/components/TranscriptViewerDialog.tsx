@@ -35,6 +35,9 @@ interface Props {
   context?: string | null;
   client?: string | null;
   defaultTab?: "view" | "edit" | "regenerate";
+  /** Admin mode: auto-opens speaker editing panel & shows owner banner */
+  adminMode?: boolean;
+  ownerLabel?: string | null;
   onUpdated?: () => void;
 }
 
