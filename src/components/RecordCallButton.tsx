@@ -12,6 +12,8 @@ interface Props {
   workspace: WorkspaceKind;
   onCreated?: () => void;
   size?: "sm" | "default";
+  purpose?: "recordings" | "calls";
+  label?: string;
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -34,7 +36,7 @@ function fmtTime(sec: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export function RecordCallButton({ workspace, onCreated, size = "sm" }: Props) {
+export function RecordCallButton({ workspace, onCreated, size = "sm", purpose = "recordings", label }: Props) {
   const [open, setOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -138,6 +140,7 @@ export function RecordCallButton({ workspace, onCreated, size = "sm" }: Props) {
           mimeType: blob.type || "audio/webm",
           dataBase64,
           durationSeconds,
+          purpose,
         },
       });
       if (error) {
@@ -185,7 +188,7 @@ export function RecordCallButton({ workspace, onCreated, size = "sm" }: Props) {
       <DialogTrigger asChild>
         <Button size={size} variant="default" className="gap-2">
           <Mic className="h-4 w-4" />
-          הקלט שיחה
+          {label ?? "הקלט שיחה"}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">

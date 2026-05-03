@@ -192,11 +192,10 @@ export function ExpandableTranscriptPanel({
 
   const detectedSpeakers = useMemo(() => {
     const set = new Set<string>();
-    // Catches "דובר א", "דוברת ב", "Speaker 1", "S2" anywhere in the text
-    // (including inside [..] or **..**)
-    const re = /((?:דובר|דוברת|Speaker|SPEAKER|S)\s*[\u05D0-\u05EA0-9A-Za-z]{1,4})/g;
+    // Catches "דובר א", "דוברת ב", "Speaker 1", "S2" — including inside [..] or **..**
+    const re = /(?:דובר(?:ת)?|Speaker|SPEAKER)\s*[\u05D0-\u05EA0-9A-Za-z]{1,5}|S\d{1,3}/g;
     let m;
-    while ((m = re.exec(edited)) !== null) set.add(m[1].trim());
+    while ((m = re.exec(edited)) !== null) set.add(m[0].trim());
     return Array.from(set).slice(0, 30);
   }, [edited]);
 
@@ -250,7 +249,45 @@ export function ExpandableTranscriptPanel({
     toast.success("נשמרה גרסה חדשה");
   };
 
-  const applyReplacements = () => {
+  const applyAndSave = async (text: string, message: string) => {
+    setEdited(text);
+    try {
+      const { error } = await supabase
+        .from(item.table)
+        .update({ transcript: text, transcript_status: "completed" })
+        .eq("id", item.id);
+      if (error) throw error;
+      lastSavedRef.current = text;
+      setSaveState("saved");
+      toast.success(message);
+      onUpdated?.();
+      window.setTimeout(() => setSaveState((s) => (s === "saved" ? "idle" : s)), 1400);
+    } catch (e: any) {
+      toast.error("שגיאה בשמירה", { description: e?.message });
+    }
+  };
+
+  const replaceSingleSpeaker = async (orig: string, newName: string) => {
+    const name = newName.trim();
+    if (!name) {
+      toast.info("יש להזין שם חדש");
+      return;
+    }
+    if (name === orig) {
+      toast.info("השם זהה");
+      return;
+    }
+    const re = new RegExp(escapeRegExp(orig), "g");
+    const next = edited.replace(re, name);
+    if (next === edited) {
+      toast.info("לא נמצאו מופעים");
+      return;
+    }
+    await applyAndSave(next, `הוחלף "${orig}" → "${name}" בכל התמלול ונשמר`);
+    setSpeakerMap((prev) => ({ ...prev, [orig]: "" }));
+  };
+
+  const applyReplacements = async () => {
     let next = edited;
     let changed = 0;
 
@@ -275,8 +312,12 @@ export function ExpandableTranscriptPanel({
       return;
     }
 
-    setEdited(next);
-    toast.success(`עודכנו ${changed} החלפות`);
+    await applyAndSave(next, `עודכנו ${changed} החלפות ונשמרו`);
+    setSpeakerMap((prev) => {
+      const cleared: Record<string, string> = {};
+      Object.keys(prev).forEach((k) => { cleared[k] = ""; });
+      return cleared;
+    });
   };
 
   const copyText = async () => {
@@ -455,7 +496,7 @@ export function ExpandableTranscriptPanel({
                   className="flex w-full items-center gap-2 text-right text-sm font-medium"
                 >
                   <Wand2 className="h-4 w-4 text-primary" />
-                  <span className="flex-1">דוברים והחלפות</span>
+                  <span className="flex-1">החלפת דוברים בכל התמלול</span>
                   <Badge variant="secondary" className="h-5 text-[10px]">
                     {detectedSpeakers.length + keywordPairs.filter((pair) => pair.from).length}
                   </Badge>
@@ -464,10 +505,10 @@ export function ExpandableTranscriptPanel({
 
                 {showAdvanced && (
                   <div className="mt-3 space-y-3">
-                    {detectedSpeakers.length > 0 && (
+                    {detectedSpeakers.length > 0 ? (
                       <div className="space-y-2">
                         <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                          <Users className="h-3 w-3" /> דוברים שזוהו אוטומטית
+                          <Users className="h-3 w-3" /> הזן שם לכל דובר ולחץ "החלף ושמור" — השינוי יחול על כל התמלול ויישמר אוטומטית
                         </div>
                         {detectedSpeakers.map((speaker) => (
                           <div key={speaker} className="flex items-center gap-2">
@@ -475,16 +516,43 @@ export function ExpandableTranscriptPanel({
                             <Input
                               value={speakerMap[speaker] ?? ""}
                               onChange={(e) => setSpeakerMap((prev) => ({ ...prev, [speaker]: e.target.value }))}
-                              placeholder="שם דובר"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  void replaceSingleSpeaker(speaker, speakerMap[speaker] ?? "");
+                                }
+                              }}
+                              placeholder={`הזן שם לדובר ${speaker}`}
                               className="h-8"
                             />
+                            <Button
+                              size="sm"
+                              className="h-8 shrink-0 gap-1"
+                              onClick={() => void replaceSingleSpeaker(speaker, speakerMap[speaker] ?? "")}
+                              disabled={!(speakerMap[speaker] ?? "").trim()}
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                              החלף ושמור
+                            </Button>
                           </div>
                         ))}
+                        {detectedSpeakers.some((s) => (speakerMap[s] ?? "").trim()) && (
+                          <div className="pt-1">
+                            <Button size="sm" variant="outline" onClick={() => void applyReplacements()} className="gap-1">
+                              <Wand2 className="h-3.5 w-3.5" />
+                              החלף את כל הדוברים בבת אחת
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-dashed bg-muted/30 p-3 text-center text-xs text-muted-foreground">
+                        לא זוהו דוברים בתמלול. ניתן להשתמש בהחלפה מהירה למטה כדי להחליף שמות ידנית.
                       </div>
                     )}
 
-                    <div className="space-y-2">
-                      <div className="text-[11px] text-muted-foreground">החלפות טקסט מהירות</div>
+                    <div className="space-y-2 border-t pt-3">
+                      <div className="text-[11px] text-muted-foreground">החלפות טקסט מהירות (חיפוש והחלפה כללי)</div>
                       {keywordPairs.map((pair, index) => (
                         <div key={index} className="flex items-center gap-2">
                           <Input
@@ -512,7 +580,7 @@ export function ExpandableTranscriptPanel({
                       ))}
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => setKeywordPairs((prev) => [...prev, { from: "", to: "" }])}>הוסף שורה</Button>
-                        <Button size="sm" onClick={applyReplacements}>החל על כל התמלול</Button>
+                        <Button size="sm" onClick={() => void applyReplacements()}>החל ושמור</Button>
                       </div>
                     </div>
                   </div>

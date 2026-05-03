@@ -10,20 +10,27 @@ serve(async (req) => {
 
   try {
     const userId = await authedUser(req);
-    const { workspace } = await req.json().catch(() => ({}));
+    const { workspace, purpose: rawPurpose } = await req.json().catch(() => ({}));
     if (workspace !== "appraiser" && workspace !== "architect") {
       return new Response(JSON.stringify({ error: "workspace חייב להיות appraiser או architect" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const purpose: "recordings" | "calls" =
+      rawPurpose === "calls" ? "calls" : "recordings";
 
-    const folderTypes = workspace === "appraiser"
-      ? ["appraiser_recordings"]
-      : ["architect_recordings", "architect_meetings"]; // legacy fallback
+    let folderTypes: string[];
+    if (purpose === "calls") {
+      folderTypes = workspace === "appraiser" ? ["appraiser_calls"] : ["architect_calls"];
+    } else {
+      folderTypes = workspace === "appraiser"
+        ? ["appraiser_recordings"]
+        : ["architect_recordings", "architect_meetings"]; // legacy fallback
+    }
     const admin = adminSupabase();
 
-    // Find user's folder for this workspace
+    // Find user's folder for this workspace + purpose
     const { data: folderRow } = await admin
       .from("drive_work_folders")
       .select("folder_id, folder_name")
@@ -90,6 +97,7 @@ serve(async (req) => {
     const existingSet = new Set((existing ?? []).map((r: { drive_file_id: string }) => r.drive_file_id));
 
     const toInsert = driveFiles.filter((f) => !existingSet.has(f.id));
+    const sourceTag = purpose === "calls" ? "phone_call" : "drive_sync";
 
     let added = 0;
     if (toInsert.length > 0) {
@@ -99,7 +107,7 @@ serve(async (req) => {
         recorded_at: f.modifiedTime ?? new Date().toISOString(),
         drive_url: f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`,
         drive_file_id: f.id,
-        source: "drive_sync",
+        source: sourceTag,
         transcript_status: "pending",
         // case_id / meeting_id intentionally NULL (unassigned)
       }));
