@@ -104,9 +104,17 @@ export function TranscriptViewerDialog({
     });
   }, [detectedSpeakers.join("|")]);
 
+  // Free-form keyword find/replace pairs
+  const [keywordPairs, setKeywordPairs] = useState<Array<{ from: string; to: string }>>([{ from: "", to: "" }]);
+  const updatePair = (i: number, k: "from" | "to", v: string) =>
+    setKeywordPairs((prev) => prev.map((p, idx) => (idx === i ? { ...p, [k]: v } : p)));
+  const addPair = () => setKeywordPairs((prev) => [...prev, { from: "", to: "" }]);
+  const removePair = (i: number) => setKeywordPairs((prev) => prev.filter((_, idx) => idx !== i));
+
   const computeRenamed = () => {
     let next = edited;
     let changed = 0;
+    // Speakers first
     Object.entries(speakerMap).forEach(([orig, name]) => {
       if (!name.trim() || name.trim() === orig) return;
       const re = new RegExp(orig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
@@ -114,19 +122,27 @@ export function TranscriptViewerDialog({
       next = next.replace(re, name.trim());
       if (before !== next) changed++;
     });
+    // Keywords
+    keywordPairs.forEach(({ from, to }) => {
+      if (!from.trim()) return;
+      const re = new RegExp(from.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
+      const before = next;
+      next = next.replace(re, to);
+      if (before !== next) changed++;
+    });
     return { next, changed };
   };
 
   const applySpeakerRenames = () => {
     const { next, changed } = computeRenamed();
-    if (changed === 0) { toast.info("אין שמות חדשים להחליף"); return; }
+    if (changed === 0) { toast.info("אין שינויים להחליף"); return; }
     setEdited(next);
-    toast.success(`הוחלפו ${changed} דוברים (לחץ 'שמור' כדי להחיל לכולם)`);
+    toast.success(`הוחלפו ${changed} פריטים (לחץ 'שמור' כדי להחיל לכולם)`);
   };
 
   const applyAndSave = async () => {
     const { next, changed } = computeRenamed();
-    if (changed === 0) { toast.info("אין שמות חדשים להחליף"); return; }
+    if (changed === 0) { toast.info("אין שינויים להחליף"); return; }
     setEdited(next);
     await saveEditWithText(next);
   };
