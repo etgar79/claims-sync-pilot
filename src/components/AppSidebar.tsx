@@ -34,6 +34,7 @@ import { useUserRoles } from "@/hooks/useUserRoles";
 import { useBranding } from "@/hooks/useBranding";
 import { useActiveWorkspace } from "@/hooks/useActiveWorkspace";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
+import { ADMIN_MENU_ITEMS } from "@/config/adminMenu";
 
 type Item = { title: string; url: string; icon: any };
 
