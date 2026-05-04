@@ -57,12 +57,65 @@ interface Props {
 }
 
 export function RecordingCard({
-  data: r, isRunning, workspace, onView, onEdit, onAssign, onSuperTranscribe, onQuickTranscribe,
+  data: r, isRunning, workspace, table, onView, onEdit, onAssign, onSuperTranscribe, onQuickTranscribe, onRenamed,
   expanded, expandedSlot,
 }: Props) {
   const st = STATUS[r.transcript_status as keyof typeof STATUS] ?? STATUS.pending;
   const Icon = st.icon;
   const hasTranscript = !!r.transcript;
+  const tableName: "recordings" | "meeting_recordings" =
+    table ?? (workspace === "appraiser" ? "recordings" : "meeting_recordings");
+
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(r.filename);
+  const [renaming, setRenaming] = useState(false);
+
+  const startRename = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setNameDraft(r.filename);
+    setEditingName(true);
+  };
+
+  const cancelRename = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setEditingName(false);
+    setNameDraft(r.filename);
+  };
+
+  const saveRename = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const newName = nameDraft.trim();
+    if (!newName) { toast.info("שם הקובץ לא יכול להיות ריק"); return; }
+    if (newName === r.filename) { setEditingName(false); return; }
+    setRenaming(true);
+    try {
+      const { error } = await supabase.from(tableName).update({ filename: newName }).eq("id", r.id);
+      if (error) throw error;
+      let driveWarning = false;
+      if (r.drive_file_id) {
+        try {
+          const { data: sess } = await supabase.auth.getSession();
+          const token = sess.session?.access_token;
+          if (token) {
+            const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-drive-api`;
+            const res = await fetch(url, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "rename_file", fileId: r.drive_file_id, newName }),
+            });
+            if (!res.ok) driveWarning = true;
+          }
+        } catch { driveWarning = true; }
+      }
+      toast.success(driveWarning ? "השם עודכן במערכת (לא ב-Drive)" : "שם הקובץ עודכן");
+      setEditingName(false);
+      onRenamed?.();
+    } catch (err: any) {
+      toast.error("שגיאה בשינוי שם", { description: err?.message });
+    } finally {
+      setRenaming(false);
+    }
+  };
 
   const buildContext = () => {
     if (workspace === "appraiser" && r.case_number) return `תיק ${r.case_number} • ${r.case_title ?? ""}`;
