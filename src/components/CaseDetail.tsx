@@ -15,6 +15,7 @@ import { TranscribeDialog } from "./TranscribeDialog";
 import { MergeTranscriptsDialog } from "./MergeTranscriptsDialog";
 import { ActionItemsDialog } from "./ActionItemsDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
+import { UploadPhotosButton } from "./UploadPhotosButton";
 
 interface CaseDetailProps {
   appraisalCase: AppraisalCase;
@@ -196,9 +197,16 @@ export function CaseDetail({ appraisalCase, aiSummary, aiSummaryGeneratedAt, onS
             )}
           </TabsContent>
 
-          <TabsContent value="photos" className="p-6 m-0">
+          <TabsContent value="photos" className="p-6 m-0 space-y-4">
+            <div className="flex justify-end">
+              <UploadPhotosButton
+                workspace="appraiser"
+                caseId={appraisalCase.id}
+                onUploaded={() => onSummaryUpdated?.()}
+              />
+            </div>
             {appraisalCase.photos.length === 0 ? (
-              <EmptyState icon={ImageIcon} message="אין תמונות בתיק זה" />
+              <EmptyState icon={ImageIcon} message="אין תמונות בתיק זה. העלה תמונות והן יישמרו ב-Drive תחת תיק זה." />
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {appraisalCase.photos.map((photo) => {
