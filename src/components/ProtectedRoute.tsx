@@ -47,6 +47,7 @@ export function ProtectedRoute({ children, allow }: ProtectedRouteProps) {
       admin: isAdmin,
       appraiser: isAppraiser,
       architect: isArchitect,
+      transcriber: false,
     };
     // Explicit role match (no admin auto-grant)
     let hasAccess = allow.some((r) => explicit[r]);
