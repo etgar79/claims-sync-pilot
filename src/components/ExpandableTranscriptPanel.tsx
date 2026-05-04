@@ -385,6 +385,8 @@ export function ExpandableTranscriptPanel({
       setRenaming(false);
     }
   };
+
+  const copyText = async () => {
     try {
       await navigator.clipboard.writeText(edited);
       toast.success("הועתק ללוח");
