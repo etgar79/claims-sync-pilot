@@ -119,12 +119,12 @@ Deno.serve(async (req) => {
     }
 
     // Resolve user's parent folder for this workspace + purpose
-    const purpose: "recordings" | "calls" = body.purpose === "calls" ? "calls" : "recordings";
+    const purpose: "recordings" | "calls" = purposeIn === "calls" ? "calls" : "recordings";
     let folderTypes: string[];
     if (purpose === "calls") {
-      folderTypes = body.workspace === "appraiser" ? ["appraiser_calls"] : ["architect_calls"];
+      folderTypes = workspace === "appraiser" ? ["appraiser_calls"] : ["architect_calls"];
     } else {
-      folderTypes = body.workspace === "architect"
+      folderTypes = workspace === "architect"
         ? ["architect_recordings", "architect_meetings"]
         : ["appraiser_recordings"];
     }
@@ -148,17 +148,16 @@ Deno.serve(async (req) => {
     }
 
     const { accessToken } = await getValidGoogleToken(admin, userId);
-    const bytes = decodeBase64(body.dataBase64);
-    const uploaded = await uploadToDrive(accessToken, folder.folder_id, body.filename, body.mimeType, bytes);
+    const uploaded = await uploadToDrive(accessToken, folder.folder_id, filename, mimeType, bytes);
 
     const driveUrl = uploaded.webViewLink || `https://drive.google.com/file/d/${uploaded.id}/view`;
-    const duration = fmtDuration(body.durationSeconds);
+    const duration = fmtDuration(durationSeconds);
 
     // Insert recording row into the right table
-    const tableName = body.workspace === "appraiser" ? "recordings" : "meeting_recordings";
+    const tableName = workspace === "appraiser" ? "recordings" : "meeting_recordings";
     const insertRow: any = {
       user_id: userId,
-      filename: body.filename,
+      filename,
       drive_url: driveUrl,
       drive_file_id: uploaded.id,
       source: purpose === "calls" ? "phone_call" : "manual_upload",
