@@ -30,3 +30,7 @@ verify_jwt = true
 [functions.upload-transcriber-file]
 verify_jwt = true
 
+[functions.download-transcriber-file]
+verify_jwt = true
+
+
