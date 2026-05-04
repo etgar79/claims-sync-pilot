@@ -34,6 +34,7 @@ interface Row {
   transcript_status: string;
   transcript: string | null;
   drive_url: string | null;
+  drive_file_id?: string | null;
   source: string | null;
   case_id?: string | null;
   meeting_id?: string | null;

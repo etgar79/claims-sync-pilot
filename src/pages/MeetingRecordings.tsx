@@ -27,6 +27,7 @@ interface Row {
   transcript_status: string;
   transcript: string | null;
   drive_url: string | null;
+  drive_file_id: string | null;
   meeting_id: string | null;
   source: string | null;
   tags: string[] | null;
@@ -52,7 +53,7 @@ const MeetingRecordings = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("meeting_recordings")
-      .select("id, filename, duration, recorded_at, transcript_status, transcript, drive_url, meeting_id, source, tags")
+      .select("id, filename, duration, recorded_at, transcript_status, transcript, drive_url, drive_file_id, meeting_id, source, tags")
       .order("recorded_at", { ascending: false });
     if (error) {
       toast.error(error.message);
@@ -120,11 +121,13 @@ const MeetingRecordings = () => {
         data={r}
         isRunning={running === r.id}
         workspace="architect"
+        table="meeting_recordings"
         onView={() => toggleExpand("view")}
         onEdit={() => toggleExpand("edit")}
         onAssign={() => setAssignTarget(r)}
         onSuperTranscribe={() => handleQuickTranscribe(r)}
         onQuickTranscribe={() => setTranscribeTarget(r)}
+        onRenamed={load}
         expanded={isExpanded}
         expandedSlot={
           <ExpandableTranscriptPanel
@@ -139,6 +142,7 @@ const MeetingRecordings = () => {
               transcript: r.transcript,
               transcriptStatus: r.transcript_status,
               audioUrl: r.drive_url,
+              driveFileId: r.drive_file_id,
               context: r.meeting_title ? `פגישה: ${r.meeting_title}` : null,
               meetingId: r.meeting_id,
               meetingTitle: r.meeting_title ?? null,

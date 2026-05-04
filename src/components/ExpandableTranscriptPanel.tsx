@@ -56,6 +56,7 @@ export interface ExpandableTranscriptItem {
   transcriptStatus: string;
   transcriptionService?: string | null;
   audioUrl?: string | null;
+  driveFileId?: string | null;
   context?: string | null;
   client?: string | null;
   assignLabel?: string;
@@ -130,8 +131,13 @@ export function ExpandableTranscriptPanel({
   const [audioLoading, setAudioLoading] = useState(false);
   const [speakerMap, setSpeakerMap] = useState<Record<string, string>>({});
   const [keywordPairs, setKeywordPairs] = useState<Array<{ from: string; to: string }>>([{ from: "", to: "" }]);
+  const [manualFrom, setManualFrom] = useState("");
+  const [manualTo, setManualTo] = useState("");
   const [mergeOpen, setMergeOpen] = useState(false);
   const [editMeetingOpen, setEditMeetingOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [filenameDraft, setFilenameDraft] = useState(item.filename);
+  const [editingName, setEditingName] = useState(false);
   const lastSavedRef = useRef(item.transcript ?? "");
   const debounceRef = useRef<number | null>(null);
   const { runAll, running } = useTranscribeAll();
@@ -142,8 +148,10 @@ export function ExpandableTranscriptPanel({
     setEdited(item.transcript ?? "");
     lastSavedRef.current = item.transcript ?? "";
     setSaveState("idle");
+    setFilenameDraft(item.filename);
+    setEditingName(false);
     void loadVersions();
-  }, [open, mode, item.id, item.transcript]);
+  }, [open, mode, item.id, item.transcript, item.filename]);
 
   useEffect(() => {
     if (!open || !item.audioUrl) return;
@@ -192,11 +200,19 @@ export function ExpandableTranscriptPanel({
 
   const detectedSpeakers = useMemo(() => {
     const set = new Set<string>();
-    // Catches "דובר א", "דוברת ב", "Speaker 1", "S2" — including inside [..] or **..**
+    // 1) Common patterns: "דובר א", "דוברת ב", "Speaker 1", "S2" — including inside [..] or **..**
     const re = /(?:דובר(?:ת)?|Speaker|SPEAKER)\s*[\u05D0-\u05EA0-9A-Za-z]{1,5}|S\d{1,3}/g;
     let m;
     while ((m = re.exec(edited)) !== null) set.add(m[0].trim());
-    return Array.from(set).slice(0, 30);
+    // 2) Line-leading labels like "משה:" / "John:" / "**משה**:" — supports replaced names
+    const reLabel = /(?:^|\n)\s*(?:\*\*|\[)?\s*([\u05D0-\u05EAA-Za-z][\u05D0-\u05EAA-Za-z' \-]{0,30}?)\s*(?:\*\*|\])?\s*:/g;
+    let m2;
+    while ((m2 = reLabel.exec(edited)) !== null) {
+      const name = m2[1].trim();
+      // ignore noise: pure numbers, very short, or contains generic words
+      if (name.length >= 2 && name.length <= 30 && !/^\d+$/.test(name)) set.add(name);
+    }
+    return Array.from(set).slice(0, 40);
   }, [edited]);
 
   useEffect(() => {
@@ -320,6 +336,56 @@ export function ExpandableTranscriptPanel({
     });
   };
 
+  const manualReplace = async () => {
+    const from = manualFrom.trim();
+    const to = manualTo.trim();
+    if (!from) { toast.info("יש להזין שם/טקסט להחלפה"); return; }
+    if (from === to) { toast.info("השם זהה"); return; }
+    const re = new RegExp(escapeRegExp(from), "g");
+    const next = edited.replace(re, to);
+    if (next === edited) { toast.info("לא נמצאו מופעים"); return; }
+    await applyAndSave(next, `הוחלף "${from}" → "${to}" בכל התמלול ונשמר`);
+    setManualFrom("");
+    setManualTo("");
+  };
+
+  const renameFile = async () => {
+    const newName = filenameDraft.trim();
+    if (!newName) { toast.info("שם הקובץ לא יכול להיות ריק"); return; }
+    if (newName === item.filename) { setEditingName(false); return; }
+    setRenaming(true);
+    try {
+      const { error } = await supabase
+        .from(item.table)
+        .update({ filename: newName })
+        .eq("id", item.id);
+      if (error) throw error;
+      let driveWarning = false;
+      if (item.driveFileId) {
+        try {
+          const { data: sess } = await supabase.auth.getSession();
+          const token = sess.session?.access_token;
+          if (token) {
+            const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-drive-api`;
+            const res = await fetch(url, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "rename_file", fileId: item.driveFileId, newName }),
+            });
+            if (!res.ok) driveWarning = true;
+          }
+        } catch { driveWarning = true; }
+      }
+      toast.success(driveWarning ? "השם עודכן במערכת (לא ב-Drive)" : "שם הקובץ עודכן");
+      setEditingName(false);
+      onUpdated?.();
+    } catch (e: any) {
+      toast.error("שגיאה בשינוי שם", { description: e?.message });
+    } finally {
+      setRenaming(false);
+    }
+  };
+
   const copyText = async () => {
     try {
       await navigator.clipboard.writeText(edited);
@@ -391,6 +457,36 @@ export function ExpandableTranscriptPanel({
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div className="min-w-0 space-y-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                {editingName ? (
+                  <>
+                    <Input
+                      value={filenameDraft}
+                      onChange={(e) => setFilenameDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); void renameFile(); }
+                        if (e.key === "Escape") { setEditingName(false); setFilenameDraft(item.filename); }
+                      }}
+                      autoFocus
+                      className="h-7 text-sm"
+                    />
+                    <Button size="sm" className="h-7 gap-1" disabled={renaming} onClick={() => void renameFile()}>
+                      {renaming ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                      שמור
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7" onClick={() => { setEditingName(false); setFilenameDraft(item.filename); }}>
+                      ביטול
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="truncate text-sm font-semibold" title={item.filename}>{item.filename}</span>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => setEditingName(true)} title="שנה שם קובץ">
+                      <PencilLine className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )}
+              </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className={`text-[10px] py-0 h-5 ${statusTone}`}>
                   {item.transcriptStatus === "processing" || running === item.id ? (
@@ -550,6 +646,30 @@ export function ExpandableTranscriptPanel({
                         לא זוהו דוברים בתמלול. ניתן להשתמש בהחלפה מהירה למטה כדי להחליף שמות ידנית.
                       </div>
                     )}
+
+                    <div className="space-y-2 rounded-lg border border-dashed bg-muted/20 p-2.5">
+                      <div className="text-[11px] font-medium text-muted-foreground">החלפה ידנית מהירה — גם אחרי ששינית פעם, אפשר להחליף שוב</div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={manualFrom}
+                          onChange={(e) => setManualFrom(e.target.value)}
+                          placeholder="שם נוכחי בתמלול (למשל משה)"
+                          className="h-8"
+                        />
+                        <span className="text-xs text-muted-foreground">←</span>
+                        <Input
+                          value={manualTo}
+                          onChange={(e) => setManualTo(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void manualReplace(); } }}
+                          placeholder="שם חדש"
+                          className="h-8"
+                        />
+                        <Button size="sm" className="h-8 shrink-0 gap-1" onClick={() => void manualReplace()} disabled={!manualFrom.trim()}>
+                          <Check className="h-3.5 w-3.5" />
+                          החלף ושמור
+                        </Button>
+                      </div>
+                    </div>
 
                     <div className="space-y-2 border-t pt-3">
                       <div className="text-[11px] text-muted-foreground">החלפות טקסט מהירות (חיפוש והחלפה כללי)</div>

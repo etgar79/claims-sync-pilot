@@ -1,14 +1,17 @@
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Mic, Loader2, Clock, AlertCircle, CheckCircle2, Cloud,
-  Eye, Download, FileDown, Pencil, Sparkles, Zap, Tag, ExternalLink, Copy, RefreshCw,
+  Eye, Download, FileDown, Pencil, Sparkles, Zap, Tag, ExternalLink, Copy, RefreshCw, Check, X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { exportTranscriptToPdf, downloadTranscriptTxt } from "@/lib/exportTranscriptPdf";
 
 const STATUS = {
@@ -26,6 +29,7 @@ export interface RecordingCardData {
   transcript_status: string;
   transcript: string | null;
   drive_url: string | null;
+  drive_file_id?: string | null;
   source: string | null;
   // appraiser-only
   case_id?: string | null;
@@ -41,22 +45,77 @@ interface Props {
   data: RecordingCardData;
   isRunning: boolean;
   workspace: "appraiser" | "architect";
+  table?: "recordings" | "meeting_recordings";
   onView: () => void;
   onEdit: () => void;
   onAssign: () => void;
   onSuperTranscribe: () => void;
   onQuickTranscribe: () => void;
+  onRenamed?: () => void;
   expanded?: boolean;
   expandedSlot?: ReactNode;
 }
 
 export function RecordingCard({
-  data: r, isRunning, workspace, onView, onEdit, onAssign, onSuperTranscribe, onQuickTranscribe,
+  data: r, isRunning, workspace, table, onView, onEdit, onAssign, onSuperTranscribe, onQuickTranscribe, onRenamed,
   expanded, expandedSlot,
 }: Props) {
   const st = STATUS[r.transcript_status as keyof typeof STATUS] ?? STATUS.pending;
   const Icon = st.icon;
   const hasTranscript = !!r.transcript;
+  const tableName: "recordings" | "meeting_recordings" =
+    table ?? (workspace === "appraiser" ? "recordings" : "meeting_recordings");
+
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(r.filename);
+  const [renaming, setRenaming] = useState(false);
+
+  const startRename = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setNameDraft(r.filename);
+    setEditingName(true);
+  };
+
+  const cancelRename = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setEditingName(false);
+    setNameDraft(r.filename);
+  };
+
+  const saveRename = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const newName = nameDraft.trim();
+    if (!newName) { toast.info("שם הקובץ לא יכול להיות ריק"); return; }
+    if (newName === r.filename) { setEditingName(false); return; }
+    setRenaming(true);
+    try {
+      const { error } = await supabase.from(tableName).update({ filename: newName }).eq("id", r.id);
+      if (error) throw error;
+      let driveWarning = false;
+      if (r.drive_file_id) {
+        try {
+          const { data: sess } = await supabase.auth.getSession();
+          const token = sess.session?.access_token;
+          if (token) {
+            const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-drive-api`;
+            const res = await fetch(url, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "rename_file", fileId: r.drive_file_id, newName }),
+            });
+            if (!res.ok) driveWarning = true;
+          }
+        } catch { driveWarning = true; }
+      }
+      toast.success(driveWarning ? "השם עודכן במערכת (לא ב-Drive)" : "שם הקובץ עודכן");
+      setEditingName(false);
+      onRenamed?.();
+    } catch (err: any) {
+      toast.error("שגיאה בשינוי שם", { description: err?.message });
+    } finally {
+      setRenaming(false);
+    }
+  };
 
   const buildContext = () => {
     if (workspace === "appraiser" && r.case_number) return `תיק ${r.case_number} • ${r.case_title ?? ""}`;
@@ -132,8 +191,38 @@ export function RecordingCard({
 
           {/* Main content */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-semibold text-sm truncate">{r.filename}</h3>
+            <div className="flex items-center gap-2 flex-wrap" onClick={(e) => editingName && e.stopPropagation()}>
+              {editingName ? (
+                <div className="flex items-center gap-1.5 flex-1 min-w-[180px]">
+                  <Input
+                    value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === "Enter") { e.preventDefault(); void saveRename(); }
+                      if (e.key === "Escape") { cancelRename(); }
+                    }}
+                    autoFocus
+                    className="h-7 text-sm"
+                  />
+                  <Button size="icon" variant="ghost" className="h-7 w-7" disabled={renaming} onClick={saveRename}>
+                    {renaming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelRename}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <h3 className="font-semibold text-sm truncate">{r.filename}</h3>
+                  <Tooltip><TooltipTrigger asChild>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={startRename}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger><TooltipContent>שנה שם קובץ</TooltipContent></Tooltip>
+                </>
+              )}
               <Badge variant="outline" className={`gap-1 text-[10px] py-0 h-5 ${st.cls}`}>
                 <Icon className={`h-3 w-3 ${r.transcript_status === "processing" || isRunning ? "animate-spin" : ""}`} />
                 {isRunning ? "מתמלל..." : st.label}
