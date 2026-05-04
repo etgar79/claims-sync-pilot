@@ -92,7 +92,16 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
 
   const handleSelect = async (service: TranscriptionService) => {
     setLoading(service);
+    const toastId = `transcribe-${recordingId}`;
+    const selectedLabel = SERVICES.find((s) => s.id === service)?.name ?? "תמלול";
     try {
+      toast.loading(`מתחיל ${selectedLabel}...`, { id: toastId });
+      const { error: statusError } = await supabase
+        .from(table)
+        .update({ transcript_status: "processing" })
+        .eq("id", recordingId);
+      if (statusError) throw statusError;
+
       let file: File | undefined = audioFile;
 
       // If we only have a Drive URL, fetch the file via authenticated edge function
@@ -100,6 +109,7 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
       const driveFileId = driveMatch ? (driveMatch[1] || driveMatch[2]) : null;
 
       if (!file && driveFileId) {
+        toast.loading("מוריד את קובץ האודיו...", { id: toastId });
         const { data: sess } = await supabase.auth.getSession();
         const token = sess.session?.access_token;
         if (!token) throw new Error("נדרשת התחברות");
@@ -123,6 +133,7 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
       }
       if (!file) throw new Error("לא נמצא קובץ אודיו לתמלול");
 
+      toast.loading("שולח לתמלול...", { id: toastId });
       const clientDuration = await getAudioDuration(file);
 
       const fd = new FormData();
@@ -168,14 +179,18 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
 
       const label = SERVICES.find((s) => s.id === usedService)?.name ?? "תמלול חלופי";
       if (data.fallback_used) {
-        toast.warning(`השירות שנבחר לא היה זמין - בוצע תמלול חלופי (${label})`);
+        toast.warning(`השירות שנבחר לא היה זמין - בוצע תמלול חלופי (${label})`, { id: toastId });
       } else {
-        toast.success(`התמלול הושלם בהצלחה (${label})`);
+        toast.success(`התמלול הושלם בהצלחה (${label})`, { id: toastId });
       }
       onCompleted?.(data.transcript, usedService);
       setOpen(false);
     } catch (e: any) {
-      toast.error(e?.message || "שגיאה בתמלול");
+      await supabase
+        .from(table)
+        .update({ transcript_status: "failed" })
+        .eq("id", recordingId);
+      toast.error(e?.message || "שגיאה בתמלול", { id: toastId });
     } finally {
       setLoading(null);
     }
