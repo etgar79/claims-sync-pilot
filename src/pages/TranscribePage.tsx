@@ -94,30 +94,34 @@ const TranscribePage = () => {
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        const { error } = await supabase.from("recordings").insert({
-          user_id: auth.user.id,
-          filename: file.name,
-          source: "manual_upload",
-          transcript_status: "pending",
-        } as any);
-        if (error) {
-          toast.error(error.message);
-          continue;
-        }
-        // Convert to base64 and upload to Drive (best-effort)
+        let driveOk = false;
         try {
           const b64 = await blobToBase64(file);
-          await supabase.functions.invoke("upload-recording", {
+          const res = await supabase.functions.invoke("upload-recording", {
             body: {
               workspace: "appraiser",
               filename: file.name,
               mimeType: file.type || "audio/webm",
-              base64: b64,
+              dataBase64: b64,
               purpose: "recordings",
             },
           });
+          if (!res.error && !(res.data as any)?.error) driveOk = true;
         } catch (e) {
           console.warn("Drive upload failed (non-fatal)", e);
+        }
+        if (!driveOk) {
+          // Fallback — at least save metadata so user can transcribe later
+          const { error } = await supabase.from("recordings").insert({
+            user_id: auth.user.id,
+            filename: file.name,
+            source: "manual_upload",
+            transcript_status: "pending",
+          } as any);
+          if (error) {
+            toast.error(error.message);
+            continue;
+          }
         }
       }
       toast.success("הקובץ נוסף — תוכל לתמלל אותו עכשיו");
