@@ -67,26 +67,64 @@ Deno.serve(async (req) => {
   try {
     const userId = await authedUser(req);
     const admin = adminSupabase();
-    const body = (await req.json()) as Payload;
 
-    if (!body || (body.workspace !== "appraiser" && body.workspace !== "architect")) {
+    // Accept multipart/form-data (preferred) or JSON.
+    const contentType = req.headers.get("content-type") || "";
+    let workspace: "appraiser" | "architect";
+    let filename = "";
+    let mimeType = "";
+    let durationSeconds: number | undefined;
+    let purposeIn: string | undefined;
+    let bytes: Uint8Array;
+
+    if (contentType.includes("multipart/form-data")) {
+      const form = await req.formData();
+      const file = form.get("file");
+      if (!(file instanceof File)) {
+        return new Response(JSON.stringify({ error: "missing file" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      workspace = String(form.get("workspace") || "") as any;
+      filename = String(form.get("filename") || file.name || "audio");
+      mimeType = String(form.get("mimeType") || file.type || "audio/webm");
+      const dur = form.get("durationSeconds");
+      durationSeconds = dur ? Number(dur) : undefined;
+      purposeIn = (form.get("purpose") as string) || undefined;
+      bytes = new Uint8Array(await file.arrayBuffer());
+    } else {
+      const body = (await req.json()) as Payload;
+      workspace = body?.workspace;
+      filename = body?.filename;
+      mimeType = body?.mimeType;
+      durationSeconds = body?.durationSeconds;
+      purposeIn = body?.purpose;
+      if (!body?.dataBase64) {
+        return new Response(JSON.stringify({ error: "חסרים filename / mimeType / dataBase64" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      bytes = decodeBase64(body.dataBase64);
+    }
+
+    if (workspace !== "appraiser" && workspace !== "architect") {
       return new Response(JSON.stringify({ error: "workspace חייב להיות appraiser או architect" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!body.filename || !body.mimeType || !body.dataBase64) {
-      return new Response(JSON.stringify({ error: "חסרים filename / mimeType / dataBase64" }), {
+    if (!filename || !mimeType) {
+      return new Response(JSON.stringify({ error: "חסרים filename / mimeType" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Resolve user's parent folder for this workspace + purpose
-    const purpose: "recordings" | "calls" = body.purpose === "calls" ? "calls" : "recordings";
+    const purpose: "recordings" | "calls" = purposeIn === "calls" ? "calls" : "recordings";
     let folderTypes: string[];
     if (purpose === "calls") {
-      folderTypes = body.workspace === "appraiser" ? ["appraiser_calls"] : ["architect_calls"];
+      folderTypes = workspace === "appraiser" ? ["appraiser_calls"] : ["architect_calls"];
     } else {
-      folderTypes = body.workspace === "architect"
+      folderTypes = workspace === "architect"
         ? ["architect_recordings", "architect_meetings"]
         : ["appraiser_recordings"];
     }
@@ -110,17 +148,16 @@ Deno.serve(async (req) => {
     }
 
     const { accessToken } = await getValidGoogleToken(admin, userId);
-    const bytes = decodeBase64(body.dataBase64);
-    const uploaded = await uploadToDrive(accessToken, folder.folder_id, body.filename, body.mimeType, bytes);
+    const uploaded = await uploadToDrive(accessToken, folder.folder_id, filename, mimeType, bytes);
 
     const driveUrl = uploaded.webViewLink || `https://drive.google.com/file/d/${uploaded.id}/view`;
-    const duration = fmtDuration(body.durationSeconds);
+    const duration = fmtDuration(durationSeconds);
 
     // Insert recording row into the right table
-    const tableName = body.workspace === "appraiser" ? "recordings" : "meeting_recordings";
+    const tableName = workspace === "appraiser" ? "recordings" : "meeting_recordings";
     const insertRow: any = {
       user_id: userId,
-      filename: body.filename,
+      filename,
       drive_url: driveUrl,
       drive_file_id: uploaded.id,
       source: purpose === "calls" ? "phone_call" : "manual_upload",

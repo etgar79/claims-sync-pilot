@@ -132,24 +132,26 @@ export function RecordCallButton({ workspace, onCreated, size = "sm", purpose = 
   const uploadBlob = async (blob: Blob, durationSeconds: number, filename: string) => {
     setUploading(true);
     try {
-      const dataBase64 = await blobToBase64(blob);
-      const { data, error } = await supabase.functions.invoke("upload-recording", {
-        body: {
-          workspace,
-          filename,
-          mimeType: blob.type || "audio/webm",
-          dataBase64,
-          durationSeconds,
-          purpose,
-        },
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("נדרשת התחברות");
+      const fd = new FormData();
+      fd.append("file", blob, filename);
+      fd.append("workspace", workspace);
+      fd.append("filename", filename);
+      fd.append("mimeType", blob.type || "audio/webm");
+      fd.append("durationSeconds", String(durationSeconds));
+      if (purpose) fd.append("purpose", purpose);
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-recording`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
       });
-      if (error) {
-        const ctx: any = (error as any).context;
-        let msg = error.message;
-        if (ctx?.json) {
-          try { const b = await ctx.json(); msg = b?.message || b?.error || msg; } catch {}
-        }
-        throw new Error(msg);
+      const text = await res.text();
+      if (!res.ok) {
+        let msg = text;
+        try { const j = JSON.parse(text); msg = j.message || j.error || text; } catch {}
+        throw new Error(msg || `שגיאה ${res.status}`);
       }
       toast.success("ההקלטה נשמרה ונשלחה ל-Drive");
       onCreated?.();
