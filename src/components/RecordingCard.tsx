@@ -1,14 +1,17 @@
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Mic, Loader2, Clock, AlertCircle, CheckCircle2, Cloud,
-  Eye, Download, FileDown, Pencil, Sparkles, Zap, Tag, ExternalLink, Copy, RefreshCw,
+  Eye, Download, FileDown, Pencil, Sparkles, Zap, Tag, ExternalLink, Copy, RefreshCw, Check, X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { exportTranscriptToPdf, downloadTranscriptTxt } from "@/lib/exportTranscriptPdf";
 
 const STATUS = {
