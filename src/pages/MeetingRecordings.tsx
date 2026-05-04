@@ -53,7 +53,7 @@ const MeetingRecordings = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("meeting_recordings")
-      .select("id, filename, duration, recorded_at, transcript_status, transcript, drive_url, meeting_id, source, tags")
+      .select("id, filename, duration, recorded_at, transcript_status, transcript, drive_url, drive_file_id, meeting_id, source, tags")
       .order("recorded_at", { ascending: false });
     if (error) {
       toast.error(error.message);
