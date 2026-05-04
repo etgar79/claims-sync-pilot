@@ -87,9 +87,21 @@ export function useTranscribeAll() {
 
   const runAll = async (opts: RunAllOptions): Promise<boolean> => {
     const { recordingId, audioFile, audioUrl, table = "meeting_recordings", context, onProgress, onCompleted } = opts;
+    const toastId = `transcribe-all-${recordingId}`;
+    const setProgress = (status: string) => {
+      onProgress?.(status);
+      toast.loading(status, { id: toastId });
+    };
 
     setRunning(recordingId);
     try {
+      setProgress("מתחיל תמלול...");
+      const { error: statusError } = await supabase
+        .from(table)
+        .update({ transcript_status: "processing" })
+        .eq("id", recordingId);
+      if (statusError) throw statusError;
+
       // Resolve file
       let file: File | undefined = audioFile;
 
@@ -131,7 +143,7 @@ export function useTranscribeAll() {
       const failures: { service: string; error: string }[] = [];
 
       for (const svc of SERVICES) {
-        onProgress?.(`מתמלל עם ${SERVICE_NAMES[svc]}...`);
+        setProgress(`מתמלל עם ${SERVICE_NAMES[svc]}...`);
         try {
           const text = await runOne({ service: svc, file, recordingId, userId: user.id, duration });
           if (text?.trim()) versions.push({ service: svc, text });
@@ -162,13 +174,13 @@ export function useTranscribeAll() {
             transcription_service: single.service,
           })
           .eq("id", recordingId);
-        toast.success(`תמלול הושלם (רק ${SERVICE_NAMES[single.service as TranscriptionService]} הצליח)`);
+        toast.success(`תמלול הושלם (רק ${SERVICE_NAMES[single.service as TranscriptionService]} הצליח)`, { id: toastId });
         onCompleted?.();
         return true;
       }
 
       // Merge with the configured AI engine
-      onProgress?.("ממזג את כל הגרסאות עם AI...");
+      setProgress("ממזג את כל הגרסאות עם AI...");
       const mergeRes = await supabase.functions.invoke("merge-transcripts", {
         body: { versions, language: "he", context },
       });
@@ -195,11 +207,15 @@ export function useTranscribeAll() {
         })
         .eq("id", recordingId);
 
-      toast.success(`תמלול הושלם בהצלחה! (${versions.length} מנועים + מיזוג AI)`);
+      toast.success(`תמלול הושלם בהצלחה! (${versions.length} מנועים + מיזוג AI)`, { id: toastId });
       onCompleted?.();
       return true;
     } catch (e: any) {
-      toast.error(e?.message || "שגיאה בתמלול");
+      await supabase
+        .from(table)
+        .update({ transcript_status: "failed" })
+        .eq("id", recordingId);
+      toast.error(e?.message || "שגיאה בתמלול", { id: toastId });
       return false;
     } finally {
       setRunning(null);
