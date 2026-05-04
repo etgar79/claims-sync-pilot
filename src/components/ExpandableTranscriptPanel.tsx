@@ -647,6 +647,30 @@ export function ExpandableTranscriptPanel({
                       </div>
                     )}
 
+                    <div className="space-y-2 rounded-lg border border-dashed bg-muted/20 p-2.5">
+                      <div className="text-[11px] font-medium text-muted-foreground">החלפה ידנית מהירה — גם אחרי ששינית פעם, אפשר להחליף שוב</div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={manualFrom}
+                          onChange={(e) => setManualFrom(e.target.value)}
+                          placeholder="שם נוכחי בתמלול (למשל משה)"
+                          className="h-8"
+                        />
+                        <span className="text-xs text-muted-foreground">←</span>
+                        <Input
+                          value={manualTo}
+                          onChange={(e) => setManualTo(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void manualReplace(); } }}
+                          placeholder="שם חדש"
+                          className="h-8"
+                        />
+                        <Button size="sm" className="h-8 shrink-0 gap-1" onClick={() => void manualReplace()} disabled={!manualFrom.trim()}>
+                          <Check className="h-3.5 w-3.5" />
+                          החלף ושמור
+                        </Button>
+                      </div>
+                    </div>
+
                     <div className="space-y-2 border-t pt-3">
                       <div className="text-[11px] text-muted-foreground">החלפות טקסט מהירות (חיפוש והחלפה כללי)</div>
                       {keywordPairs.map((pair, index) => (
