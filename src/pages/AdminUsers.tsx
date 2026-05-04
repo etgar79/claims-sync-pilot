@@ -39,6 +39,7 @@ const ROLE_META: Record<AppRole, { label: string; icon: any; cls: string }> = {
   appraiser: { label: "שמאי", icon: Briefcase, cls: "bg-blue-500/10 text-blue-700 border-blue-500/30" },
   architect: { label: "אדריכל", icon: Building2, cls: "bg-purple-500/10 text-purple-700 border-purple-500/30" },
   admin: { label: "מנהל", icon: Shield, cls: "bg-amber-500/10 text-amber-700 border-amber-500/30" },
+  transcriber: { label: "תמלול", icon: Mic, cls: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30" },
 };
 
 const AdminUsers = () => {

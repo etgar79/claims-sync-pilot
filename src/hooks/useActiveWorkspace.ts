@@ -1,14 +1,14 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useUserRoles } from "@/hooks/useUserRoles";
 
-export type Workspace = "appraiser" | "architect" | "admin";
+export type Workspace = "appraiser" | "architect" | "admin" | "transcriber";
 
 const STORAGE_KEY = "active_workspace";
 
 function readStored(): Workspace | null {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "appraiser" || v === "architect" || v === "admin") return v;
+    if (v === "appraiser" || v === "architect" || v === "admin" || v === "transcriber") return v;
   } catch {}
   return null;
 }
@@ -22,10 +22,11 @@ export function useActiveWorkspace() {
     if (loading) return [];
     const list: Workspace[] = [];
     if (isAdmin) {
-      list.push("admin", "appraiser", "architect");
+      list.push("admin", "appraiser", "architect", "transcriber");
     } else {
       if (roles.includes("appraiser")) list.push("appraiser");
       if (roles.includes("architect")) list.push("architect");
+      if (roles.includes("transcriber")) list.push("transcriber");
     }
     return list;
   }, [loading, isAdmin, roles]);

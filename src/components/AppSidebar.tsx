@@ -81,6 +81,12 @@ export function AppSidebar() {
       { title: "לקוחות / פרויקטים", url: "/clients", icon: Users },
       { title: "תבניות סיכום פגישה", url: "/meeting-templates", icon: ClipboardList },
     ];
+  } else if (workspace === "transcriber") {
+    mainLabel = "מערכת תמלול";
+    mainItems = [
+      { title: "הקלטות שלי", url: "/transcribe", icon: Mic },
+      { title: "תמלולים", url: "/transcripts", icon: FileText },
+    ];
   } else if (workspace === "admin") {
     mainLabel = "סקירה כללית";
     mainItems = [

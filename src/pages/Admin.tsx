@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2, Shield, UserCog, Building2, Briefcase, Plus, Trash2 } from "lucide-react";
+import { Loader2, Shield, UserCog, Building2, Briefcase, Plus, Trash2, Mic } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserRoles, type AppRole } from "@/hooks/useUserRoles";
@@ -25,6 +25,7 @@ const ROLE_META: Record<AppRole, { label: string; icon: any }> = {
   appraiser: { label: "שמאי", icon: Briefcase },
   architect: { label: "אדריכל", icon: Building2 },
   admin: { label: "מנהל", icon: Shield },
+  transcriber: { label: "תמלול", icon: Mic },
 };
 
 const Admin = () => {

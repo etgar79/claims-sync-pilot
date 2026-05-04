@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type AppRole = "appraiser" | "architect" | "admin";
+export type AppRole = "appraiser" | "architect" | "admin" | "transcriber";
 
 export function useUserRoles() {
   const [roles, setRoles] = useState<AppRole[]>([]);
@@ -57,6 +57,7 @@ export function useUserRoles() {
   // but UI like Settings folder pickers and seed data must follow the explicit role only.
   const isAppraiser = roles.includes("appraiser");
   const isArchitect = roles.includes("architect");
+  const isTranscriber = roles.includes("transcriber");
 
   return {
     roles,
@@ -65,6 +66,7 @@ export function useUserRoles() {
     email,
     isAppraiser,
     isArchitect,
+    isTranscriber,
     isAdmin,
     reload: load,
   };
