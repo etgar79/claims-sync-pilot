@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Mic, Loader2, Clock, AlertCircle, CheckCircle2, Cloud,
-  Eye, Download, FileDown, Pencil, Sparkles, Zap, Tag, ExternalLink, Copy, RefreshCw, Check, X,
+  Eye, Download, FileDown, Pencil, Sparkles, Zap, Tag, ExternalLink, Copy, RefreshCw, Check, X, CloudUpload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,6 +69,32 @@ export function RecordingCard({
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(r.filename);
   const [renaming, setRenaming] = useState(false);
+  const [savingTranscript, setSavingTranscript] = useState(false);
+
+  const saveTranscriptToDrive = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!r.transcript) return;
+    setSavingTranscript(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("save-transcript-to-drive", {
+        body: { recordingId: r.id, workspace },
+      });
+      if (error || (data as any)?.error) {
+        throw new Error((data as any)?.message || (data as any)?.error || error?.message);
+      }
+      const ctx = (data as any)?.context ? ` (${(data as any).context})` : "";
+      toast.success(`התמלול נשמר ל-Drive${ctx}`, {
+        action: (data as any)?.drive_url ? {
+          label: "פתח",
+          onClick: () => window.open((data as any).drive_url, "_blank"),
+        } : undefined,
+      });
+    } catch (err: any) {
+      toast.error("שמירה ל-Drive נכשלה", { description: err?.message });
+    } finally {
+      setSavingTranscript(false);
+    }
+  };
 
   const startRename = (e: React.MouseEvent) => {
     e.stopPropagation();
