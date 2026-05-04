@@ -56,6 +56,7 @@ export interface ExpandableTranscriptItem {
   transcriptStatus: string;
   transcriptionService?: string | null;
   audioUrl?: string | null;
+  driveFileId?: string | null;
   context?: string | null;
   client?: string | null;
   assignLabel?: string;
