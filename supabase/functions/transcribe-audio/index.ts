@@ -24,6 +24,7 @@ const COST_PER_SECOND_USD: Record<Service, number> = {
 };
 
 async function transcribeWhisper(file: File): Promise<{ text: string; duration?: number }> {
+  if (file.size > 25 * 1024 * 1024) throw new Error(`Whisper לא תומך בקבצים מעל 25MB (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
   if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
   const fd = new FormData();
   fd.append("file", file);
