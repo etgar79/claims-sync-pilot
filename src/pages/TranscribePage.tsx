@@ -175,29 +175,13 @@ const TranscribePage = () => {
       setUploading(false);
       return;
     }
-    try {
-      const b64 = await blobToBase64(blob);
-      const res = await supabase.functions.invoke("upload-transcriber-file", {
-        body: {
-          filename,
-          mimeType: "audio/webm",
-          dataBase64: b64,
-          bucket: "recordings",
-          createRecordingRow: true,
-          durationSeconds: seconds,
-        },
-      });
-      const errMsg = res.error?.message || (res.data as any)?.error;
-      if (errMsg) {
-        toast.error("העלאה נכשלה", { description: (res.data as any)?.message || errMsg });
-        setUploading(false);
-        return;
-      }
-    } catch (e: any) {
-      toast.error("שגיאה בהעלאה", { description: e?.message });
+    const r = await uploadFile(blob, filename, "audio/webm", seconds);
+    if (!r.ok) {
+      toast.error("העלאה נכשלה", { description: r.error });
       setUploading(false);
       return;
     }
+
     toast.success("ההקלטה נוספה");
     setRecOpen(false);
     setUploading(false);
