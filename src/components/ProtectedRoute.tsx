@@ -19,7 +19,7 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, allow }: ProtectedRouteProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const { loading: rolesLoading, isAdmin, isAppraiser, isArchitect } = useUserRoles();
+  const { loading: rolesLoading, isAdmin, isAppraiser, isArchitect, isTranscriber } = useUserRoles();
   const { workspace, loading: wsLoading } = useActiveWorkspace();
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export function ProtectedRoute({ children, allow }: ProtectedRouteProps) {
       admin: isAdmin,
       appraiser: isAppraiser,
       architect: isArchitect,
-      transcriber: false,
+      transcriber: isTranscriber,
     };
     // Explicit role match (no admin auto-grant)
     let hasAccess = allow.some((r) => explicit[r]);

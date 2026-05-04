@@ -1,4 +1,4 @@
-import { Briefcase, Building2, Shield, Check, ArrowLeft } from "lucide-react";
+import { Briefcase, Building2, Shield, Check, ArrowLeft, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ const META: Record<Workspace, { label: string; icon: any }> = {
   appraiser: { label: "מערכת שמאות", icon: Briefcase },
   architect: { label: "מערכת ניהול פגישות", icon: Building2 },
   admin: { label: "ניהול מערכת", icon: Shield },
+  transcriber: { label: "מערכת תמלול", icon: Mic },
 };
 
 export function WorkspaceSwitcher({ collapsed = false }: { collapsed?: boolean }) {
