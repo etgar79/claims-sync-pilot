@@ -176,7 +176,7 @@ export function useTranscribeAll() {
       for (const svc of SERVICES) {
         setProgress(`מתמלל עם ${SERVICE_NAMES[svc]}...`);
         try {
-          const text = await runOne({ service: svc, file, recordingId, userId: user.id, duration });
+          const text = await runOne({ service: svc, file, recordingId, userId: user.id, duration, onProgress: setProgress });
           if (text?.trim()) versions.push({ service: svc, text });
         } catch (e: any) {
           console.error(`Service ${svc} failed:`, e);
