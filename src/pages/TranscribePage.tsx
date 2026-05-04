@@ -4,11 +4,16 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Headphones, Mic, Upload, Loader2, FileText, Eye, Trash2, Square, Pause, Play, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import {
+  Headphones, Mic, Upload, Loader2, FileText, Trash2, Square, Pause, Play,
+  CheckCircle2, Clock, AlertCircle, ChevronDown, ChevronUp, Sparkles, Eye,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
-import { TranscriptViewerDialog } from "@/components/TranscriptViewerDialog";
+import { ExpandableTranscriptPanel } from "@/components/ExpandableTranscriptPanel";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { serviceLabel } from "@/lib/serviceLabels";
 
 interface Row {
   id: string;
@@ -19,6 +24,7 @@ interface Row {
   transcript_status: string;
   transcription_service: string | null;
   drive_url: string | null;
+  drive_file_id: string | null;
 }
 
 const STATUS_META: Record<string, { label: string; icon: any; cls: string }> = {
@@ -65,11 +71,14 @@ async function uploadFile(file: Blob, filename: string, mimeType: string, durati
 
 
 const TranscribePage = () => {
+  const { displayName, email } = useUserRoles();
+  const userLabel = displayName || (email ? email.split("@")[0] : "");
+
   const [items, setItems] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [transcribeTarget, setTranscribeTarget] = useState<Row | null>(null);
-  const [viewTarget, setViewTarget] = useState<Row | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Recording state
   const [recOpen, setRecOpen] = useState(false);
@@ -86,7 +95,7 @@ const TranscribePage = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("recordings")
-      .select("id, filename, duration, recorded_at, transcript, transcript_status, transcription_service, drive_url")
+      .select("id, filename, duration, recorded_at, transcript, transcript_status, transcription_service, drive_url, drive_file_id")
       .order("recorded_at", { ascending: false });
     if (error) {
       toast.error(error.message);
@@ -194,6 +203,7 @@ const TranscribePage = () => {
     const { error } = await supabase.from("recordings").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("נמחק");
+    if (expandedId === id) setExpandedId(null);
     load();
   };
 
@@ -205,7 +215,14 @@ const TranscribePage = () => {
           <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-3 shrink-0">
             <SidebarTrigger />
             <Headphones className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-semibold">תמלול</h1>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-semibold leading-tight truncate">תמלול</h1>
+              {userLabel && (
+                <p className="text-[11px] text-muted-foreground leading-tight truncate">
+                  המתמלל: {userLabel}
+                </p>
+              )}
+            </div>
           </header>
 
           <div className="flex-1 p-6 space-y-6 overflow-auto max-w-5xl mx-auto w-full">
@@ -257,39 +274,80 @@ const TranscribePage = () => {
                 items.map((r) => {
                   const meta = STATUS_META[r.transcript_status] ?? STATUS_META.pending;
                   const Icon = meta.icon;
+                  const isOpen = expandedId === r.id;
                   return (
-                    <Card key={r.id} className="p-3 flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <Mic className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{r.filename}</div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                          <span>{new Date(r.recorded_at).toLocaleString("he-IL")}</span>
-                          {r.duration && <span>• {r.duration}</span>}
-                          <Badge variant="outline" className={`gap-1 text-[10px] h-5 ${meta.cls}`}>
-                            <Icon className={`h-3 w-3 ${r.transcript_status === "processing" ? "animate-spin" : ""}`} />
-                            {meta.label}
-                          </Badge>
+                    <div key={r.id}>
+                      <Card className="p-3 flex items-center gap-3">
+                        <button
+                          type="button"
+                          className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 hover:bg-primary/20 transition-colors"
+                          onClick={() => setExpandedId((prev) => (prev === r.id ? null : r.id))}
+                          title={isOpen ? "סגור" : "פתח עריכה חכמה"}
+                        >
+                          {isOpen ? <ChevronUp className="h-4 w-4 text-primary" /> : <Mic className="h-4 w-4 text-primary" />}
+                        </button>
+                        <button
+                          type="button"
+                          className="flex-1 min-w-0 text-right"
+                          onClick={() => setExpandedId((prev) => (prev === r.id ? null : r.id))}
+                        >
+                          <div className="font-medium text-sm truncate">{r.filename}</div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5 flex-wrap">
+                            <span>{new Date(r.recorded_at).toLocaleString("he-IL")}</span>
+                            {r.duration && <span>• {r.duration}</span>}
+                            <Badge variant="outline" className={`gap-1 text-[10px] h-5 ${meta.cls}`}>
+                              <Icon className={`h-3 w-3 ${r.transcript_status === "processing" ? "animate-spin" : ""}`} />
+                              {meta.label}
+                            </Badge>
+                            {r.transcription_service && (
+                              <Badge variant="outline" className="gap-1 text-[10px] h-5">
+                                <Sparkles className="h-3 w-3" />
+                                {serviceLabel(r.transcription_service)}
+                              </Badge>
+                            )}
+                          </div>
+                        </button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {r.transcript ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setExpandedId((prev) => (prev === r.id ? null : r.id))}
+                            >
+                              {isOpen ? <ChevronUp className="h-3.5 w-3.5 ml-1" /> : <Eye className="h-3.5 w-3.5 ml-1" />}
+                              {isOpen ? "סגור" : "פתח"}
+                            </Button>
+                          ) : (
+                            <Button size="sm" onClick={() => setTranscribeTarget(r)}>
+                              <FileText className="h-3.5 w-3.5 ml-1" />
+                              תמלל
+                            </Button>
+                          )}
+                          <Button size="icon" variant="ghost" onClick={() => handleDelete(r.id)} title="מחק">
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {r.transcript ? (
-                          <Button size="sm" variant="outline" onClick={() => setViewTarget(r)}>
-                            <Eye className="h-3.5 w-3.5 ml-1" />
-                            צפייה
-                          </Button>
-                        ) : (
-                          <Button size="sm" onClick={() => setTranscribeTarget(r)}>
-                            <FileText className="h-3.5 w-3.5 ml-1" />
-                            תמלל
-                          </Button>
-                        )}
-                        <Button size="icon" variant="ghost" onClick={() => handleDelete(r.id)} title="מחק">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </Card>
+                      </Card>
+                      <ExpandableTranscriptPanel
+                        open={isOpen}
+                        mode="edit"
+                        item={{
+                          id: r.id,
+                          table: "recordings",
+                          filename: r.filename,
+                          recordedAt: r.recorded_at,
+                          duration: r.duration,
+                          transcript: r.transcript,
+                          transcriptStatus: r.transcript_status,
+                          transcriptionService: r.transcription_service,
+                          audioUrl: r.drive_url,
+                          driveFileId: r.drive_file_id,
+                        }}
+                        onToggle={() => setExpandedId((prev) => (prev === r.id ? null : r.id))}
+                        onQuickTranscribe={() => setTranscribeTarget(r)}
+                        onUpdated={load}
+                      />
+                    </div>
                   );
                 })
               )}
@@ -346,22 +404,6 @@ const TranscribePage = () => {
           open={!!transcribeTarget}
           onOpenChange={(o) => !o && setTranscribeTarget(null)}
           onCompleted={() => { setTranscribeTarget(null); load(); }}
-        />
-      )}
-
-      {viewTarget && (
-        <TranscriptViewerDialog
-          open={!!viewTarget}
-          onOpenChange={(o) => !o && setViewTarget(null)}
-          recordingId={viewTarget.id}
-          table="recordings"
-          filename={viewTarget.filename}
-          recordedAt={viewTarget.recorded_at}
-          audioUrl={viewTarget.drive_url}
-          transcript={viewTarget.transcript}
-          transcriptionService={viewTarget.transcription_service}
-          defaultTab="view"
-          onUpdated={load}
         />
       )}
     </SidebarProvider>
