@@ -111,26 +111,8 @@ const TranscribePage = () => {
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        try {
-          const b64 = await blobToBase64(file);
-          const res = await supabase.functions.invoke("upload-transcriber-file", {
-            body: {
-              filename: file.name,
-              mimeType: file.type || "audio/webm",
-              dataBase64: b64,
-              bucket: "recordings",
-              createRecordingRow: true,
-            },
-          });
-          const errMsg = res.error?.message || (res.data as any)?.error;
-          if (errMsg) {
-            toast.error("העלאה נכשלה", { description: (res.data as any)?.message || errMsg });
-            continue;
-          }
-        } catch (e: any) {
-          toast.error("שגיאה בהעלאה", { description: e?.message });
-          continue;
-        }
+        const r = await uploadFile(file, file.name, file.type || "audio/webm");
+        if (!r.ok) toast.error("העלאה נכשלה", { description: r.error });
       }
       toast.success("הקובץ נוסף — תוכל לתמלל אותו עכשיו");
       await load();
