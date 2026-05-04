@@ -457,6 +457,36 @@ export function ExpandableTranscriptPanel({
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div className="min-w-0 space-y-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                {editingName ? (
+                  <>
+                    <Input
+                      value={filenameDraft}
+                      onChange={(e) => setFilenameDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); void renameFile(); }
+                        if (e.key === "Escape") { setEditingName(false); setFilenameDraft(item.filename); }
+                      }}
+                      autoFocus
+                      className="h-7 text-sm"
+                    />
+                    <Button size="sm" className="h-7 gap-1" disabled={renaming} onClick={() => void renameFile()}>
+                      {renaming ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                      שמור
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7" onClick={() => { setEditingName(false); setFilenameDraft(item.filename); }}>
+                      ביטול
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="truncate text-sm font-semibold" title={item.filename}>{item.filename}</span>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => setEditingName(true)} title="שנה שם קובץ">
+                      <PencilLine className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )}
+              </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className={`text-[10px] py-0 h-5 ${statusTone}`}>
                   {item.transcriptStatus === "processing" || running === item.id ? (
