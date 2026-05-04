@@ -205,8 +205,14 @@ Deno.serve(async (req) => {
       ivrit_ai: () => transcribeIvritAi(file),
       lovable_ai: () => transcribeLovableAi(file),
     };
+    // For large files, prioritize ElevenLabs (supports up to ~1GB) over engines
+    // that hard-fail on size (Whisper >25MB, Lovable AI/Gemini >20MB, ivrit.ai ~25MB).
+    const isLarge = file.size > 20 * 1024 * 1024;
+    const fallbackOrder: Service[] = isLarge
+      ? ["elevenlabs", "lovable_ai", "ivrit_ai", "whisper"]
+      : ["lovable_ai", "ivrit_ai", "whisper", "elevenlabs"];
     const order: Service[] = [service];
-    for (const s of ["lovable_ai", "ivrit_ai", "whisper", "elevenlabs"] as Service[]) {
+    for (const s of fallbackOrder) {
       if (!order.includes(s)) order.push(s);
     }
 
