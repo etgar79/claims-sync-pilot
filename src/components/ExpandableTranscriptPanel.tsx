@@ -336,7 +336,55 @@ export function ExpandableTranscriptPanel({
     });
   };
 
-  const copyText = async () => {
+  const manualReplace = async () => {
+    const from = manualFrom.trim();
+    const to = manualTo.trim();
+    if (!from) { toast.info("יש להזין שם/טקסט להחלפה"); return; }
+    if (from === to) { toast.info("השם זהה"); return; }
+    const re = new RegExp(escapeRegExp(from), "g");
+    const next = edited.replace(re, to);
+    if (next === edited) { toast.info("לא נמצאו מופעים"); return; }
+    await applyAndSave(next, `הוחלף "${from}" → "${to}" בכל התמלול ונשמר`);
+    setManualFrom("");
+    setManualTo("");
+  };
+
+  const renameFile = async () => {
+    const newName = filenameDraft.trim();
+    if (!newName) { toast.info("שם הקובץ לא יכול להיות ריק"); return; }
+    if (newName === item.filename) { setEditingName(false); return; }
+    setRenaming(true);
+    try {
+      const { error } = await supabase
+        .from(item.table)
+        .update({ filename: newName })
+        .eq("id", item.id);
+      if (error) throw error;
+      let driveWarning = false;
+      if (item.driveFileId) {
+        try {
+          const { data: sess } = await supabase.auth.getSession();
+          const token = sess.session?.access_token;
+          if (token) {
+            const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-drive-api`;
+            const res = await fetch(url, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "rename_file", fileId: item.driveFileId, newName }),
+            });
+            if (!res.ok) driveWarning = true;
+          }
+        } catch { driveWarning = true; }
+      }
+      toast.success(driveWarning ? "השם עודכן במערכת (לא ב-Drive)" : "שם הקובץ עודכן");
+      setEditingName(false);
+      onUpdated?.();
+    } catch (e: any) {
+      toast.error("שגיאה בשינוי שם", { description: e?.message });
+    } finally {
+      setRenaming(false);
+    }
+  };
     try {
       await navigator.clipboard.writeText(edited);
       toast.success("הועתק ללוח");
