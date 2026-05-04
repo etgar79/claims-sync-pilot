@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserRoles, type AppRole } from "@/hooks/useUserRoles";
 import { Navigate } from "react-router-dom";
+import { TranscriberRootFolderPicker } from "@/components/TranscriberRootFolderPicker";
 
 interface UserWithRoles {
   user_id: string;
