@@ -190,6 +190,7 @@ const Admin = () => {
           </header>
 
           <div className="flex-1 p-6 space-y-4">
+            <TranscriberRootFolderPicker />
             {!loading && users.some((u) => u.roles.length === 0) && (
               <Card className="p-3 border-warning/40 bg-warning/5 text-sm">
                 ⚠️ יש משתמשים ללא תפקיד מוגדר — הם רואים מסך "לא הוגדר תפקיד" ואינם יכולים להשתמש במערכת. הקצה להם תפקיד למטה.
