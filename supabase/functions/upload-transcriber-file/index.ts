@@ -111,14 +111,47 @@ Deno.serve(async (req) => {
   try {
     const userId = await authedUser(req);
     const admin = adminSupabase();
-    const body = (await req.json()) as Payload;
 
-    if (!body?.filename || !body?.mimeType || !body?.dataBase64 || !body?.bucket) {
-      return new Response(JSON.stringify({ error: "חסרים filename / mimeType / dataBase64 / bucket" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Accept either multipart/form-data (preferred, no base64 overhead) or JSON.
+    const contentType = req.headers.get("content-type") || "";
+    let filename = "";
+    let mimeType = "";
+    let bucket: Bucket = "recordings";
+    let durationSeconds: number | undefined;
+    let createRecordingRow = false;
+    let bytes: Uint8Array;
+
+    if (contentType.includes("multipart/form-data")) {
+      const form = await req.formData();
+      const file = form.get("file");
+      if (!(file instanceof File)) {
+        return new Response(JSON.stringify({ error: "missing file" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      filename = String(form.get("filename") || file.name || "audio");
+      mimeType = String(form.get("mimeType") || file.type || "application/octet-stream");
+      bucket = (String(form.get("bucket") || "recordings")) as Bucket;
+      const dur = form.get("durationSeconds");
+      durationSeconds = dur ? Number(dur) : undefined;
+      createRecordingRow = String(form.get("createRecordingRow") || "") === "true";
+      bytes = new Uint8Array(await file.arrayBuffer());
+    } else {
+      const body = (await req.json()) as Payload;
+      if (!body?.filename || !body?.mimeType || !body?.dataBase64 || !body?.bucket) {
+        return new Response(JSON.stringify({ error: "חסרים filename / mimeType / dataBase64 / bucket" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      filename = body.filename;
+      mimeType = body.mimeType;
+      bucket = body.bucket;
+      durationSeconds = body.durationSeconds;
+      createRecordingRow = !!body.createRecordingRow;
+      bytes = decodeBase64(body.dataBase64);
     }
-    if (!["recordings", "chunks", "transcripts"].includes(body.bucket)) {
+
+    if (!["recordings", "chunks", "transcripts"].includes(bucket)) {
       return new Response(JSON.stringify({ error: "bucket לא חוקי" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -151,22 +184,21 @@ Deno.serve(async (req) => {
 
     // 4. Find/create {root}/{user}/{bucket}
     const userFolderId = await findOrCreateFolder(accessToken, root.folder_id, userFolderName);
-    const bucketFolderId = await findOrCreateFolder(accessToken, userFolderId, body.bucket);
+    const bucketFolderId = await findOrCreateFolder(accessToken, userFolderId, bucket);
 
     // 5. Upload the file
-    const bytes = decodeBase64(body.dataBase64);
-    const uploaded = await uploadToDrive(accessToken, bucketFolderId, body.filename, body.mimeType, bytes);
+    const uploaded = await uploadToDrive(accessToken, bucketFolderId, filename, mimeType, bytes);
     const driveUrl = uploaded.webViewLink || `https://drive.google.com/file/d/${uploaded.id}/view`;
 
     // 6. Optionally create a recordings row (for original-recording uploads)
     let recordingId: string | null = null;
-    if (body.createRecordingRow && body.bucket === "recordings") {
-      const duration = fmtDuration(body.durationSeconds);
+    if (createRecordingRow && bucket === "recordings") {
+      const duration = fmtDuration(durationSeconds);
       const { data: inserted, error: insErr } = await admin
         .from("recordings")
         .insert({
           user_id: userId,
-          filename: body.filename,
+          filename,
           drive_url: driveUrl,
           drive_file_id: uploaded.id,
           source: "manual_upload",
@@ -192,3 +224,4 @@ Deno.serve(async (req) => {
     });
   }
 });
+
