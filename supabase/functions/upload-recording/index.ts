@@ -67,15 +67,53 @@ Deno.serve(async (req) => {
   try {
     const userId = await authedUser(req);
     const admin = adminSupabase();
-    const body = (await req.json()) as Payload;
 
-    if (!body || (body.workspace !== "appraiser" && body.workspace !== "architect")) {
+    // Accept multipart/form-data (preferred) or JSON.
+    const contentType = req.headers.get("content-type") || "";
+    let workspace: "appraiser" | "architect";
+    let filename = "";
+    let mimeType = "";
+    let durationSeconds: number | undefined;
+    let purposeIn: string | undefined;
+    let bytes: Uint8Array;
+
+    if (contentType.includes("multipart/form-data")) {
+      const form = await req.formData();
+      const file = form.get("file");
+      if (!(file instanceof File)) {
+        return new Response(JSON.stringify({ error: "missing file" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      workspace = String(form.get("workspace") || "") as any;
+      filename = String(form.get("filename") || file.name || "audio");
+      mimeType = String(form.get("mimeType") || file.type || "audio/webm");
+      const dur = form.get("durationSeconds");
+      durationSeconds = dur ? Number(dur) : undefined;
+      purposeIn = (form.get("purpose") as string) || undefined;
+      bytes = new Uint8Array(await file.arrayBuffer());
+    } else {
+      const body = (await req.json()) as Payload;
+      workspace = body?.workspace;
+      filename = body?.filename;
+      mimeType = body?.mimeType;
+      durationSeconds = body?.durationSeconds;
+      purposeIn = body?.purpose;
+      if (!body?.dataBase64) {
+        return new Response(JSON.stringify({ error: "חסרים filename / mimeType / dataBase64" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      bytes = decodeBase64(body.dataBase64);
+    }
+
+    if (workspace !== "appraiser" && workspace !== "architect") {
       return new Response(JSON.stringify({ error: "workspace חייב להיות appraiser או architect" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!body.filename || !body.mimeType || !body.dataBase64) {
-      return new Response(JSON.stringify({ error: "חסרים filename / mimeType / dataBase64" }), {
+    if (!filename || !mimeType) {
+      return new Response(JSON.stringify({ error: "חסרים filename / mimeType" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
