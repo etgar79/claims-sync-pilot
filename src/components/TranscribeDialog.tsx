@@ -2,10 +2,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Mic, Sparkles, Star, Zap, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { needsSplitting, splitAudioFile, type AudioChunk } from "@/lib/audioSplitter";
 
 export type TranscriptionService = "lovable_ai" | "ivrit_ai" | "whisper" | "elevenlabs";
 
