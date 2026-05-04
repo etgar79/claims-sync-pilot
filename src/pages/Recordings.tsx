@@ -118,9 +118,7 @@ const Recordings = () => {
       toast.error("אין קובץ אודיו זמין");
       return;
     }
-    // mark processing immediately for UX
-    await supabase.from("recordings").update({ transcript_status: "processing" }).eq("id", r.id);
-    load();
+    setItems((prev) => prev.map((item) => item.id === r.id ? { ...item, transcript_status: "processing" } : item));
     await runAll({
       recordingId: r.id,
       audioUrl: r.drive_url,
@@ -128,6 +126,7 @@ const Recordings = () => {
       context: { title: r.filename, client: r.client_name, project: r.case_title },
       onCompleted: load,
     });
+    load();
   };
 
   const renderCard = (r: RecordingRow) => {
