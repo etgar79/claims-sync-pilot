@@ -148,8 +148,10 @@ export function ExpandableTranscriptPanel({
     setEdited(item.transcript ?? "");
     lastSavedRef.current = item.transcript ?? "";
     setSaveState("idle");
+    setFilenameDraft(item.filename);
+    setEditingName(false);
     void loadVersions();
-  }, [open, mode, item.id, item.transcript]);
+  }, [open, mode, item.id, item.transcript, item.filename]);
 
   useEffect(() => {
     if (!open || !item.audioUrl) return;
