@@ -34,18 +34,35 @@ function fmtTime(sec: number) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onloadend = () => {
-      const res = r.result as string;
-      const idx = res.indexOf(",");
-      resolve(idx >= 0 ? res.slice(idx + 1) : res);
-    };
-    r.onerror = reject;
-    r.readAsDataURL(blob);
-  });
+async function uploadFile(file: Blob, filename: string, mimeType: string, durationSeconds?: number): Promise<{ ok: boolean; error?: string }> {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token;
+  if (!token) return { ok: false, error: "נדרשת התחברות" };
+  const fd = new FormData();
+  fd.append("file", file, filename);
+  fd.append("filename", filename);
+  fd.append("mimeType", mimeType);
+  fd.append("bucket", "recordings");
+  fd.append("createRecordingRow", "true");
+  if (durationSeconds) fd.append("durationSeconds", String(durationSeconds));
+  try {
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-transcriber-file`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: fd,
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      let msg = text;
+      try { const j = JSON.parse(text); msg = j.message || j.error || text; } catch {}
+      return { ok: false, error: msg || `שגיאה ${res.status}` };
+    }
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || "שגיאת רשת" };
+  }
 }
+
 
 const TranscribePage = () => {
   const [items, setItems] = useState<Row[]>([]);
