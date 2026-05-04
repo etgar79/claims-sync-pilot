@@ -174,6 +174,34 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "rename_file") {
+      const fileId = body.fileId as string | undefined;
+      const newName = (body.newName as string | undefined)?.trim();
+      if (!fileId) throw new Error("חסר מזהה קובץ");
+      if (!newName) throw new Error("חסר שם חדש");
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name: newName }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        return new Response(JSON.stringify({ error: data?.error?.message ?? "Drive rename failed" }), {
+          status: res.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ file: data }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "download_file") {
       const fileId = body.fileId;
       if (!fileId) throw new Error("חסר מזהה קובץ");
