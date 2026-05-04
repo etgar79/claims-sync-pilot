@@ -307,6 +307,12 @@ export function RecordingCard({
               </TooltipTrigger><TooltipContent>הורד כקובץ טקסט</TooltipContent></Tooltip>
 
               <Tooltip><TooltipTrigger asChild>
+                <Button size="sm" variant="ghost" onClick={saveTranscriptToDrive} disabled={savingTranscript} className="h-8 gap-1.5 text-xs">
+                  {savingTranscript ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CloudUpload className="h-3.5 w-3.5" />} ל-Drive
+                </Button>
+              </TooltipTrigger><TooltipContent>שמור את התמלול ל-Drive (תחת תיקיית התיק/פגישה אם משויך)</TooltipContent></Tooltip>
+
+              <Tooltip><TooltipTrigger asChild>
                 <Button size="icon" variant="ghost" onClick={copyText} className="h-8 w-8">
                   <Copy className="h-3.5 w-3.5" />
                 </Button>
