@@ -21,3 +21,9 @@ verify_jwt = true
 [functions.extract-action-items]
 verify_jwt = true
 
+[functions.save-transcript-to-drive]
+verify_jwt = true
+
+[functions.upload-photo-to-drive]
+verify_jwt = true
+
