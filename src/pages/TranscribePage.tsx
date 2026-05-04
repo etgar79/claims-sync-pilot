@@ -185,27 +185,31 @@ const TranscribePage = () => {
       setUploading(false);
       return;
     }
-    const { error } = await supabase.from("recordings").insert({
-      user_id: auth.user.id,
-      filename,
-      source: "browser_recording",
-      transcript_status: "pending",
-      duration: fmtTime(seconds),
-    } as any);
-    if (error) toast.error(error.message);
+    let driveOk = false;
     try {
       const b64 = await blobToBase64(blob);
-      await supabase.functions.invoke("upload-recording", {
+      const res = await supabase.functions.invoke("upload-recording", {
         body: {
           workspace: "appraiser",
           filename,
           mimeType: "audio/webm",
-          base64: b64,
+          dataBase64: b64,
           purpose: "recordings",
         },
       });
+      if (!res.error && !(res.data as any)?.error) driveOk = true;
     } catch (e) {
       console.warn("Drive upload failed (non-fatal)", e);
+    }
+    if (!driveOk) {
+      const { error } = await supabase.from("recordings").insert({
+        user_id: auth.user.id,
+        filename,
+        source: "browser_recording",
+        transcript_status: "pending",
+        duration: fmtTime(seconds),
+      } as any);
+      if (error) toast.error(error.message);
     }
     toast.success("ההקלטה נוספה");
     setRecOpen(false);
