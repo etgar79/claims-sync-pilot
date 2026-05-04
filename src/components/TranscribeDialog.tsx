@@ -299,8 +299,22 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>תמלול מהיר</DialogTitle>
-          <DialogDescription>בחרי איכות — והמערכת תתחיל</DialogDescription>
+          <DialogDescription>בחרי איכות — והמערכת תתחיל. קבצים גדולים יפוצלו אוטומטית לחלקים.</DialogDescription>
         </DialogHeader>
+
+        {chunkProgress && chunkProgress.total > 0 && (
+          <div className="mt-3 p-3 rounded-lg bg-muted/40 border space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium">
+                מתמלל קובץ גדול — חלק {chunkProgress.done} מתוך {chunkProgress.total}
+              </span>
+              <span className="text-muted-foreground">
+                {Math.round((chunkProgress.done / chunkProgress.total) * 100)}%
+              </span>
+            </div>
+            <Progress value={(chunkProgress.done / chunkProgress.total) * 100} />
+          </div>
+        )}
 
         <div className="space-y-2 mt-2">
           {SERVICES.map((svc) => (
