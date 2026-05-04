@@ -200,11 +200,19 @@ export function ExpandableTranscriptPanel({
 
   const detectedSpeakers = useMemo(() => {
     const set = new Set<string>();
-    // Catches "דובר א", "דוברת ב", "Speaker 1", "S2" — including inside [..] or **..**
+    // 1) Common patterns: "דובר א", "דוברת ב", "Speaker 1", "S2" — including inside [..] or **..**
     const re = /(?:דובר(?:ת)?|Speaker|SPEAKER)\s*[\u05D0-\u05EA0-9A-Za-z]{1,5}|S\d{1,3}/g;
     let m;
     while ((m = re.exec(edited)) !== null) set.add(m[0].trim());
-    return Array.from(set).slice(0, 30);
+    // 2) Line-leading labels like "משה:" / "John:" / "**משה**:" — supports replaced names
+    const reLabel = /(?:^|\n)\s*(?:\*\*|\[)?\s*([\u05D0-\u05EAA-Za-z][\u05D0-\u05EAA-Za-z' \-]{0,30}?)\s*(?:\*\*|\])?\s*:/g;
+    let m2;
+    while ((m2 = reLabel.exec(edited)) !== null) {
+      const name = m2[1].trim();
+      // ignore noise: pure numbers, very short, or contains generic words
+      if (name.length >= 2 && name.length <= 30 && !/^\d+$/.test(name)) set.add(name);
+    }
+    return Array.from(set).slice(0, 40);
   }, [edited]);
 
   useEffect(() => {
