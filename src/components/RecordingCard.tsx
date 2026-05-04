@@ -191,8 +191,38 @@ export function RecordingCard({
 
           {/* Main content */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-semibold text-sm truncate">{r.filename}</h3>
+            <div className="flex items-center gap-2 flex-wrap" onClick={(e) => editingName && e.stopPropagation()}>
+              {editingName ? (
+                <div className="flex items-center gap-1.5 flex-1 min-w-[180px]">
+                  <Input
+                    value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === "Enter") { e.preventDefault(); void saveRename(); }
+                      if (e.key === "Escape") { cancelRename(); }
+                    }}
+                    autoFocus
+                    className="h-7 text-sm"
+                  />
+                  <Button size="icon" variant="ghost" className="h-7 w-7" disabled={renaming} onClick={saveRename}>
+                    {renaming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelRename}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <h3 className="font-semibold text-sm truncate">{r.filename}</h3>
+                  <Tooltip><TooltipTrigger asChild>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={startRename}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger><TooltipContent>שנה שם קובץ</TooltipContent></Tooltip>
+                </>
+              )}
               <Badge variant="outline" className={`gap-1 text-[10px] py-0 h-5 ${st.cls}`}>
                 <Icon className={`h-3 w-3 ${r.transcript_status === "processing" || isRunning ? "animate-spin" : ""}`} />
                 {isRunning ? "מתמלל..." : st.label}
