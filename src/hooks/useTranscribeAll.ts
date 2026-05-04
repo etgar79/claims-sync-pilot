@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { TranscriptionService } from "@/components/TranscribeDialog";
+import { needsSplitting, splitAudioFile } from "@/lib/audioSplitter";
 
 const SERVICES: TranscriptionService[] = ["ivrit_ai", "whisper", "elevenlabs"];
 
@@ -44,17 +45,16 @@ async function getAudioDuration(file: File): Promise<number> {
   });
 }
 
-async function runOne(opts: {
-  service: TranscriptionService;
-  file: File;
-  recordingId: string;
-  userId: string;
-  duration: number;
-}): Promise<string> {
+async function callTranscribeEdge(
+  file: File | Blob,
+  service: TranscriptionService,
+  duration: number,
+): Promise<string> {
   const fd = new FormData();
-  fd.append("file", opts.file);
-  fd.append("service", opts.service);
-  if (opts.duration > 0) fd.append("client_duration", String(opts.duration));
+  const f = file instanceof File ? file : new File([file], "chunk.wav", { type: "audio/wav" });
+  fd.append("file", f);
+  fd.append("service", service);
+  if (duration > 0) fd.append("client_duration", String(duration));
 
   const { data: sess } = await supabase.auth.getSession();
   const token = sess.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -67,8 +67,39 @@ async function runOne(opts: {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error || `שגיאה ${res.status}`);
+  return (data.transcript as string) ?? "";
+}
 
-  const transcript: string = data.transcript;
+async function runOne(opts: {
+  service: TranscriptionService;
+  file: File;
+  recordingId: string;
+  userId: string;
+  duration: number;
+  onProgress?: (status: string) => void;
+}): Promise<string> {
+  let transcript = "";
+
+  if (needsSplitting(opts.file)) {
+    opts.onProgress?.(`מפצל קובץ גדול לחלקים...`);
+    const chunks = await splitAudioFile(opts.file);
+    const parts: (string | null)[] = new Array(chunks.length).fill(null);
+    // Sequential to keep load gentle when running for multiple engines.
+    for (let i = 0; i < chunks.length; i++) {
+      const c = chunks[i];
+      opts.onProgress?.(`מתמלל חלק ${i + 1}/${chunks.length}...`);
+      try {
+        parts[i] = await callTranscribeEdge(c.blob, opts.service, c.endSec - c.startSec);
+      } catch (e) {
+        console.error(`chunk ${i} failed:`, e);
+        parts[i] = null;
+      }
+    }
+    if (parts.every((p) => p == null)) throw new Error("כל החלקים נכשלו");
+    transcript = parts.map((t, i) => (t == null ? `\n[חלק ${i + 1} לא תומלל]\n` : t)).join("\n\n");
+  } else {
+    transcript = await callTranscribeEdge(opts.file, opts.service, opts.duration);
+  }
 
   // Save as a version
   await supabase.from("transcript_versions").insert({
@@ -145,7 +176,7 @@ export function useTranscribeAll() {
       for (const svc of SERVICES) {
         setProgress(`מתמלל עם ${SERVICE_NAMES[svc]}...`);
         try {
-          const text = await runOne({ service: svc, file, recordingId, userId: user.id, duration });
+          const text = await runOne({ service: svc, file, recordingId, userId: user.id, duration, onProgress: setProgress });
           if (text?.trim()) versions.push({ service: svc, text });
         } catch (e: any) {
           console.error(`Service ${svc} failed:`, e);
