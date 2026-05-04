@@ -24,6 +24,7 @@ const COST_PER_SECOND_USD: Record<Service, number> = {
 };
 
 async function transcribeWhisper(file: File): Promise<{ text: string; duration?: number }> {
+  if (file.size > 25 * 1024 * 1024) throw new Error(`Whisper לא תומך בקבצים מעל 25MB (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
   if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
   const fd = new FormData();
   fd.append("file", file);
@@ -77,16 +78,29 @@ async function transcribeIvritAi(file: File): Promise<{ text: string; duration?:
   return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined };
 }
 
+// Memory-efficient base64 (avoids huge intermediate strings on big files)
+async function fileToBase64(file: File): Promise<string> {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  // Use FileReader-style chunked encoding via btoa with small chunks
+  const CHUNK = 0x8000; // 32KB
+  let out = "";
+  for (let i = 0; i < buf.length; i += CHUNK) {
+    const slice = buf.subarray(i, Math.min(i + CHUNK, buf.length));
+    let s = "";
+    for (let j = 0; j < slice.length; j++) s += String.fromCharCode(slice[j]);
+    out += btoa(s);
+  }
+  return out;
+}
+
 // Fallback: transcribe using Lovable AI Gateway (Gemini multimodal). Always available.
 async function transcribeLovableAi(file: File): Promise<{ text: string; duration?: number }> {
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-  const buf = new Uint8Array(await file.arrayBuffer());
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < buf.length; i += chunk) {
-    binary += String.fromCharCode(...buf.subarray(i, i + chunk));
+  // Gemini accepts up to ~20MB inline audio; larger files would blow memory in edge runtime.
+  if (file.size > 20 * 1024 * 1024) {
+    throw new Error(`קובץ גדול מדי לתמלול מובנה (${(file.size / 1024 / 1024).toFixed(1)}MB). פצלי לקבצים קטנים יותר או השתמשי בשירות אחר.`);
   }
-  const b64 = btoa(binary);
+  const b64 = await fileToBase64(file);
   const mime = (file.type || "audio/mpeg").toLowerCase();
   const fname = (file.name || "").toLowerCase();
   // Normalize to formats Gemini accepts: wav, mp3, aiff, aac, ogg, flac
