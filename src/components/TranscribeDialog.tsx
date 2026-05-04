@@ -153,23 +153,43 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
       const driveMatch = audioUrl?.match(/\/file\/d\/([^/]+)|[?&]id=([^&]+)/);
       const driveFileId = driveMatch ? (driveMatch[1] || driveMatch[2]) : null;
 
-      if (!file && driveFileId) {
+      if (!file && (driveFileId || recordingId)) {
         toast.loading("מוריד את קובץ האודיו...", { id: toastId });
         const { data: sess } = await supabase.auth.getSession();
         const token = sess.session?.access_token;
         if (!token) throw new Error("נדרשת התחברות");
-        const dlUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-drive-api`;
-        const dlRes = await fetch(dlUrl, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "download_file", fileId: driveFileId }),
-        });
-        if (!dlRes.ok) {
-          const errText = await dlRes.text();
-          throw new Error(`הורדה מ-Drive נכשלה: ${errText}`);
+
+        // Try the user's own Drive first (architect/appraiser flows). If the
+        // user has no Drive connected (transcriber role), fall back to the
+        // admin-owned central Drive via download-transcriber-file.
+        let blob: Blob | null = null;
+        let fname = "audio.mp3";
+        if (driveFileId && table === "recordings") {
+          try {
+            const ownRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-drive-api`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "download_file", fileId: driveFileId }),
+            });
+            if (ownRes.ok) {
+              blob = await ownRes.blob();
+              fname = decodeURIComponent(ownRes.headers.get("X-Filename") || fname);
+            }
+          } catch {/* fallthrough */}
         }
-        const blob = await dlRes.blob();
-        const fname = decodeURIComponent(dlRes.headers.get("X-Filename") || "audio.mp3");
+        if (!blob) {
+          const dlRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-transcriber-file`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ recordingId, driveFileId }),
+          });
+          if (!dlRes.ok) {
+            const errText = await dlRes.text();
+            throw new Error(`הורדה מ-Drive נכשלה: ${errText}`);
+          }
+          blob = await dlRes.blob();
+          fname = decodeURIComponent(dlRes.headers.get("X-Filename") || fname);
+        }
         file = new File([blob], fname, { type: blob.type || "audio/mpeg" });
       } else if (!file && audioUrl) {
         const res = await fetch(audioUrl);
