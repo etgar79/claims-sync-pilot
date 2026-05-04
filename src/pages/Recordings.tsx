@@ -142,11 +142,13 @@ const Recordings = () => {
         data={r}
         isRunning={running === r.id}
         workspace="appraiser"
+        table="recordings"
         onView={() => toggleExpand("view")}
         onEdit={() => toggleExpand("edit")}
         onAssign={() => setAssignTarget(r)}
         onSuperTranscribe={() => handleQuickTranscribe(r)}
         onQuickTranscribe={() => setTranscribeTarget(r)}
+        onRenamed={load}
         expanded={isExpanded}
         expandedSlot={
           <ExpandableTranscriptPanel
@@ -161,6 +163,7 @@ const Recordings = () => {
               transcript: r.transcript,
               transcriptStatus: r.transcript_status,
               audioUrl: r.drive_url,
+              driveFileId: r.drive_file_id,
               context: r.case_id && r.case_number ? `תיק ${r.case_number} • ${r.case_title ?? ""}` : null,
               client: r.client_name ?? null,
               assignLabel: r.case_id ? "החלף תיק" : "שייך",
