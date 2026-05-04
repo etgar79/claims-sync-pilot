@@ -4,7 +4,10 @@ import { toast } from "sonner";
 import type { TranscriptionService } from "@/components/TranscribeDialog";
 import { needsSplitting, splitAudioFile } from "@/lib/audioSplitter";
 
-const SERVICES: TranscriptionService[] = ["ivrit_ai", "whisper", "elevenlabs"];
+// Always include lovable_ai as the guaranteed-available engine. If external
+// engines (ivrit_ai/whisper/elevenlabs) are misconfigured or rate-limited,
+// lovable_ai still produces a transcript so the user is never left empty-handed.
+const SERVICES: TranscriptionService[] = ["lovable_ai", "ivrit_ai", "whisper", "elevenlabs"];
 
 const SERVICE_NAMES: Record<TranscriptionService, string> = {
   lovable_ai: "AI מובנה",
