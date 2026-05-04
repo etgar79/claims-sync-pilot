@@ -27,3 +27,6 @@ verify_jwt = true
 [functions.upload-photo-to-drive]
 verify_jwt = true
 
+[functions.upload-transcriber-file]
+verify_jwt = true
+

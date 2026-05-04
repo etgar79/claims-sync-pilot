@@ -94,34 +94,25 @@ const TranscribePage = () => {
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        let driveOk = false;
         try {
           const b64 = await blobToBase64(file);
-          const res = await supabase.functions.invoke("upload-recording", {
+          const res = await supabase.functions.invoke("upload-transcriber-file", {
             body: {
-              workspace: "appraiser",
               filename: file.name,
               mimeType: file.type || "audio/webm",
               dataBase64: b64,
-              purpose: "recordings",
+              bucket: "recordings",
+              createRecordingRow: true,
             },
           });
-          if (!res.error && !(res.data as any)?.error) driveOk = true;
-        } catch (e) {
-          console.warn("Drive upload failed (non-fatal)", e);
-        }
-        if (!driveOk) {
-          // Fallback — at least save metadata so user can transcribe later
-          const { error } = await supabase.from("recordings").insert({
-            user_id: auth.user.id,
-            filename: file.name,
-            source: "manual_upload",
-            transcript_status: "pending",
-          } as any);
-          if (error) {
-            toast.error(error.message);
+          const errMsg = res.error?.message || (res.data as any)?.error;
+          if (errMsg) {
+            toast.error("העלאה נכשלה", { description: (res.data as any)?.message || errMsg });
             continue;
           }
+        } catch (e: any) {
+          toast.error("שגיאה בהעלאה", { description: e?.message });
+          continue;
         }
       }
       toast.success("הקובץ נוסף — תוכל לתמלל אותו עכשיו");
@@ -185,31 +176,28 @@ const TranscribePage = () => {
       setUploading(false);
       return;
     }
-    let driveOk = false;
     try {
       const b64 = await blobToBase64(blob);
-      const res = await supabase.functions.invoke("upload-recording", {
+      const res = await supabase.functions.invoke("upload-transcriber-file", {
         body: {
-          workspace: "appraiser",
           filename,
           mimeType: "audio/webm",
           dataBase64: b64,
-          purpose: "recordings",
+          bucket: "recordings",
+          createRecordingRow: true,
+          durationSeconds: seconds,
         },
       });
-      if (!res.error && !(res.data as any)?.error) driveOk = true;
-    } catch (e) {
-      console.warn("Drive upload failed (non-fatal)", e);
-    }
-    if (!driveOk) {
-      const { error } = await supabase.from("recordings").insert({
-        user_id: auth.user.id,
-        filename,
-        source: "browser_recording",
-        transcript_status: "pending",
-        duration: fmtTime(seconds),
-      } as any);
-      if (error) toast.error(error.message);
+      const errMsg = res.error?.message || (res.data as any)?.error;
+      if (errMsg) {
+        toast.error("העלאה נכשלה", { description: (res.data as any)?.message || errMsg });
+        setUploading(false);
+        return;
+      }
+    } catch (e: any) {
+      toast.error("שגיאה בהעלאה", { description: e?.message });
+      setUploading(false);
+      return;
     }
     toast.success("ההקלטה נוספה");
     setRecOpen(false);

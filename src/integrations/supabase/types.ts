@@ -448,6 +448,30 @@ export type Database = {
         }
         Relationships: []
       }
+      transcriber_root_folder: {
+        Row: {
+          admin_user_id: string
+          folder_id: string
+          folder_name: string
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          admin_user_id: string
+          folder_id: string
+          folder_name: string
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          admin_user_id?: string
+          folder_id?: string
+          folder_name?: string
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       transcript_versions: {
         Row: {
           created_at: string
