@@ -91,9 +91,52 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
   const open = controlledOpen ?? internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [loading, setLoading] = useState<TranscriptionService | null>(null);
+  const [chunkProgress, setChunkProgress] = useState<{ done: number; total: number } | null>(null);
+
+  // Send a single chunk (or full file) to the transcribe-audio edge function.
+  async function transcribeOne(
+    file: File | Blob,
+    service: TranscriptionService,
+    token: string,
+    clientDuration?: number,
+  ): Promise<{ transcript: string; service: TranscriptionService; fallback_used?: boolean }> {
+    const fd = new FormData();
+    const f = file instanceof File ? file : new File([file], "chunk.wav", { type: "audio/wav" });
+    fd.append("file", f);
+    fd.append("service", service);
+    if (clientDuration && clientDuration > 0) fd.append("client_duration", String(clientDuration));
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: fd,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || `שגיאה ${res.status}`);
+    return data;
+  }
+
+  async function transcribeOneWithRetry(
+    file: File | Blob,
+    service: TranscriptionService,
+    token: string,
+    clientDuration?: number,
+  ) {
+    let lastErr: unknown = null;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        return await transcribeOne(file, service, token, clientDuration);
+      } catch (e) {
+        lastErr = e;
+        await new Promise((r) => setTimeout(r, 800 * attempt));
+      }
+    }
+    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+  }
 
   const handleSelect = async (service: TranscriptionService) => {
     setLoading(service);
+    setChunkProgress(null);
     const toastId = `transcribe-${recordingId}`;
     const selectedLabel = SERVICES.find((s) => s.id === service)?.name ?? "תמלול";
     try {
@@ -135,57 +178,99 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
       }
       if (!file) throw new Error("לא נמצא קובץ אודיו לתמלול");
 
-      toast.loading("שולח לתמלול...", { id: toastId });
       const clientDuration = await getAudioDuration(file);
-
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("service", service);
-      if (clientDuration > 0) fd.append("client_duration", String(clientDuration));
-
-      // Use the user's session token so the edge function can attribute usage.
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || `שגיאה ${res.status}`);
+      let finalTranscript = "";
+      let usedService: TranscriptionService = service;
+      let fallbackUsed = false;
+      const failedChunks: number[] = [];
 
-      const usedService: TranscriptionService = data.service ?? service;
+      if (needsSplitting(file)) {
+        // Big file → split locally then transcribe each chunk in order.
+        toast.loading(`קובץ גדול — מפצל לחלקים...`, { id: toastId });
+        const chunks: AudioChunk[] = await splitAudioFile(file, {
+          onProgress: (decoded, encoded, total) => {
+            if (decoded && total > 0) setChunkProgress({ done: encoded, total });
+          },
+        });
+        setChunkProgress({ done: 0, total: chunks.length });
+        toast.loading(`מתמלל ${chunks.length} חלקים...`, { id: toastId });
+
+        // Concurrency: 2 parallel chunks keeps UI responsive and avoids rate limits.
+        const results: (string | null)[] = new Array(chunks.length).fill(null);
+        const queue = [...chunks];
+        let completed = 0;
+        const workers = Array.from({ length: Math.min(2, chunks.length) }, async () => {
+          while (queue.length > 0) {
+            const c = queue.shift();
+            if (!c) break;
+            try {
+              const r = await transcribeOneWithRetry(c.blob, service, token, c.endSec - c.startSec);
+              results[c.index] = r.transcript ?? "";
+              if (r.service && r.service !== service) {
+                usedService = r.service;
+                fallbackUsed = true;
+              }
+            } catch (e) {
+              console.error(`chunk ${c.index} failed:`, e);
+              results[c.index] = null;
+              failedChunks.push(c.index + 1);
+            } finally {
+              completed += 1;
+              setChunkProgress({ done: completed, total: chunks.length });
+              toast.loading(`מתמלל חלק ${completed} מתוך ${chunks.length}...`, { id: toastId });
+            }
+          }
+        });
+        await Promise.all(workers);
+
+        finalTranscript = results
+          .map((t, i) => (t == null ? `\n[חלק ${i + 1} לא תומלל]\n` : t))
+          .join("\n\n");
+
+        if (failedChunks.length === chunks.length) {
+          throw new Error("כל החלקים נכשלו בתמלול");
+        }
+      } else {
+        toast.loading("שולח לתמלול...", { id: toastId });
+        const data = await transcribeOneWithRetry(file, service, token, clientDuration);
+        finalTranscript = data.transcript ?? "";
+        usedService = (data.service as TranscriptionService) ?? service;
+        fallbackUsed = !!data.fallback_used;
+      }
+
       const { error: updErr } = await supabase
         .from(table)
         .update({
-          transcript: data.transcript,
+          transcript: finalTranscript,
           transcript_status: "completed",
           transcription_service: usedService,
         })
         .eq("id", recordingId);
       if (updErr) throw updErr;
 
-      // Save as a separate version too (for merged super-transcripts)
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && data.transcript) {
+      if (user && finalTranscript) {
         await supabase.from("transcript_versions").insert({
           recording_id: recordingId,
           user_id: user.id,
           service: usedService,
-          transcript: data.transcript,
+          transcript: finalTranscript,
           is_merged: false,
         });
       }
 
       const label = SERVICES.find((s) => s.id === usedService)?.name ?? "תמלול חלופי";
-      if (data.fallback_used) {
+      if (failedChunks.length > 0) {
+        toast.warning(`הושלם תמלול חלקי (${label}). חלקים שנכשלו: ${failedChunks.join(", ")}`, { id: toastId });
+      } else if (fallbackUsed) {
         toast.warning(`השירות שנבחר לא היה זמין - בוצע תמלול חלופי (${label})`, { id: toastId });
       } else {
         toast.success(`התמלול הושלם בהצלחה (${label})`, { id: toastId });
       }
-      onCompleted?.(data.transcript, usedService);
+      onCompleted?.(finalTranscript, usedService);
       setOpen(false);
     } catch (e: any) {
       await supabase
@@ -195,6 +280,7 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
       toast.error(e?.message || "שגיאה בתמלול", { id: toastId });
     } finally {
       setLoading(null);
+      setChunkProgress(null);
     }
   };
 
