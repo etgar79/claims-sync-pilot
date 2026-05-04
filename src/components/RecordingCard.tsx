@@ -29,6 +29,7 @@ export interface RecordingCardData {
   transcript_status: string;
   transcript: string | null;
   drive_url: string | null;
+  drive_file_id?: string | null;
   source: string | null;
   // appraiser-only
   case_id?: string | null;
@@ -44,11 +45,13 @@ interface Props {
   data: RecordingCardData;
   isRunning: boolean;
   workspace: "appraiser" | "architect";
+  table?: "recordings" | "meeting_recordings";
   onView: () => void;
   onEdit: () => void;
   onAssign: () => void;
   onSuperTranscribe: () => void;
   onQuickTranscribe: () => void;
+  onRenamed?: () => void;
   expanded?: boolean;
   expandedSlot?: ReactNode;
 }
