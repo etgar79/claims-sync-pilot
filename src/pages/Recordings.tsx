@@ -29,6 +29,7 @@ interface RecordingRow {
   transcript_status: string;
   transcript: string | null;
   drive_url: string | null;
+  drive_file_id: string | null;
   case_id: string | null;
   source: string | null;
   tags: string[] | null;
