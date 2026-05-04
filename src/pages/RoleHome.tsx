@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Loader2, Calendar, Mic, FolderOpen, Users, Shield, DollarSign, ClipboardList, FileText, LogOut } from "lucide-react";
+import { Loader2, Calendar, Mic, FolderOpen, Users, Shield, DollarSign, ClipboardList, FileText, LogOut, Headphones } from "lucide-react";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useActiveWorkspace } from "@/hooks/useActiveWorkspace";
 import { Card } from "@/components/ui/card";
@@ -56,6 +56,15 @@ const RoleHome = () => {
                 <Button className="w-full">כניסה</Button>
               </Card>
             )}
+            {available.includes("transcriber") && (
+              <Card className="p-6 cursor-pointer hover:border-primary transition-colors"
+                onClick={() => { setWorkspace("transcriber"); navigate("/transcribe"); }}>
+                <Headphones className="h-8 w-8 text-primary mb-3" />
+                <h2 className="text-xl font-semibold mb-1">מערכת תמלול</h2>
+                <p className="text-sm text-muted-foreground mb-4">העלאה / הקלטה — וקבלת תמלול מלא</p>
+                <Button className="w-full">כניסה</Button>
+              </Card>
+            )}
           </div>
         </div>
       </div>
@@ -65,6 +74,11 @@ const RoleHome = () => {
   // Architect-only redirect
   if (workspace === "architect" && !isAdmin) {
     return <Navigate to="/meetings" replace />;
+  }
+
+  // Transcriber redirects straight to the transcribe page (no separate dashboard)
+  if (workspace === "transcriber") {
+    return <Navigate to="/transcribe" replace />;
   }
 
   if (workspace === "admin") {
