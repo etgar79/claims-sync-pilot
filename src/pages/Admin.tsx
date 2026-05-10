@@ -317,7 +317,6 @@ const Admin = () => {
           </div>
         </main>
       </div>
-      </div>
 
       <Dialog open={!!editUser} onOpenChange={(o) => !o && setEditUser(null)}>
         <DialogContent>
