@@ -112,6 +112,32 @@ const Admin = () => {
     load();
   };
 
+  const openEdit = (u: UserWithRoles) => {
+    setEditUser(u);
+    setEditForm({ email: "", password: "", display_name: u.display_name || "" });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editUser) return;
+    setSavingEdit(true);
+    const res = await supabase.functions.invoke("admin-update-user", {
+      body: {
+        user_id: editUser.user_id,
+        email: editForm.email || undefined,
+        password: editForm.password || undefined,
+        display_name: editForm.display_name,
+      },
+    });
+    setSavingEdit(false);
+    if (res.error || (res.data as any)?.error) {
+      toast.error((res.data as any)?.error || res.error?.message || "שגיאה בעדכון");
+      return;
+    }
+    toast.success("המשתמש עודכן");
+    setEditUser(null);
+    load();
+  };
+
   if (rolesLoading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   }
