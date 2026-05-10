@@ -282,25 +282,31 @@ const Admin = () => {
                           </div>
                         </td>
                         <td className="p-3">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="destructive">
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>מחיקת משתמש</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  האם למחוק את {u.display_name}? פעולה זו לא ניתנת לביטול וכל הנתונים של המשתמש יימחקו.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>ביטול</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(u.user_id)}>מחק</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => openEdit(u)}>
+                              <Pencil className="h-3 w-3 ml-1" />
+                              ערוך
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="destructive">
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>מחיקת משתמש</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    האם למחוק את {u.display_name}? פעולה זו לא ניתנת לביטול וכל הנתונים של המשתמש יימחקו.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>ביטול</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(u.user_id)}>מחק</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </td>
                       </tr>
                     ))}
