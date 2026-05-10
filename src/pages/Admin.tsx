@@ -317,6 +317,53 @@ const Admin = () => {
           </div>
         </main>
       </div>
+      </div>
+
+      <Dialog open={!!editUser} onOpenChange={(o) => !o && setEditUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>עריכת משתמש</DialogTitle>
+          </DialogHeader>
+          {editUser && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground font-mono">{editUser.user_id}</p>
+              <div>
+                <Label>שם תצוגה</Label>
+                <Input
+                  value={editForm.display_name}
+                  onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>מייל חדש (השאר ריק לא לשנות)</Label>
+                <Input
+                  type="email"
+                  dir="ltr"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  placeholder="new@example.com"
+                />
+              </div>
+              <div>
+                <Label>סיסמה חדשה (השאר ריק לא לשנות, מינ' 6 תווים)</Label>
+                <Input
+                  type="text"
+                  dir="ltr"
+                  value={editForm.password}
+                  onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditUser(null)}>ביטול</Button>
+            <Button onClick={handleSaveEdit} disabled={savingEdit}>
+              {savingEdit && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
+              שמור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 };
