@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2, Shield, UserCog, Building2, Briefcase, Plus, Trash2, Mic } from "lucide-react";
+import { Loader2, Shield, UserCog, Building2, Briefcase, Plus, Trash2, Mic, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserRoles, type AppRole } from "@/hooks/useUserRoles";
@@ -41,6 +41,9 @@ const Admin = () => {
     display_name: "",
     role: "architect" as AppRole,
   });
+  const [editUser, setEditUser] = useState<UserWithRoles | null>(null);
+  const [editForm, setEditForm] = useState({ email: "", password: "", display_name: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -106,6 +109,32 @@ const Admin = () => {
       return;
     }
     toast.success("המשתמש נמחק");
+    load();
+  };
+
+  const openEdit = (u: UserWithRoles) => {
+    setEditUser(u);
+    setEditForm({ email: "", password: "", display_name: u.display_name || "" });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editUser) return;
+    setSavingEdit(true);
+    const res = await supabase.functions.invoke("admin-update-user", {
+      body: {
+        user_id: editUser.user_id,
+        email: editForm.email || undefined,
+        password: editForm.password || undefined,
+        display_name: editForm.display_name,
+      },
+    });
+    setSavingEdit(false);
+    if (res.error || (res.data as any)?.error) {
+      toast.error((res.data as any)?.error || res.error?.message || "שגיאה בעדכון");
+      return;
+    }
+    toast.success("המשתמש עודכן");
+    setEditUser(null);
     load();
   };
 
@@ -253,25 +282,31 @@ const Admin = () => {
                           </div>
                         </td>
                         <td className="p-3">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="destructive">
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>מחיקת משתמש</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  האם למחוק את {u.display_name}? פעולה זו לא ניתנת לביטול וכל הנתונים של המשתמש יימחקו.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>ביטול</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(u.user_id)}>מחק</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => openEdit(u)}>
+                              <Pencil className="h-3 w-3 ml-1" />
+                              ערוך
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="destructive">
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>מחיקת משתמש</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    האם למחוק את {u.display_name}? פעולה זו לא ניתנת לביטול וכל הנתונים של המשתמש יימחקו.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>ביטול</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(u.user_id)}>מחק</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -282,6 +317,52 @@ const Admin = () => {
           </div>
         </main>
       </div>
+
+      <Dialog open={!!editUser} onOpenChange={(o) => !o && setEditUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>עריכת משתמש</DialogTitle>
+          </DialogHeader>
+          {editUser && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground font-mono">{editUser.user_id}</p>
+              <div>
+                <Label>שם תצוגה</Label>
+                <Input
+                  value={editForm.display_name}
+                  onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>מייל חדש (השאר ריק לא לשנות)</Label>
+                <Input
+                  type="email"
+                  dir="ltr"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  placeholder="new@example.com"
+                />
+              </div>
+              <div>
+                <Label>סיסמה חדשה (השאר ריק לא לשנות, מינ' 6 תווים)</Label>
+                <Input
+                  type="text"
+                  dir="ltr"
+                  value={editForm.password}
+                  onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditUser(null)}>ביטול</Button>
+            <Button onClick={handleSaveEdit} disabled={savingEdit}>
+              {savingEdit && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
+              שמור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 };
