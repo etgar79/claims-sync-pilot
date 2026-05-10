@@ -41,6 +41,9 @@ const Admin = () => {
     display_name: "",
     role: "architect" as AppRole,
   });
+  const [editUser, setEditUser] = useState<UserWithRoles | null>(null);
+  const [editForm, setEditForm] = useState({ email: "", password: "", display_name: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const load = async () => {
     setLoading(true);
