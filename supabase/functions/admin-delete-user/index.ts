@@ -48,11 +48,23 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Cannot delete yourself" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { error } = await admin.auth.admin.deleteUser(user_id);
-    if (error) {
-      return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Clean up dependent rows first (no FKs to auth.users, but clean app data)
+    const tables = [
+      "transcript_versions","notes","photos","recordings","meeting_recordings",
+      "meetings","cases","report_templates","drive_work_folders",
+      "google_drive_connections","usage_events","user_roles","profiles",
+    ];
+    const cleanupErrors: Record<string, string> = {};
+    for (const t of tables) {
+      const { error: delErr } = await admin.from(t).delete().eq("user_id", user_id);
+      if (delErr) cleanupErrors[t] = delErr.message;
     }
-    return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    const { error } = await admin.auth.admin.deleteUser(user_id, true);
+    if (error) {
+      return new Response(JSON.stringify({ error: error.message, cleanupErrors }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    return new Response(JSON.stringify({ success: true, cleanupErrors }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     return new Response(JSON.stringify({ error: e?.message || "Unknown error" }), {
       status: 500,
