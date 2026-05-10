@@ -11,6 +11,7 @@ import {
   Phone,
   Image as ImageIcon,
   ChevronDown,
+  Bug,
 } from "lucide-react";
 import {
   Sidebar,
@@ -68,6 +69,7 @@ export function AppSidebar() {
       { title: "שיחות טלפון", url: "/phone-calls", icon: Phone },
       { title: "תמונות", url: "/photos", icon: ImageIcon },
       { title: "תבניות דוחות", url: "/templates", icon: FileText },
+      { title: "אבחון תמלול", url: "/transcribe-debug", icon: Bug },
     ];
   } else if (workspace === "architect") {
     mainLabel = "ניהול פגישות";
