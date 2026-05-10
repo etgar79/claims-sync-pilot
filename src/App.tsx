@@ -26,6 +26,7 @@ const PhoneCallsPage = lazy(() => import("./pages/PhoneCallsPage.tsx"));
 const PhotosPage = lazy(() => import("./pages/PhotosPage.tsx"));
 const TranscriptsPage = lazy(() => import("./pages/TranscriptsPage.tsx"));
 const TranscribePage = lazy(() => import("./pages/TranscribePage.tsx"));
+const TranscribeDebug = lazy(() => import("./pages/TranscribeDebug.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/transcripts" element={<ProtectedRoute><TranscriptsPage workspace="appraiser" /></ProtectedRoute>} />
               <Route path="/meeting-transcripts" element={<ProtectedRoute><TranscriptsPage workspace="architect" title="תמלולי פגישות" /></ProtectedRoute>} />
               <Route path="/transcribe" element={<ProtectedRoute allow={["transcriber"]}><TranscribePage /></ProtectedRoute>} />
+              <Route path="/transcribe-debug" element={<ProtectedRoute allow={["appraiser", "architect", "transcriber"]}><TranscribeDebug /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute allow={["admin"]}><Admin /></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute allow={["admin"]}><AdminUsers /></ProtectedRoute>} />
               <Route path="/usage" element={<ProtectedRoute allow={["admin"]}><Usage /></ProtectedRoute>} />
