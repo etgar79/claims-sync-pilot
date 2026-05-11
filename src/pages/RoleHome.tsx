@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { supabase } from "@/integrations/supabase/client";
+import { TodoNowCards } from "@/components/TodoNowCards";
 import Index from "./Index";
 
 const RoleHome = () => {
@@ -164,6 +165,7 @@ function ArchitectDashboard() {
               <Loader2 className="h-6 w-6 animate-spin" />
             ) : (
               <>
+                <TodoNowCards workspace="architect" />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <StatCard icon={Calendar} label="סך הפגישות" value={stats.total} />
                   <StatCard icon={Mic} label="פעילות" value={stats.active} />
@@ -235,6 +237,7 @@ function AdminOverview() {
             <h1 className="text-lg font-semibold">סקירת מערכת</h1>
           </header>
           <div className="flex-1 p-6 space-y-6 overflow-auto">
+            <TodoNowCards workspace="admin" />
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard icon={Users} label="משתמשים" value={counts.users} />
               <StatCard icon={FolderOpen} label="תיקי שומה" value={counts.cases} />
