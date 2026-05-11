@@ -198,6 +198,8 @@ export type Database = {
           id: string
           meeting_id: string | null
           pipeline_status: string
+          quality_notes: string | null
+          quality_score: number | null
           recorded_at: string
           source: string
           summary: string | null
@@ -217,6 +219,8 @@ export type Database = {
           id?: string
           meeting_id?: string | null
           pipeline_status?: string
+          quality_notes?: string | null
+          quality_score?: number | null
           recorded_at?: string
           source?: string
           summary?: string | null
@@ -236,6 +240,8 @@ export type Database = {
           id?: string
           meeting_id?: string | null
           pipeline_status?: string
+          quality_notes?: string | null
+          quality_score?: number | null
           recorded_at?: string
           source?: string
           summary?: string | null
@@ -420,6 +426,8 @@ export type Database = {
           filename: string
           id: string
           pipeline_status: string
+          quality_notes: string | null
+          quality_score: number | null
           recorded_at: string
           source: string
           summary: string | null
@@ -439,6 +447,8 @@ export type Database = {
           filename: string
           id?: string
           pipeline_status?: string
+          quality_notes?: string | null
+          quality_score?: number | null
           recorded_at?: string
           source?: string
           summary?: string | null
@@ -458,6 +468,8 @@ export type Database = {
           filename?: string
           id?: string
           pipeline_status?: string
+          quality_notes?: string | null
+          quality_score?: number | null
           recorded_at?: string
           source?: string
           summary?: string | null
@@ -631,6 +643,8 @@ export type Database = {
           id: string
           is_merged: boolean
           language: string | null
+          quality_notes: string | null
+          quality_score: number | null
           recording_id: string
           service: string
           source_version_ids: string[] | null
@@ -642,6 +656,8 @@ export type Database = {
           id?: string
           is_merged?: boolean
           language?: string | null
+          quality_notes?: string | null
+          quality_score?: number | null
           recording_id: string
           service: string
           source_version_ids?: string[] | null
@@ -653,6 +669,8 @@ export type Database = {
           id?: string
           is_merged?: boolean
           language?: string | null
+          quality_notes?: string | null
+          quality_score?: number | null
           recording_id?: string
           service?: string
           source_version_ids?: string[] | null
@@ -694,6 +712,39 @@ export type Database = {
           service?: string
           unit?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_glossary: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          replacement: string | null
+          term: string
+          updated_at: string
+          user_id: string
+          workspace_kind: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          replacement?: string | null
+          term: string
+          updated_at?: string
+          user_id: string
+          workspace_kind?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          replacement?: string | null
+          term?: string
+          updated_at?: string
+          user_id?: string
+          workspace_kind?: string
         }
         Relationships: []
       }

@@ -8,12 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Mic, Loader2, Clock, AlertCircle, CheckCircle2, Cloud,
-  Eye, Download, FileDown, Pencil, Sparkles, Zap, Tag, ExternalLink, Copy, RefreshCw, Check, X, CloudUpload,
+  Eye, Download, FileDown, Pencil, Sparkles, Zap, Tag, ExternalLink, Copy, RefreshCw, Check, X, CloudUpload, Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { exportTranscriptToPdf, downloadTranscriptTxt } from "@/lib/exportTranscriptPdf";
 import { PipelineStatus } from "@/components/PipelineStatus";
+import { QualityBadge } from "@/components/QualityBadge";
 
 const STATUS = {
   pending: { label: "ממתין", icon: Clock, cls: "bg-muted text-muted-foreground border-border" },
@@ -34,6 +35,8 @@ export interface RecordingCardData {
   drive_url: string | null;
   drive_file_id?: string | null;
   source: string | null;
+  quality_score?: number | null;
+  quality_notes?: string | null;
   // appraiser-only
   case_id?: string | null;
   case_number?: string;
@@ -73,6 +76,35 @@ export function RecordingCard({
   const [nameDraft, setNameDraft] = useState(r.filename);
   const [renaming, setRenaming] = useState(false);
   const [savingTranscript, setSavingTranscript] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
+
+  const cleanupTranscript = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!r.transcript) return;
+    setCleaning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("cleanup-transcript", {
+        body: {
+          transcript: r.transcript,
+          workspace_kind: workspace,
+          recording_id: r.id,
+          table: tableName,
+        },
+      });
+      if (error || (data as any)?.error) {
+        throw new Error((data as any)?.error || error?.message);
+      }
+      const score = (data as any)?.quality_score;
+      toast.success("התמלול נוקה ושופר", {
+        description: score != null ? `ציון איכות: ${score}` : undefined,
+      });
+      onRenamed?.(); // reuse refresh callback if provided
+    } catch (err: any) {
+      toast.error("ניקוי תמלול נכשל", { description: err?.message });
+    } finally {
+      setCleaning(false);
+    }
+  };
 
   const saveTranscriptToDrive = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -271,7 +303,7 @@ export function RecordingCard({
               {r.duration && (<><span>•</span><span>{r.duration}</span></>)}
             </div>
 
-            <div className="mt-2">
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
               <PipelineStatus
                 status={
                   r.pipeline_status ||
@@ -279,6 +311,7 @@ export function RecordingCard({
                 }
                 compact
               />
+              <QualityBadge score={r.quality_score} notes={r.quality_notes} />
             </div>
 
             {hasTranscript && (
@@ -324,6 +357,12 @@ export function RecordingCard({
                   {savingTranscript ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CloudUpload className="h-3.5 w-3.5" />} ל-Drive
                 </Button>
               </TooltipTrigger><TooltipContent>שמור את התמלול ל-Drive (תחת תיקיית התיק/פגישה אם משויך)</TooltipContent></Tooltip>
+
+              <Tooltip><TooltipTrigger asChild>
+                <Button size="sm" variant="ghost" onClick={cleanupTranscript} disabled={cleaning} className="h-8 gap-1.5 text-xs">
+                  {cleaning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />} נקה
+                </Button>
+              </TooltipTrigger><TooltipContent>נקה ושפר את התמלול עם AI (פיסוק, שגיאות, מילון מונחים)</TooltipContent></Tooltip>
 
               <Tooltip><TooltipTrigger asChild>
                 <Button size="icon" variant="ghost" onClick={copyText} className="h-8 w-8">

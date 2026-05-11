@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
   ChevronDown,
   Bug,
+  BookOpen,
 } from "lucide-react";
 import {
   Sidebar,
@@ -71,6 +72,7 @@ export function AppSidebar() {
       { title: "שיחות טלפון", url: "/phone-calls", icon: Phone },
       { title: "תמונות", url: "/photos", icon: ImageIcon },
       { title: "תבניות דוחות", url: "/templates", icon: FileText },
+      { title: "מילון מונחים", url: "/glossary", icon: BookOpen },
       { title: "אבחון תמלול", url: "/transcribe-debug", icon: Bug },
     ];
   } else if (workspace === "architect") {
@@ -85,6 +87,7 @@ export function AppSidebar() {
       { title: "תמונות", url: "/meeting-photos", icon: ImageIcon },
       { title: "לקוחות / פרויקטים", url: "/clients", icon: Users },
       { title: "תבניות סיכום פגישה", url: "/meeting-templates", icon: ClipboardList },
+      { title: "מילון מונחים", url: "/glossary", icon: BookOpen },
     ];
   } else if (workspace === "transcriber") {
     mainLabel = "מערכת תמלול";
@@ -92,6 +95,7 @@ export function AppSidebar() {
       { title: "הקלטות שלי", url: "/transcribe", icon: Mic },
       { title: "תמלולים", url: "/transcripts", icon: FileText },
       { title: "משימות", url: "/tasks", icon: ListChecks },
+      { title: "מילון מונחים", url: "/glossary", icon: BookOpen },
     ];
   } else if (workspace === "admin") {
     mainLabel = "סקירה כללית";

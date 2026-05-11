@@ -58,7 +58,7 @@ const Recordings = () => {
     const acting = getActAsUserId();
     let q = supabase
       .from("recordings")
-      .select("id, filename, duration, recorded_at, transcript_status, transcript, drive_url, drive_file_id, case_id, source, tags")
+      .select("id, filename, duration, recorded_at, transcript_status, transcript, drive_url, drive_file_id, case_id, source, tags, pipeline_status, summary, quality_score, quality_notes")
       .order("recorded_at", { ascending: false });
     if (acting) q = q.eq("user_id", acting);
     const { data, error } = await q;
