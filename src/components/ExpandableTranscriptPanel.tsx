@@ -799,9 +799,17 @@ export function ExpandableTranscriptPanel({
                 />
               ) : (
                 <ScrollArea className="h-[340px] rounded-lg border bg-card px-4 py-3">
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                    {edited || "אין תמלול עדיין — אפשר להתחיל תמלול מהיר או תמלול-על."}
-                  </div>
+                  {segments && segments.length ? (
+                    <TimestampedTranscript
+                      segments={segments}
+                      fallbackText={edited}
+                      onSeek={(s) => { if (audioElRef.current) { audioElRef.current.currentTime = s; void audioElRef.current.play(); } }}
+                    />
+                  ) : (
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                      {edited || "אין תמלול עדיין — אפשר להתחיל תמלול מהיר או תמלול-על."}
+                    </div>
+                  )}
                 </ScrollArea>
               )}
             </div>
