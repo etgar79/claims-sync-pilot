@@ -20,6 +20,7 @@ import { TranscribeDialog } from "@/components/TranscribeDialog";
 import { TranscriptViewerDialog } from "@/components/TranscriptViewerDialog";
 import { AssignRecordingDialog } from "@/components/AssignRecordingDialog";
 import { AssignToMeetingDialog } from "@/components/AssignToMeetingDialog";
+import { getScopedUserId } from "@/lib/actAs";
 
 interface PhoneCallsPageProps {
   workspace: WorkspaceKind;
