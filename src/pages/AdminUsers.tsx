@@ -45,6 +45,7 @@ const ROLE_META: Record<AppRole, { label: string; icon: any; cls: string }> = {
 
 const AdminUsers = () => {
   const { isAdmin, loading: rolesLoading } = useUserRoles();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
