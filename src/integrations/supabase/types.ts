@@ -201,6 +201,7 @@ export type Database = {
           quality_notes: string | null
           quality_score: number | null
           recorded_at: string
+          segments: Json | null
           source: string
           summary: string | null
           summary_generated_at: string | null
@@ -222,6 +223,7 @@ export type Database = {
           quality_notes?: string | null
           quality_score?: number | null
           recorded_at?: string
+          segments?: Json | null
           source?: string
           summary?: string | null
           summary_generated_at?: string | null
@@ -243,6 +245,7 @@ export type Database = {
           quality_notes?: string | null
           quality_score?: number | null
           recorded_at?: string
+          segments?: Json | null
           source?: string
           summary?: string | null
           summary_generated_at?: string | null
@@ -429,6 +432,7 @@ export type Database = {
           quality_notes: string | null
           quality_score: number | null
           recorded_at: string
+          segments: Json | null
           source: string
           summary: string | null
           summary_generated_at: string | null
@@ -450,6 +454,7 @@ export type Database = {
           quality_notes?: string | null
           quality_score?: number | null
           recorded_at?: string
+          segments?: Json | null
           source?: string
           summary?: string | null
           summary_generated_at?: string | null
@@ -471,6 +476,7 @@ export type Database = {
           quality_notes?: string | null
           quality_score?: number | null
           recorded_at?: string
+          segments?: Json | null
           source?: string
           summary?: string | null
           summary_generated_at?: string | null
@@ -646,6 +652,7 @@ export type Database = {
           quality_notes: string | null
           quality_score: number | null
           recording_id: string
+          segments: Json | null
           service: string
           source_version_ids: string[] | null
           transcript: string
@@ -659,6 +666,7 @@ export type Database = {
           quality_notes?: string | null
           quality_score?: number | null
           recording_id: string
+          segments?: Json | null
           service: string
           source_version_ids?: string[] | null
           transcript: string
@@ -672,6 +680,7 @@ export type Database = {
           quality_notes?: string | null
           quality_score?: number | null
           recording_id?: string
+          segments?: Json | null
           service?: string
           source_version_ids?: string[] | null
           transcript?: string
