@@ -41,31 +41,41 @@ async function uploadToDrive(
   mimeType: string,
   data: Uint8Array,
 ): Promise<{ id: string; webViewLink: string }> {
-  const boundary = "lovable_upload_" + Math.random().toString(36).slice(2);
-  const metadata = { name: filename, parents: [parentId], mimeType };
-  const enc = new TextEncoder();
-  const head = enc.encode(
-    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`,
-  );
-  const tail = enc.encode(`\r\n--${boundary}--`);
-  const body = new Uint8Array(head.length + data.length + tail.length);
-  body.set(head, 0);
-  body.set(data, head.length);
-  body.set(tail, head.length + data.length);
-
-  const res = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
+  // Use resumable upload to avoid building a multipart body in memory
+  // (the previous multipart approach doubled RAM usage and crashed on
+  // even moderate audio files with "Memory limit exceeded").
+  const initRes = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,webViewLink",
     {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Content-Type": `multipart/related; boundary=${boundary}`,
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-Upload-Content-Type": mimeType,
+        "X-Upload-Content-Length": String(data.byteLength),
       },
-      body,
+      body: JSON.stringify({ name: filename, parents: [parentId], mimeType }),
     },
   );
-  const out = await res.json();
-  if (!res.ok) throw new Error(`Drive upload failed: ${JSON.stringify(out)}`);
+  if (!initRes.ok) {
+    const errTxt = await initRes.text();
+    throw new Error(`Drive resumable init failed [${initRes.status}]: ${errTxt}`);
+  }
+  const sessionUrl = initRes.headers.get("location");
+  if (!sessionUrl) throw new Error("Drive resumable: missing session URL");
+
+  // Upload bytes directly — Google accepts a single PUT with the full body
+  // up to ~5GB. We send the original Uint8Array without copying.
+  const putRes = await fetch(sessionUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": mimeType,
+      "Content-Length": String(data.byteLength),
+    },
+    body: data,
+  });
+  const out = await putRes.json();
+  if (!putRes.ok) throw new Error(`Drive upload failed [${putRes.status}]: ${JSON.stringify(out)}`);
   return out;
 }
 
