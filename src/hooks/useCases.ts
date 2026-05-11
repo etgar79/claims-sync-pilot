@@ -59,11 +59,16 @@ export function useCases() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    const acting = getActAsUserId();
+    const cq = supabase.from("cases").select("*").order("updated_at", { ascending: false });
+    const rq = supabase.from("recordings").select("*");
+    const pq = supabase.from("photos").select("*");
+    const nq = supabase.from("notes").select("*");
     const [casesRes, recRes, photoRes, noteRes] = await Promise.all([
-      supabase.from("cases").select("*").order("updated_at", { ascending: false }),
-      supabase.from("recordings").select("*"),
-      supabase.from("photos").select("*"),
-      supabase.from("notes").select("*"),
+      acting ? cq.eq("user_id", acting) : cq,
+      acting ? rq.eq("user_id", acting) : rq,
+      acting ? pq.eq("user_id", acting) : pq,
+      acting ? nq.eq("user_id", acting) : nq,
     ]);
     const list = (casesRes.data ?? []).map((c) =>
       mapCase(c, recRes.data ?? [], photoRes.data ?? [], noteRes.data ?? [])
@@ -72,9 +77,10 @@ export function useCases() {
     setLoading(false);
   }, []);
 
+  const { actAsId } = useActAsUser();
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, actAsId]);
 
   return { cases, loading, reload: load };
 }
