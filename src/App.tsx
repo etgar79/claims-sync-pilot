@@ -27,6 +27,7 @@ const PhotosPage = lazy(() => import("./pages/PhotosPage.tsx"));
 const TranscriptsPage = lazy(() => import("./pages/TranscriptsPage.tsx"));
 const TranscribePage = lazy(() => import("./pages/TranscribePage.tsx"));
 const TranscribeDebug = lazy(() => import("./pages/TranscribeDebug.tsx"));
+const TasksPage = lazy(() => import("./pages/TasksPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const queryClient = new QueryClient();
