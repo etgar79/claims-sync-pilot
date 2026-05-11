@@ -13,6 +13,10 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
 type Service = "ivrit_ai" | "whisper" | "elevenlabs" | "lovable_ai";
 
+interface WordStamp { start: number; end: number; text: string }
+interface Segment { start: number; end: number; text: string; words?: WordStamp[] }
+interface TranscribeResult { text: string; duration?: number; segments?: Segment[] }
+
 // Cost per second of audio (USD). Conservative estimates.
 // Lovable AI runs on Gemini 2.5 Flash with audio input — billed per token.
 // Audio input ≈ 32 tokens/sec; pricing ~$0.30/M input tokens → ~$0.0000096/sec.
