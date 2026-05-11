@@ -95,6 +95,7 @@ export function AppSidebar() {
       { title: "הקלטות שלי", url: "/transcribe", icon: Mic },
       { title: "תמלולים", url: "/transcripts", icon: FileText },
       { title: "משימות", url: "/tasks", icon: ListChecks },
+      { title: "מילון מונחים", url: "/glossary", icon: BookOpen },
     ];
   } else if (workspace === "admin") {
     mainLabel = "סקירה כללית";
