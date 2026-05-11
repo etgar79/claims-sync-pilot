@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { AppraisalCase, CaseStatus, CaseType, Recording, Photo, Note } from "@/data/sampleCases";
+import { getActAsUserId, useActAsUser } from "@/lib/actAs";
 
 type Row = Record<string, any>;
 
