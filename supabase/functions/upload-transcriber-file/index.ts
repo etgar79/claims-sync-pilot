@@ -1,18 +1,18 @@
-// Initialize a Google Drive resumable upload session for a transcriber's file.
-// The browser then PUTs the file bytes directly to Google — bytes never pass
-// through this Edge Function (which has a tight memory limit).
+// Upload a file from the /transcribe page directly to the USER's own Google Drive,
+// then create a recordings row only after Drive returns a valid file id.
 //
-// Request (JSON):
-//   { filename, mimeType, sizeBytes, bucket, durationSeconds?, createRecordingRow? }
-// Response:
-//   { sessionUrl, recordingId?, userFolderId, bucketFolderId }
+// Accepts multipart/form-data with fields:
+//   file       - the audio blob (required)
+//   filename   - (optional) override file.name
+//   mimeType   - (optional) override file.type
+//   durationSeconds - (optional) numeric duration
 //
-// After PUT succeeds, the browser parses Drive's response { id, webViewLink }
-// and PATCHes the recordings row (RLS allows the owner).
+// Strategy: stream the file into a Drive resumable upload from inside the
+// edge function. We do NOT return a session URL to the browser, because the
+// browser cannot PUT to Google's resumable endpoint directly (CORS blocks it
+// from arbitrary lovable.app subdomains).
 
 import { adminSupabase, authedUser, getValidGoogleToken, corsHeaders } from "../_shared/google-token.ts";
-
-type Bucket = "recordings" | "chunks" | "transcripts";
 
 function fmtDuration(sec?: number): string | null {
   if (!sec || sec <= 0) return null;
@@ -21,18 +21,15 @@ function fmtDuration(sec?: number): string | null {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function sanitizeFolderName(name: string): string {
-  return (name || "user").replace(/[\/\\?%*:|"<>]/g, "_").trim() || "user";
-}
-
 async function findOrCreateFolder(
   accessToken: string,
-  parentId: string,
+  parentId: string | null, // null => Drive root ("My Drive")
   name: string,
 ): Promise<string> {
   const escaped = name.replace(/'/g, "\\'");
+  const parentClause = parentId ? `'${parentId}' in parents and ` : `'root' in parents and `;
   const q = encodeURIComponent(
-    `'${parentId}' in parents and name = '${escaped}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+    `${parentClause}name = '${escaped}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
   );
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`,
@@ -50,7 +47,7 @@ async function findOrCreateFolder(
       body: JSON.stringify({
         name,
         mimeType: "application/vnd.google-apps.folder",
-        parents: [parentId],
+        parents: [parentId ?? "root"],
       }),
     },
   );
@@ -59,37 +56,69 @@ async function findOrCreateFolder(
   return created.id as string;
 }
 
-async function initResumableSession(
+async function resolveTargetFolder(admin: any, accessToken: string, userId: string): Promise<string> {
+  // Reuse any existing per-user recordings folder if one is set up.
+  const { data: existing } = await admin
+    .from("drive_work_folders")
+    .select("folder_id, folder_type")
+    .eq("user_id", userId)
+    .in("folder_type", [
+      "transcriber_recordings",
+      "appraiser_recordings",
+      "architect_recordings",
+      "architect_meetings",
+    ])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existing?.folder_id) return existing.folder_id as string;
+
+  // Otherwise, create a "תמלולים" folder in the user's Drive root and remember it.
+  const folderId = await findOrCreateFolder(accessToken, null, "תמלולים");
+  await admin.from("drive_work_folders").insert({
+    user_id: userId,
+    folder_type: "transcriber_recordings",
+    folder_name: "תמלולים",
+    folder_id: folderId,
+  });
+  return folderId;
+}
+
+async function uploadToDrive(
   accessToken: string,
   parentId: string,
   filename: string,
   mimeType: string,
-  sizeBytes?: number,
-): Promise<string> {
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${accessToken}`,
-    "Content-Type": "application/json; charset=UTF-8",
-    "X-Upload-Content-Type": mimeType,
-    // Allow the browser to PUT from any origin (Google honours these on the session).
-    "Origin": "https://lovable.app",
-  };
-  if (sizeBytes && sizeBytes > 0) headers["X-Upload-Content-Length"] = String(sizeBytes);
-
-  const res = await fetch(
+  data: Uint8Array,
+): Promise<{ id: string; webViewLink: string }> {
+  const initRes = await fetch(
     "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,webViewLink",
     {
       method: "POST",
-      headers,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-Upload-Content-Type": mimeType,
+        "X-Upload-Content-Length": String(data.byteLength),
+      },
       body: JSON.stringify({ name: filename, parents: [parentId], mimeType }),
     },
   );
-  if (!res.ok) {
-    const errTxt = await res.text();
-    throw new Error(`Drive resumable init failed [${res.status}]: ${errTxt}`);
+  if (!initRes.ok) {
+    const errTxt = await initRes.text();
+    throw new Error(`Drive resumable init failed [${initRes.status}]: ${errTxt}`);
   }
-  const sessionUrl = res.headers.get("location");
+  const sessionUrl = initRes.headers.get("location");
   if (!sessionUrl) throw new Error("Drive resumable: missing session URL");
-  return sessionUrl;
+
+  const putRes = await fetch(sessionUrl, {
+    method: "PUT",
+    headers: { "Content-Type": mimeType, "Content-Length": String(data.byteLength) },
+    body: data,
+  });
+  const out = await putRes.json();
+  if (!putRes.ok) throw new Error(`Drive upload failed [${putRes.status}]: ${JSON.stringify(out)}`);
+  return out;
 }
 
 Deno.serve(async (req) => {
@@ -99,84 +128,64 @@ Deno.serve(async (req) => {
     const userId = await authedUser(req);
     const admin = adminSupabase();
 
-    const body = await req.json().catch(() => ({}));
-    const filename: string = body.filename || "audio";
-    const mimeType: string = body.mimeType || "application/octet-stream";
-    const bucket: Bucket = (body.bucket || "recordings") as Bucket;
-    const sizeBytes: number | undefined = body.sizeBytes ? Number(body.sizeBytes) : undefined;
-    const durationSeconds: number | undefined = body.durationSeconds ? Number(body.durationSeconds) : undefined;
-    const createRecordingRow: boolean = !!body.createRecordingRow;
-
-    if (!["recordings", "chunks", "transcripts"].includes(bucket)) {
-      return new Response(JSON.stringify({ error: "bucket לא חוקי" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // 1. Resolve admin's central transcriber folder
-    const { data: root, error: rootErr } = await admin
-      .from("transcriber_root_folder")
-      .select("admin_user_id, folder_id")
-      .eq("id", true)
-      .maybeSingle();
-    if (rootErr) throw rootErr;
-    if (!root?.folder_id || !root?.admin_user_id) {
+    const contentType = req.headers.get("content-type") || "";
+    if (!contentType.includes("multipart/form-data")) {
       return new Response(JSON.stringify({
-        error: "no_root_folder",
-        message: "האדמין עדיין לא הגדיר תיקיית תמלולים מרכזית. פנה למנהל המערכת.",
+        error: "bad_request",
+        message: "יש לשלוח את הקובץ כ-multipart/form-data.",
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 2. Use admin's Google token (admin owns the central drive)
-    const { accessToken } = await getValidGoogleToken(admin, root.admin_user_id);
-
-    // 3. Per-user subfolder name
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("display_name")
-      .eq("user_id", userId)
-      .maybeSingle();
-    const userFolderName = sanitizeFolderName(profile?.display_name || userId.slice(0, 8));
-
-    // 4. Find/create {root}/{user}/{bucket}
-    const userFolderId = await findOrCreateFolder(accessToken, root.folder_id, userFolderName);
-    const bucketFolderId = await findOrCreateFolder(accessToken, userFolderId, bucket);
-
-    // 5. Initiate resumable upload session — browser will PUT bytes directly.
-    const sessionUrl = await initResumableSession(accessToken, bucketFolderId, filename, mimeType, sizeBytes);
-
-    // 6. Optionally create a placeholder recordings row up-front so the user
-    //    sees something in the list immediately. The client patches drive_url +
-    //    drive_file_id once the PUT completes.
-    let recordingId: string | null = null;
-    if (createRecordingRow && bucket === "recordings") {
-      const duration = fmtDuration(durationSeconds);
-      const { data: inserted, error: insErr } = await admin
-        .from("recordings")
-        .insert({
-          user_id: userId,
-          filename,
-          source: "manual_upload",
-          transcript_status: "pending",
-          duration,
-          recorded_at: new Date().toISOString(),
-        } as any)
-        .select("id")
-        .single();
-      if (insErr) throw insErr;
-      recordingId = inserted.id;
+    const form = await req.formData();
+    const file = form.get("file");
+    if (!(file instanceof File)) {
+      return new Response(JSON.stringify({
+        error: "missing_file",
+        message: "לא נמצא קובץ בבקשה.",
+      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    const filename = String(form.get("filename") || file.name || "audio");
+    const mimeType = String(form.get("mimeType") || file.type || "audio/webm");
+    const durRaw = form.get("durationSeconds");
+    const durationSeconds = durRaw ? Number(durRaw) : undefined;
+
+    // Use the USER's own Drive (not the admin's central folder).
+    const { accessToken } = await getValidGoogleToken(admin, userId);
+    const parentFolderId = await resolveTargetFolder(admin, accessToken, userId);
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const uploaded = await uploadToDrive(accessToken, parentFolderId, filename, mimeType, bytes);
+    const driveUrl = uploaded.webViewLink || `https://drive.google.com/file/d/${uploaded.id}/view`;
+
+    // Only NOW create the recordings row — we have a real Drive file id.
+    const { data: inserted, error: insErr } = await admin
+      .from("recordings")
+      .insert({
+        user_id: userId,
+        filename,
+        drive_url: driveUrl,
+        drive_file_id: uploaded.id,
+        source: "manual_upload",
+        transcript_status: "pending",
+        duration: fmtDuration(durationSeconds),
+        recorded_at: new Date().toISOString(),
+      } as any)
+      .select("id")
+      .single();
+    if (insErr) throw insErr;
+
     return new Response(JSON.stringify({
-      sessionUrl,
-      recordingId,
-      userFolderId,
-      bucketFolderId,
+      id: inserted.id,
+      drive_file_id: uploaded.id,
+      drive_url: driveUrl,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
-    console.error("upload-transcriber-file error", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const msg = e instanceof Error ? e.message : "Unknown";
+    console.error("upload-transcriber-file error", msg);
+    return new Response(JSON.stringify({
+      error: "upload_failed",
+      message: msg.includes("חיבר") ? msg : `העלאה ל-Drive נכשלה: ${msg}`,
+    }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
