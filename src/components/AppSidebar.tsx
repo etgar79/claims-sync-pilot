@@ -8,6 +8,7 @@ import {
   Shield,
   Mic,
   ClipboardList,
+  ListChecks,
   Phone,
   Image as ImageIcon,
   ChevronDown,
