@@ -210,6 +210,7 @@ export function useTranscribeAll() {
           })
           .eq("id", recordingId);
         toast.success(`תמלול הושלם (רק ${SERVICE_NAMES[single.service as TranscriptionService]} הצליח)`, { id: toastId });
+        triggerAutoPipeline({ recordingId, table, workspaceKind: table === "meeting_recordings" ? "architect" : "appraiser" });
         onCompleted?.();
         return true;
       }
