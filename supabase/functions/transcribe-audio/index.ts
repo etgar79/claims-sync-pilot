@@ -154,17 +154,14 @@ async function fileToBase64(file: File): Promise<string> {
   return out;
 }
 
-// Fallback: transcribe using Lovable AI Gateway (Gemini multimodal). Always available.
-async function transcribeLovableAi(file: File): Promise<{ text: string; duration?: number }> {
+async function transcribeLovableAi(file: File): Promise<TranscribeResult> {
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-  // Gemini accepts up to ~20MB inline audio; larger files would blow memory in edge runtime.
   if (file.size > 20 * 1024 * 1024) {
     throw new Error(`קובץ גדול מדי לתמלול מובנה (${(file.size / 1024 / 1024).toFixed(1)}MB). פצלי לקבצים קטנים יותר או השתמשי בשירות אחר.`);
   }
   const b64 = await fileToBase64(file);
   const mime = (file.type || "audio/mpeg").toLowerCase();
   const fname = (file.name || "").toLowerCase();
-  // Normalize to formats Gemini accepts: wav, mp3, aiff, aac, ogg, flac
   let format = (mime.split("/")[1] || "mp3").split(";")[0].replace("x-", "");
   if (format === "mpeg" || format === "mpg" || fname.endsWith(".mp3")) format = "mp3";
   else if (format === "mp4" || format === "m4a" || fname.endsWith(".m4a") || fname.endsWith(".mp4")) format = "aac";
@@ -175,21 +172,18 @@ async function transcribeLovableAi(file: File): Promise<{ text: string; duration
 
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
       messages: [
         {
           role: "system",
-          content: "אתה מערכת תמלול. תמלל את ההקלטה לעברית במדויק. החזר רק את הטקסט המתומלל, ללא הקדמות או הערות.",
+          content: "אתה מערכת תמלול. תמלל את ההקלטה לעברית במדויק. החזר את הטקסט כשהוא מחולק לקטעים קצרים, כשבתחילת כל קטע מופיעה חותמת זמן בפורמט [mm:ss] (לדוגמה: [00:12]). אל תוסיף הקדמות, הערות, או טקסט מחוץ לקטעים. כל קטע בשורה נפרדת.",
         },
         {
           role: "user",
           content: [
-            { type: "text", text: "תמלל את ההקלטה הבאה לעברית:" },
+            { type: "text", text: "תמלל את ההקלטה הבאה לעברית עם חותמות זמן [mm:ss] בתחילת כל משפט/קטע:" },
             { type: "input_audio", input_audio: { data: b64, format } },
           ],
         },
@@ -198,8 +192,25 @@ async function transcribeLovableAi(file: File): Promise<{ text: string; duration
   });
   if (!res.ok) throw new Error(`Lovable AI failed [${res.status}]: ${await res.text()}`);
   const data = await res.json();
-  const text = data?.choices?.[0]?.message?.content ?? "";
-  return { text, duration: undefined };
+  const raw: string = data?.choices?.[0]?.message?.content ?? "";
+  // Parse [mm:ss] or [hh:mm:ss] prefixes into segments.
+  const segments: Segment[] = [];
+  const lineRe = /\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s*([^\n]*)/g;
+  let m: RegExpExecArray | null;
+  const cleanLines: string[] = [];
+  while ((m = lineRe.exec(raw)) !== null) {
+    const a = Number(m[1]); const b = Number(m[2]); const c = m[3] ? Number(m[3]) : null;
+    const start = c !== null ? a * 3600 + b * 60 + c : a * 60 + b;
+    const text = (m[4] ?? "").trim();
+    if (text) {
+      segments.push({ start, end: start, text });
+      cleanLines.push(text);
+    }
+  }
+  // Fill end timestamps using next segment's start.
+  for (let i = 0; i < segments.length - 1; i++) segments[i].end = segments[i + 1].start;
+  const text = segments.length ? cleanLines.join("\n") : raw;
+  return { text, duration: undefined, segments: segments.length ? segments : undefined };
 }
 
 async function logUsage(opts: {
