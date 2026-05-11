@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { exportTranscriptToPdf, downloadTranscriptTxt } from "@/lib/exportTranscriptPdf";
+import { PipelineStatus } from "@/components/PipelineStatus";
 
 const STATUS = {
   pending: { label: "ממתין", icon: Clock, cls: "bg-muted text-muted-foreground border-border" },
