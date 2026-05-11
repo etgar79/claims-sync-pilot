@@ -27,7 +27,7 @@ const COST_PER_SECOND_USD: Record<Service, number> = {
   lovable_ai: 32 * 0.30 / 1_000_000, // ≈ $0.0000096/sec ≈ $0.0346/hour
 };
 
-async function transcribeWhisper(file: File): Promise<{ text: string; duration?: number }> {
+async function transcribeWhisper(file: File): Promise<TranscribeResult> {
   if (file.size > 25 * 1024 * 1024) throw new Error(`Whisper לא תומך בקבצים מעל 25MB (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
   if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
   const fd = new FormData();
@@ -35,6 +35,8 @@ async function transcribeWhisper(file: File): Promise<{ text: string; duration?:
   fd.append("model", "whisper-1");
   fd.append("language", "he");
   fd.append("response_format", "verbose_json");
+  fd.append("timestamp_granularities[]", "segment");
+  fd.append("timestamp_granularities[]", "word");
   const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
     headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
@@ -42,10 +44,21 @@ async function transcribeWhisper(file: File): Promise<{ text: string; duration?:
   });
   if (!res.ok) throw new Error(`Whisper failed [${res.status}]: ${await res.text()}`);
   const data = await res.json();
-  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined };
+  const words: WordStamp[] = Array.isArray(data.words)
+    ? data.words.map((w: any) => ({ start: Number(w.start) || 0, end: Number(w.end) || 0, text: String(w.word ?? w.text ?? "") }))
+    : [];
+  const segments: Segment[] = Array.isArray(data.segments)
+    ? data.segments.map((s: any) => {
+        const start = Number(s.start) || 0;
+        const end = Number(s.end) || 0;
+        const segWords = words.filter((w) => w.start >= start - 0.01 && w.end <= end + 0.01);
+        return { start, end, text: String(s.text ?? "").trim(), words: segWords.length ? segWords : undefined };
+      })
+    : [];
+  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined, segments: segments.length ? segments : undefined };
 }
 
-async function transcribeElevenLabs(file: File): Promise<{ text: string; duration?: number }> {
+async function transcribeElevenLabs(file: File): Promise<TranscribeResult> {
   if (!ELEVENLABS_API_KEY) throw new Error("ELEVENLABS_API_KEY is not configured");
   const fd = new FormData();
   fd.append("file", file);
@@ -60,18 +73,51 @@ async function transcribeElevenLabs(file: File): Promise<{ text: string; duratio
   });
   if (!res.ok) throw new Error(`ElevenLabs failed [${res.status}]: ${await res.text()}`);
   const data = await res.json();
-  // ElevenLabs may return audio_duration in some shapes
   const duration = data.audio_duration ?? data.duration;
-  return { text: data.text ?? "", duration: typeof duration === "number" ? duration : undefined };
+  // ElevenLabs returns word-level stamps; group into ~sentence segments by punctuation/silence.
+  const rawWords: any[] = Array.isArray(data.words) ? data.words : [];
+  const words: WordStamp[] = rawWords
+    .filter((w) => w && (w.type === undefined || w.type === "word"))
+    .map((w) => ({ start: Number(w.start) || 0, end: Number(w.end) || 0, text: String(w.text ?? w.word ?? "") }));
+  const segments: Segment[] = [];
+  let cur: WordStamp[] = [];
+  let curStart = 0;
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    if (cur.length === 0) curStart = w.start;
+    cur.push(w);
+    const next = words[i + 1];
+    const gap = next ? next.start - w.end : Infinity;
+    const endsSentence = /[.!?…׃]\s*$/.test(w.text) || /\n/.test(w.text);
+    if (endsSentence || gap > 0.8 || cur.length >= 25) {
+      segments.push({
+        start: curStart,
+        end: w.end,
+        text: cur.map((x) => x.text).join(" ").replace(/\s+([,.!?])/g, "$1").trim(),
+        words: cur,
+      });
+      cur = [];
+    }
+  }
+  if (cur.length) {
+    segments.push({ start: curStart, end: cur[cur.length - 1].end, text: cur.map((x) => x.text).join(" ").trim(), words: cur });
+  }
+  return {
+    text: data.text ?? segments.map((s) => s.text).join(" "),
+    duration: typeof duration === "number" ? duration : undefined,
+    segments: segments.length ? segments : undefined,
+  };
 }
 
-async function transcribeIvritAi(file: File): Promise<{ text: string; duration?: number }> {
+async function transcribeIvritAi(file: File): Promise<TranscribeResult> {
   if (!IVRIT_AI_API_KEY) throw new Error("IVRIT_AI_API_KEY is not configured");
   const fd = new FormData();
   fd.append("file", file);
   fd.append("model", "ivrit-ai/whisper-large-v3-turbo");
   fd.append("language", "he");
   fd.append("response_format", "verbose_json");
+  fd.append("timestamp_granularities[]", "segment");
+  fd.append("timestamp_granularities[]", "word");
   const res = await fetch("https://api.ivrit.ai/v1/audio/transcriptions", {
     method: "POST",
     headers: { Authorization: `Bearer ${IVRIT_AI_API_KEY}` },
@@ -79,7 +125,18 @@ async function transcribeIvritAi(file: File): Promise<{ text: string; duration?:
   });
   if (!res.ok) throw new Error(`ivrit.ai failed [${res.status}]: ${await res.text()}`);
   const data = await res.json();
-  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined };
+  const words: WordStamp[] = Array.isArray(data.words)
+    ? data.words.map((w: any) => ({ start: Number(w.start) || 0, end: Number(w.end) || 0, text: String(w.word ?? w.text ?? "") }))
+    : [];
+  const segments: Segment[] = Array.isArray(data.segments)
+    ? data.segments.map((s: any) => {
+        const start = Number(s.start) || 0;
+        const end = Number(s.end) || 0;
+        const segWords = words.filter((w) => w.start >= start - 0.01 && w.end <= end + 0.01);
+        return { start, end, text: String(s.text ?? "").trim(), words: segWords.length ? segWords : undefined };
+      })
+    : [];
+  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined, segments: segments.length ? segments : undefined };
 }
 
 // Memory-efficient base64 (avoids huge intermediate strings on big files)
