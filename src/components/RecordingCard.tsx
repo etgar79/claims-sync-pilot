@@ -359,6 +359,12 @@ export function RecordingCard({
               </TooltipTrigger><TooltipContent>שמור את התמלול ל-Drive (תחת תיקיית התיק/פגישה אם משויך)</TooltipContent></Tooltip>
 
               <Tooltip><TooltipTrigger asChild>
+                <Button size="sm" variant="ghost" onClick={cleanupTranscript} disabled={cleaning} className="h-8 gap-1.5 text-xs">
+                  {cleaning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />} נקה
+                </Button>
+              </TooltipTrigger><TooltipContent>נקה ושפר את התמלול עם AI (פיסוק, שגיאות, מילון מונחים)</TooltipContent></Tooltip>
+
+              <Tooltip><TooltipTrigger asChild>
                 <Button size="icon" variant="ghost" onClick={copyText} className="h-8 w-8">
                   <Copy className="h-3.5 w-3.5" />
                 </Button>
