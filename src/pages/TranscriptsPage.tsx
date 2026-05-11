@@ -24,6 +24,7 @@ import { serviceLabel } from "@/lib/serviceLabels";
 import { AssignRecordingDialog } from "@/components/AssignRecordingDialog";
 import { AssignToMeetingDialog } from "@/components/AssignToMeetingDialog";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
+import { getScopedUserId } from "@/lib/actAs";
 
 type Workspace = "appraiser" | "architect";
 
