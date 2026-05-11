@@ -53,6 +53,16 @@ export async function getEffectiveUserId(): Promise<string | null> {
   return data.user?.id ?? null;
 }
 
+/**
+ * ALWAYS returns a user_id to scope queries by.
+ * - If admin is acting as a user → that user's id.
+ * - Else → the real authenticated user's id (so admin sees only their own data).
+ * Use this in every list-page query to prevent admin from seeing other users' rows.
+ */
+export async function getScopedUserId(): Promise<string | null> {
+  return getEffectiveUserId();
+}
+
 export function useActAsUser() {
   const [actAsId, setId] = useState<string | null>(getActAsUserId());
   const [actAsName, setName] = useState<string | null>(getActAsUserName());
