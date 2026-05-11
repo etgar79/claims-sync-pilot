@@ -244,6 +244,7 @@ export function useTranscribeAll() {
         .eq("id", recordingId);
 
       toast.success(`תמלול הושלם בהצלחה! (${versions.length} מנועים + מיזוג AI)`, { id: toastId });
+      triggerAutoPipeline({ recordingId, table, workspaceKind: table === "meeting_recordings" ? "architect" : "appraiser" });
       onCompleted?.();
       return true;
     } catch (e: any) {
