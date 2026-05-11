@@ -38,11 +38,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { versions, language, context } = await req.json() as {
+    const { versions, language, context, workspace_kind } = await req.json() as {
       versions: TranscriptVersion[];
       language?: string;
       context?: { title?: string; client?: string; project?: string };
+      workspace_kind?: string;
     };
+
+    // Load user glossary (for the workspace + 'all')
+    const { data: glossaryRows } = await supabase
+      .from("user_glossary")
+      .select("term, replacement, notes")
+      .eq("user_id", user.id)
+      .in("workspace_kind", [workspace_kind ?? "all", "all"])
+      .limit(200);
+    const glossaryBlock = (glossaryRows && glossaryRows.length > 0)
+      ? `\n\n## מילון מונחים מקצועיים (השתמש בכתיב הזה אם זוהה ביטוי דומה):\n${glossaryRows.map((g: any) => `- "${g.term}"${g.replacement ? ` → "${g.replacement}"` : ""}${g.notes ? ` (${g.notes})` : ""}`).join("\n")}\n`
+      : "";
 
     if (!versions || !Array.isArray(versions) || versions.length < 2) {
       return new Response(
