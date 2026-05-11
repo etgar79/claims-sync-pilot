@@ -59,5 +59,10 @@ export function ProtectedRoute({ children, allow }: ProtectedRouteProps) {
     if (!hasAccess) return <Navigate to="/" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <ActAsUserBanner />
+      {children}
+    </>
+  );
 }
