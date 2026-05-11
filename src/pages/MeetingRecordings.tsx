@@ -18,7 +18,7 @@ import { ExpandableTranscriptPanel } from "@/components/ExpandableTranscriptPane
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { RecordCallButton } from "@/components/RecordCallButton";
 import { useDriveSync } from "@/hooks/useDriveSync";
-import { getActAsUserId, useActAsUser } from "@/lib/actAs";
+import { getScopedUserId, useActAsUser } from "@/lib/actAs";
 
 interface Row {
   id: string;
