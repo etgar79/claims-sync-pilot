@@ -159,8 +159,23 @@ ${versionsBlock}
     }
 
     const aiData = await aiRes.json();
-    const mergedTranscript = aiData.choices?.[0]?.message?.content as string;
-    if (!mergedTranscript) throw new Error("AI לא החזיר תוצאה");
+    const rawContent = aiData.choices?.[0]?.message?.content as string;
+    if (!rawContent) throw new Error("AI לא החזיר תוצאה");
+
+    let mergedTranscript = rawContent;
+    let qualityScore: number | null = null;
+    let qualityNotes: string | null = null;
+    try {
+      const cleaned = rawContent.trim().replace(/^```json\s*/i, "").replace(/```\s*$/i, "");
+      const parsed = JSON.parse(cleaned);
+      if (parsed?.transcript) {
+        mergedTranscript = parsed.transcript;
+        qualityScore = typeof parsed.quality_score === "number" ? Math.max(0, Math.min(100, Math.round(parsed.quality_score))) : null;
+        qualityNotes = typeof parsed.quality_notes === "string" ? parsed.quality_notes : null;
+      }
+    } catch (_) {
+      // fallback: use raw content as transcript
+    }
 
     // Track usage
     await supabase.from("usage_events").insert({
@@ -174,12 +189,16 @@ ${versionsBlock}
         services: versions.map((v) => v.service),
         char_count: mergedTranscript.length,
         with_diarization: true,
+        glossary_terms: glossaryRows?.length ?? 0,
+        quality_score: qualityScore,
       },
     });
 
     return new Response(
       JSON.stringify({
         merged_transcript: mergedTranscript,
+        quality_score: qualityScore,
+        quality_notes: qualityNotes,
         source_versions: versions.length,
         services: versions.map((v) => v.service),
       }),
