@@ -203,6 +203,7 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
       const token = sess.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
       let finalTranscript = "";
+      let finalSegments: any[] | null = null;
       let usedService: TranscriptionService = service;
       let fallbackUsed = false;
       const failedChunks: number[] = [];
@@ -219,7 +220,7 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
         toast.loading(`מתמלל ${chunks.length} חלקים...`, { id: toastId });
 
         // Concurrency: 2 parallel chunks keeps UI responsive and avoids rate limits.
-        const results: (string | null)[] = new Array(chunks.length).fill(null);
+        const results: ({ text: string; segments: any[] | null } | null)[] = new Array(chunks.length).fill(null);
         const queue = [...chunks];
         let completed = 0;
         const workers = Array.from({ length: Math.min(2, chunks.length) }, async () => {
@@ -227,8 +228,8 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
             const c = queue.shift();
             if (!c) break;
             try {
-              const r = await transcribeOneWithRetry(c.blob, service, token, c.endSec - c.startSec);
-              results[c.index] = r.transcript ?? "";
+              const r: any = await transcribeOneWithRetry(c.blob, service, token, c.endSec - c.startSec);
+              results[c.index] = { text: r.transcript ?? "", segments: Array.isArray(r.segments) ? r.segments : null };
               if (r.service && r.service !== service) {
                 usedService = r.service;
                 fallbackUsed = true;
@@ -247,16 +248,35 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
         await Promise.all(workers);
 
         finalTranscript = results
-          .map((t, i) => (t == null ? `\n[חלק ${i + 1} לא תומלל]\n` : t))
+          .map((r, i) => (r == null ? `\n[חלק ${i + 1} לא תומלל]\n` : r.text))
           .join("\n\n");
+
+        // Stitch segments using each chunk's startSec offset.
+        const stitched: any[] = [];
+        results.forEach((r, idx) => {
+          if (!r || !r.segments) return;
+          const offset = chunks[idx].startSec || 0;
+          for (const s of r.segments) {
+            stitched.push({
+              start: (Number(s.start) || 0) + offset,
+              end: (Number(s.end) || 0) + offset,
+              text: s.text,
+              words: Array.isArray(s.words)
+                ? s.words.map((w: any) => ({ start: (Number(w.start) || 0) + offset, end: (Number(w.end) || 0) + offset, text: w.text }))
+                : undefined,
+            });
+          }
+        });
+        finalSegments = stitched.length ? stitched : null;
 
         if (failedChunks.length === chunks.length) {
           throw new Error("כל החלקים נכשלו בתמלול");
         }
       } else {
         toast.loading("שולח לתמלול...", { id: toastId });
-        const data = await transcribeOneWithRetry(file, service, token, clientDuration);
+        const data: any = await transcribeOneWithRetry(file, service, token, clientDuration);
         finalTranscript = data.transcript ?? "";
+        finalSegments = Array.isArray(data.segments) ? data.segments : null;
         usedService = (data.service as TranscriptionService) ?? service;
         fallbackUsed = !!data.fallback_used;
       }
@@ -265,6 +285,7 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
         .from(table)
         .update({
           transcript: finalTranscript,
+          segments: finalSegments,
           transcript_status: "completed",
           transcription_service: usedService,
         })
@@ -278,6 +299,7 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
           user_id: user.id,
           service: usedService,
           transcript: finalTranscript,
+          segments: finalSegments,
           is_merged: false,
         });
       }

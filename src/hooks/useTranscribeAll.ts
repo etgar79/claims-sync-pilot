@@ -53,7 +53,7 @@ async function callTranscribeEdge(
   file: File | Blob,
   service: TranscriptionService,
   duration: number,
-): Promise<string> {
+): Promise<{ text: string; segments: any[] | null }> {
   const fd = new FormData();
   const f = file instanceof File ? file : new File([file], "chunk.wav", { type: "audio/wav" });
   fd.append("file", f);
@@ -71,7 +71,7 @@ async function callTranscribeEdge(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error || `שגיאה ${res.status}`);
-  return (data.transcript as string) ?? "";
+  return { text: (data.transcript as string) ?? "", segments: Array.isArray(data.segments) ? data.segments : null };
 }
 
 async function runOne(opts: {
@@ -81,14 +81,14 @@ async function runOne(opts: {
   userId: string;
   duration: number;
   onProgress?: (status: string) => void;
-}): Promise<string> {
+}): Promise<{ text: string; segments: any[] | null }> {
   let transcript = "";
+  let segments: any[] | null = null;
 
   if (needsSplitting(opts.file)) {
     opts.onProgress?.(`מפצל קובץ גדול לחלקים...`);
     const chunks = await splitAudioFile(opts.file);
-    const parts: (string | null)[] = new Array(chunks.length).fill(null);
-    // Sequential to keep load gentle when running for multiple engines.
+    const parts: ({ text: string; segments: any[] | null } | null)[] = new Array(chunks.length).fill(null);
     for (let i = 0; i < chunks.length; i++) {
       const c = chunks[i];
       opts.onProgress?.(`מתמלל חלק ${i + 1}/${chunks.length}...`);
@@ -100,21 +100,39 @@ async function runOne(opts: {
       }
     }
     if (parts.every((p) => p == null)) throw new Error("כל החלקים נכשלו");
-    transcript = parts.map((t, i) => (t == null ? `\n[חלק ${i + 1} לא תומלל]\n` : t)).join("\n\n");
+    transcript = parts.map((p, i) => (p == null ? `\n[חלק ${i + 1} לא תומלל]\n` : p.text)).join("\n\n");
+    const stitched: any[] = [];
+    parts.forEach((p, idx) => {
+      if (!p || !p.segments) return;
+      const offset = chunks[idx].startSec || 0;
+      for (const s of p.segments) {
+        stitched.push({
+          start: (Number(s.start) || 0) + offset,
+          end: (Number(s.end) || 0) + offset,
+          text: s.text,
+          words: Array.isArray(s.words)
+            ? s.words.map((w: any) => ({ start: (Number(w.start) || 0) + offset, end: (Number(w.end) || 0) + offset, text: w.text }))
+            : undefined,
+        });
+      }
+    });
+    segments = stitched.length ? stitched : null;
   } else {
-    transcript = await callTranscribeEdge(opts.file, opts.service, opts.duration);
+    const r = await callTranscribeEdge(opts.file, opts.service, opts.duration);
+    transcript = r.text;
+    segments = r.segments;
   }
 
-  // Save as a version
   await supabase.from("transcript_versions").insert({
     recording_id: opts.recordingId,
     user_id: opts.userId,
     service: opts.service,
     transcript,
+    segments,
     is_merged: false,
   });
 
-  return transcript;
+  return { text: transcript, segments };
 }
 
 export function useTranscribeAll() {
@@ -174,14 +192,14 @@ export function useTranscribeAll() {
       const duration = await getAudioDuration(file);
 
       // Run all services in sequence (so failures are isolated and to be gentle on rate limits)
-      const versions: { service: string; text: string }[] = [];
+      const versions: { service: string; text: string; segments: any[] | null }[] = [];
       const failures: { service: string; error: string }[] = [];
 
       for (const svc of SERVICES) {
         setProgress(`מתמלל עם ${SERVICE_NAMES[svc]}...`);
         try {
-          const text = await runOne({ service: svc, file, recordingId, userId: user.id, duration, onProgress: setProgress });
-          if (text?.trim()) versions.push({ service: svc, text });
+          const r = await runOne({ service: svc, file, recordingId, userId: user.id, duration, onProgress: setProgress });
+          if (r.text?.trim()) versions.push({ service: svc, text: r.text, segments: r.segments });
         } catch (e: any) {
           console.error(`Service ${svc} failed:`, e);
           failures.push({ service: svc, error: e?.message || "שגיאה" });
@@ -198,6 +216,9 @@ export function useTranscribeAll() {
         });
       }
 
+      // Pick segments from the version with the richest timestamp data (for use as the main row)
+      const segmentsForMain = versions.find((v) => v.segments && v.segments.length > 0)?.segments ?? null;
+
       // If only one succeeded - just use it directly
       if (versions.length === 1) {
         const single = versions[0];
@@ -205,6 +226,7 @@ export function useTranscribeAll() {
           .from(table)
           .update({
             transcript: single.text,
+            segments: single.segments,
             transcript_status: "completed",
             transcription_service: single.service,
           })
@@ -218,18 +240,19 @@ export function useTranscribeAll() {
       // Merge with the configured AI engine
       setProgress("ממזג את כל הגרסאות עם AI...");
       const mergeRes = await supabase.functions.invoke("merge-transcripts", {
-        body: { versions, language: "he", context },
+        body: { versions: versions.map((v) => ({ service: v.service, text: v.text })), language: "he", context },
       });
       if (mergeRes.error) throw mergeRes.error;
       const merged: string = mergeRes.data?.merged_transcript;
       if (!merged) throw new Error("המיזוג לא החזיר תוצאה");
 
-      // Save merged version
+      // Save merged version (no per-word stamps; reuse best available segments for context)
       await supabase.from("transcript_versions").insert({
         recording_id: recordingId,
         user_id: user.id,
         service: "merged",
         transcript: merged,
+        segments: segmentsForMain,
         is_merged: true,
       });
 
@@ -238,6 +261,7 @@ export function useTranscribeAll() {
         .from(table)
         .update({
           transcript: merged,
+          segments: segmentsForMain,
           transcript_status: "completed",
           transcription_service: "merged",
         })

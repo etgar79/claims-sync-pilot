@@ -13,6 +13,10 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
 type Service = "ivrit_ai" | "whisper" | "elevenlabs" | "lovable_ai";
 
+interface WordStamp { start: number; end: number; text: string }
+interface Segment { start: number; end: number; text: string; words?: WordStamp[] }
+interface TranscribeResult { text: string; duration?: number; segments?: Segment[] }
+
 // Cost per second of audio (USD). Conservative estimates.
 // Lovable AI runs on Gemini 2.5 Flash with audio input — billed per token.
 // Audio input ≈ 32 tokens/sec; pricing ~$0.30/M input tokens → ~$0.0000096/sec.
@@ -23,7 +27,7 @@ const COST_PER_SECOND_USD: Record<Service, number> = {
   lovable_ai: 32 * 0.30 / 1_000_000, // ≈ $0.0000096/sec ≈ $0.0346/hour
 };
 
-async function transcribeWhisper(file: File): Promise<{ text: string; duration?: number }> {
+async function transcribeWhisper(file: File): Promise<TranscribeResult> {
   if (file.size > 25 * 1024 * 1024) throw new Error(`Whisper לא תומך בקבצים מעל 25MB (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
   if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
   const fd = new FormData();
@@ -31,6 +35,8 @@ async function transcribeWhisper(file: File): Promise<{ text: string; duration?:
   fd.append("model", "whisper-1");
   fd.append("language", "he");
   fd.append("response_format", "verbose_json");
+  fd.append("timestamp_granularities[]", "segment");
+  fd.append("timestamp_granularities[]", "word");
   const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
     headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
@@ -38,10 +44,21 @@ async function transcribeWhisper(file: File): Promise<{ text: string; duration?:
   });
   if (!res.ok) throw new Error(`Whisper failed [${res.status}]: ${await res.text()}`);
   const data = await res.json();
-  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined };
+  const words: WordStamp[] = Array.isArray(data.words)
+    ? data.words.map((w: any) => ({ start: Number(w.start) || 0, end: Number(w.end) || 0, text: String(w.word ?? w.text ?? "") }))
+    : [];
+  const segments: Segment[] = Array.isArray(data.segments)
+    ? data.segments.map((s: any) => {
+        const start = Number(s.start) || 0;
+        const end = Number(s.end) || 0;
+        const segWords = words.filter((w) => w.start >= start - 0.01 && w.end <= end + 0.01);
+        return { start, end, text: String(s.text ?? "").trim(), words: segWords.length ? segWords : undefined };
+      })
+    : [];
+  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined, segments: segments.length ? segments : undefined };
 }
 
-async function transcribeElevenLabs(file: File): Promise<{ text: string; duration?: number }> {
+async function transcribeElevenLabs(file: File): Promise<TranscribeResult> {
   if (!ELEVENLABS_API_KEY) throw new Error("ELEVENLABS_API_KEY is not configured");
   const fd = new FormData();
   fd.append("file", file);
@@ -56,18 +73,51 @@ async function transcribeElevenLabs(file: File): Promise<{ text: string; duratio
   });
   if (!res.ok) throw new Error(`ElevenLabs failed [${res.status}]: ${await res.text()}`);
   const data = await res.json();
-  // ElevenLabs may return audio_duration in some shapes
   const duration = data.audio_duration ?? data.duration;
-  return { text: data.text ?? "", duration: typeof duration === "number" ? duration : undefined };
+  // ElevenLabs returns word-level stamps; group into ~sentence segments by punctuation/silence.
+  const rawWords: any[] = Array.isArray(data.words) ? data.words : [];
+  const words: WordStamp[] = rawWords
+    .filter((w) => w && (w.type === undefined || w.type === "word"))
+    .map((w) => ({ start: Number(w.start) || 0, end: Number(w.end) || 0, text: String(w.text ?? w.word ?? "") }));
+  const segments: Segment[] = [];
+  let cur: WordStamp[] = [];
+  let curStart = 0;
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    if (cur.length === 0) curStart = w.start;
+    cur.push(w);
+    const next = words[i + 1];
+    const gap = next ? next.start - w.end : Infinity;
+    const endsSentence = /[.!?…׃]\s*$/.test(w.text) || /\n/.test(w.text);
+    if (endsSentence || gap > 0.8 || cur.length >= 25) {
+      segments.push({
+        start: curStart,
+        end: w.end,
+        text: cur.map((x) => x.text).join(" ").replace(/\s+([,.!?])/g, "$1").trim(),
+        words: cur,
+      });
+      cur = [];
+    }
+  }
+  if (cur.length) {
+    segments.push({ start: curStart, end: cur[cur.length - 1].end, text: cur.map((x) => x.text).join(" ").trim(), words: cur });
+  }
+  return {
+    text: data.text ?? segments.map((s) => s.text).join(" "),
+    duration: typeof duration === "number" ? duration : undefined,
+    segments: segments.length ? segments : undefined,
+  };
 }
 
-async function transcribeIvritAi(file: File): Promise<{ text: string; duration?: number }> {
+async function transcribeIvritAi(file: File): Promise<TranscribeResult> {
   if (!IVRIT_AI_API_KEY) throw new Error("IVRIT_AI_API_KEY is not configured");
   const fd = new FormData();
   fd.append("file", file);
   fd.append("model", "ivrit-ai/whisper-large-v3-turbo");
   fd.append("language", "he");
   fd.append("response_format", "verbose_json");
+  fd.append("timestamp_granularities[]", "segment");
+  fd.append("timestamp_granularities[]", "word");
   const res = await fetch("https://api.ivrit.ai/v1/audio/transcriptions", {
     method: "POST",
     headers: { Authorization: `Bearer ${IVRIT_AI_API_KEY}` },
@@ -75,7 +125,18 @@ async function transcribeIvritAi(file: File): Promise<{ text: string; duration?:
   });
   if (!res.ok) throw new Error(`ivrit.ai failed [${res.status}]: ${await res.text()}`);
   const data = await res.json();
-  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined };
+  const words: WordStamp[] = Array.isArray(data.words)
+    ? data.words.map((w: any) => ({ start: Number(w.start) || 0, end: Number(w.end) || 0, text: String(w.word ?? w.text ?? "") }))
+    : [];
+  const segments: Segment[] = Array.isArray(data.segments)
+    ? data.segments.map((s: any) => {
+        const start = Number(s.start) || 0;
+        const end = Number(s.end) || 0;
+        const segWords = words.filter((w) => w.start >= start - 0.01 && w.end <= end + 0.01);
+        return { start, end, text: String(s.text ?? "").trim(), words: segWords.length ? segWords : undefined };
+      })
+    : [];
+  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined, segments: segments.length ? segments : undefined };
 }
 
 // Memory-efficient base64 (avoids huge intermediate strings on big files)
@@ -93,17 +154,14 @@ async function fileToBase64(file: File): Promise<string> {
   return out;
 }
 
-// Fallback: transcribe using Lovable AI Gateway (Gemini multimodal). Always available.
-async function transcribeLovableAi(file: File): Promise<{ text: string; duration?: number }> {
+async function transcribeLovableAi(file: File): Promise<TranscribeResult> {
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-  // Gemini accepts up to ~20MB inline audio; larger files would blow memory in edge runtime.
   if (file.size > 20 * 1024 * 1024) {
     throw new Error(`קובץ גדול מדי לתמלול מובנה (${(file.size / 1024 / 1024).toFixed(1)}MB). פצלי לקבצים קטנים יותר או השתמשי בשירות אחר.`);
   }
   const b64 = await fileToBase64(file);
   const mime = (file.type || "audio/mpeg").toLowerCase();
   const fname = (file.name || "").toLowerCase();
-  // Normalize to formats Gemini accepts: wav, mp3, aiff, aac, ogg, flac
   let format = (mime.split("/")[1] || "mp3").split(";")[0].replace("x-", "");
   if (format === "mpeg" || format === "mpg" || fname.endsWith(".mp3")) format = "mp3";
   else if (format === "mp4" || format === "m4a" || fname.endsWith(".m4a") || fname.endsWith(".mp4")) format = "aac";
@@ -114,21 +172,18 @@ async function transcribeLovableAi(file: File): Promise<{ text: string; duration
 
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
       messages: [
         {
           role: "system",
-          content: "אתה מערכת תמלול. תמלל את ההקלטה לעברית במדויק. החזר רק את הטקסט המתומלל, ללא הקדמות או הערות.",
+          content: "אתה מערכת תמלול. תמלל את ההקלטה לעברית במדויק. החזר את הטקסט כשהוא מחולק לקטעים קצרים, כשבתחילת כל קטע מופיעה חותמת זמן בפורמט [mm:ss] (לדוגמה: [00:12]). אל תוסיף הקדמות, הערות, או טקסט מחוץ לקטעים. כל קטע בשורה נפרדת.",
         },
         {
           role: "user",
           content: [
-            { type: "text", text: "תמלל את ההקלטה הבאה לעברית:" },
+            { type: "text", text: "תמלל את ההקלטה הבאה לעברית עם חותמות זמן [mm:ss] בתחילת כל משפט/קטע:" },
             { type: "input_audio", input_audio: { data: b64, format } },
           ],
         },
@@ -137,8 +192,25 @@ async function transcribeLovableAi(file: File): Promise<{ text: string; duration
   });
   if (!res.ok) throw new Error(`Lovable AI failed [${res.status}]: ${await res.text()}`);
   const data = await res.json();
-  const text = data?.choices?.[0]?.message?.content ?? "";
-  return { text, duration: undefined };
+  const raw: string = data?.choices?.[0]?.message?.content ?? "";
+  // Parse [mm:ss] or [hh:mm:ss] prefixes into segments.
+  const segments: Segment[] = [];
+  const lineRe = /\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s*([^\n]*)/g;
+  let m: RegExpExecArray | null;
+  const cleanLines: string[] = [];
+  while ((m = lineRe.exec(raw)) !== null) {
+    const a = Number(m[1]); const b = Number(m[2]); const c = m[3] ? Number(m[3]) : null;
+    const start = c !== null ? a * 3600 + b * 60 + c : a * 60 + b;
+    const text = (m[4] ?? "").trim();
+    if (text) {
+      segments.push({ start, end: start, text });
+      cleanLines.push(text);
+    }
+  }
+  // Fill end timestamps using next segment's start.
+  for (let i = 0; i < segments.length - 1; i++) segments[i].end = segments[i + 1].start;
+  const text = segments.length ? cleanLines.join("\n") : raw;
+  return { text, duration: undefined, segments: segments.length ? segments : undefined };
 }
 
 async function logUsage(opts: {
@@ -199,14 +271,12 @@ Deno.serve(async (req) => {
     }
 
     // Build fallback chain: requested service first, then others, then Lovable AI as final safety net.
-    const runners: Record<Service, () => Promise<{ text: string; duration?: number }>> = {
+    const runners: Record<Service, () => Promise<TranscribeResult>> = {
       whisper: () => transcribeWhisper(file),
       elevenlabs: () => transcribeElevenLabs(file),
       ivrit_ai: () => transcribeIvritAi(file),
       lovable_ai: () => transcribeLovableAi(file),
     };
-    // For large files, prioritize ElevenLabs (supports up to ~1GB) over engines
-    // that hard-fail on size (Whisper >25MB, Lovable AI/Gemini >20MB, ivrit.ai ~25MB).
     const isLarge = file.size > 20 * 1024 * 1024;
     const fallbackOrder: Service[] = isLarge
       ? ["elevenlabs", "lovable_ai", "ivrit_ai", "whisper"]
@@ -216,7 +286,7 @@ Deno.serve(async (req) => {
       if (!order.includes(s)) order.push(s);
     }
 
-    let result: { text: string; duration?: number } | null = null;
+    let result: TranscribeResult | null = null;
     let usedService: Service = service;
     const warnings: string[] = [];
     for (const s of order) {
@@ -237,8 +307,7 @@ Deno.serve(async (req) => {
       throw new Error(`כל שירותי התמלול נכשלו. ${warnings.join(" | ")}`);
     }
 
-    // Choose best duration estimate: provider response > client-provided > rough size estimate
-    const sizeEstimate = file.size > 0 ? file.size / (16_000) : 0; // ~16KB/s rough fallback
+    const sizeEstimate = file.size > 0 ? file.size / (16_000) : 0;
     const durationSec = Number.isFinite(result.duration) && (result.duration as number) > 0
       ? (result.duration as number)
       : Number.isFinite(clientDuration) && clientDuration > 0
@@ -256,6 +325,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       transcript: result.text,
+      segments: result.segments ?? null,
       service: usedService,
       requested_service: service,
       fallback_used: usedService !== service,

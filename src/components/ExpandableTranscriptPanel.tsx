@@ -12,6 +12,7 @@ import { serviceLabel } from "@/lib/serviceLabels";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { MergeTranscriptsDialog } from "@/components/MergeTranscriptsDialog";
 import { EditMeetingDialog } from "@/components/EditMeetingDialog";
+import { TimestampedTranscript, type TranscriptSegment } from "@/components/TimestampedTranscript";
 import {
   AudioLines,
   Check,
@@ -140,6 +141,8 @@ export function ExpandableTranscriptPanel({
   const [editingName, setEditingName] = useState(false);
   const lastSavedRef = useRef(item.transcript ?? "");
   const debounceRef = useRef<number | null>(null);
+  const [segments, setSegments] = useState<TranscriptSegment[] | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
   const { runAll, running } = useTranscribeAll();
 
   useEffect(() => {
@@ -151,7 +154,18 @@ export function ExpandableTranscriptPanel({
     setFilenameDraft(item.filename);
     setEditingName(false);
     void loadVersions();
+    void loadSegments();
   }, [open, mode, item.id, item.transcript, item.filename]);
+
+  const loadSegments = async () => {
+    const { data } = await supabase
+      .from(item.table)
+      .select("segments")
+      .eq("id", item.id)
+      .maybeSingle();
+    const segs = (data as any)?.segments;
+    setSegments(Array.isArray(segs) && segs.length ? (segs as TranscriptSegment[]) : null);
+  };
 
   useEffect(() => {
     if (!open || !item.audioUrl) return;
@@ -578,7 +592,7 @@ export function ExpandableTranscriptPanel({
                     <Loader2 className="ml-2 h-4 w-4 animate-spin" /> טוען נגן...
                   </div>
                 ) : audioSrc ? (
-                  <audio controls preload="metadata" className="w-full">
+                  <audio ref={audioElRef} controls preload="metadata" className="w-full">
                     <source src={audioSrc} />
                   </audio>
                 ) : (
@@ -785,9 +799,17 @@ export function ExpandableTranscriptPanel({
                 />
               ) : (
                 <ScrollArea className="h-[340px] rounded-lg border bg-card px-4 py-3">
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                    {edited || "אין תמלול עדיין — אפשר להתחיל תמלול מהיר או תמלול-על."}
-                  </div>
+                  {segments && segments.length ? (
+                    <TimestampedTranscript
+                      segments={segments}
+                      fallbackText={edited}
+                      onSeek={(s) => { if (audioElRef.current) { audioElRef.current.currentTime = s; void audioElRef.current.play(); } }}
+                    />
+                  ) : (
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                      {edited || "אין תמלול עדיין — אפשר להתחיל תמלול מהיר או תמלול-על."}
+                    </div>
+                  )}
                 </ScrollArea>
               )}
             </div>
