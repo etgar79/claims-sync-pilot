@@ -592,7 +592,7 @@ export function ExpandableTranscriptPanel({
                     <Loader2 className="ml-2 h-4 w-4 animate-spin" /> טוען נגן...
                   </div>
                 ) : audioSrc ? (
-                  <audio controls preload="metadata" className="w-full">
+                  <audio ref={audioElRef} controls preload="metadata" className="w-full">
                     <source src={audioSrc} />
                   </audio>
                 ) : (
