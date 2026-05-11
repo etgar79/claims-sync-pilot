@@ -14,6 +14,7 @@ import { TranscribeDialog } from "@/components/TranscribeDialog";
 import { ExpandableTranscriptPanel } from "@/components/ExpandableTranscriptPanel";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { serviceLabel } from "@/lib/serviceLabels";
+import { getScopedUserId } from "@/lib/actAs";
 
 interface Row {
   id: string;
