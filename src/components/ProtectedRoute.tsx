@@ -5,6 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 import { Loader2 } from "lucide-react";
 import { useUserRoles, type AppRole } from "@/hooks/useUserRoles";
 import { useActiveWorkspace } from "@/hooks/useActiveWorkspace";
+import { ActAsUserBanner } from "@/components/ActAsUserBanner";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
