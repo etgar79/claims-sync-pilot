@@ -59,6 +59,7 @@ const App = () => (
               <Route path="/meeting-transcripts" element={<ProtectedRoute><TranscriptsPage workspace="architect" title="תמלולי פגישות" /></ProtectedRoute>} />
               <Route path="/transcribe" element={<ProtectedRoute allow={["transcriber"]}><TranscribePage /></ProtectedRoute>} />
               <Route path="/transcribe-debug" element={<ProtectedRoute allow={["appraiser", "architect", "transcriber"]}><TranscribeDebug /></ProtectedRoute>} />
+              <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute allow={["admin"]}><Admin /></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute allow={["admin"]}><AdminUsers /></ProtectedRoute>} />
               <Route path="/usage" element={<ProtectedRoute allow={["admin"]}><Usage /></ProtectedRoute>} />
