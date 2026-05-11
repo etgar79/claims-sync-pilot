@@ -34,6 +34,8 @@ export interface RecordingCardData {
   drive_url: string | null;
   drive_file_id?: string | null;
   source: string | null;
+  quality_score?: number | null;
+  quality_notes?: string | null;
   // appraiser-only
   case_id?: string | null;
   case_number?: string;
