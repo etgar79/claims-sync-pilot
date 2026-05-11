@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
   ChevronDown,
   Bug,
+  BookOpen,
 } from "lucide-react";
 import {
   Sidebar,
