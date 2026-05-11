@@ -27,6 +27,8 @@ export interface RecordingCardData {
   duration: string | null;
   recorded_at: string;
   transcript_status: string;
+  pipeline_status?: string | null;
+  summary?: string | null;
   transcript: string | null;
   drive_url: string | null;
   drive_file_id?: string | null;
