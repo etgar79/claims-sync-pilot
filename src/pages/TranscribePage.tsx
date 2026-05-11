@@ -47,52 +47,22 @@ async function uploadFile(file: Blob, filename: string, mimeType: string, durati
   if (!token) return { ok: false, error: "נדרשת התחברות" };
 
   try {
-    // 1. Ask server to create a Drive resumable session + a placeholder row.
-    const initRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-transcriber-file`, {
+    const fd = new FormData();
+    fd.append("file", file, filename);
+    fd.append("filename", filename);
+    fd.append("mimeType", mimeType || "application/octet-stream");
+    if (durationSeconds) fd.append("durationSeconds", String(durationSeconds));
+
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-transcriber-file`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        filename,
-        mimeType: mimeType || "application/octet-stream",
-        sizeBytes: file.size,
-        bucket: "recordings",
-        durationSeconds,
-        createRecordingRow: true,
-      }),
+      headers: { Authorization: `Bearer ${token}` },
+      body: fd,
     });
-    const initText = await initRes.text();
-    if (!initRes.ok) {
-      let msg = initText;
-      try { const j = JSON.parse(initText); msg = j.message || j.error || initText; } catch {}
-      return { ok: false, error: msg || `שגיאה ${initRes.status}` };
-    }
-    const init = JSON.parse(initText) as { sessionUrl: string; recordingId: string | null };
-    if (!init.sessionUrl) return { ok: false, error: "לא התקבלה כתובת העלאה מ-Drive" };
-
-    // 2. Upload bytes directly to Google Drive (no proxying through Edge Function).
-    const putRes = await fetch(init.sessionUrl, {
-      method: "PUT",
-      headers: { "Content-Type": mimeType || "application/octet-stream" },
-      body: file,
-    });
-    if (!putRes.ok) {
-      const errTxt = await putRes.text();
-      // Roll back the placeholder row so the user doesn't see ghost entries.
-      if (init.recordingId) {
-        await supabase.from("recordings").delete().eq("id", init.recordingId);
-      }
-      return { ok: false, error: `העלאה ל-Drive נכשלה (${putRes.status}): ${errTxt.slice(0, 200)}` };
-    }
-    const driveResp = await putRes.json() as { id: string; webViewLink?: string };
-    const driveUrl = driveResp.webViewLink || `https://drive.google.com/file/d/${driveResp.id}/view`;
-
-    // 3. Patch the placeholder row with the real Drive references.
-    if (init.recordingId) {
-      const { error: updErr } = await supabase
-        .from("recordings")
-        .update({ drive_file_id: driveResp.id, drive_url: driveUrl })
-        .eq("id", init.recordingId);
-      if (updErr) return { ok: false, error: updErr.message };
+    const text = await res.text();
+    if (!res.ok) {
+      let msg = text;
+      try { const j = JSON.parse(text); msg = j.message || j.error || text; } catch {}
+      return { ok: false, error: msg || `שגיאה ${res.status}` };
     }
     return { ok: true };
   } catch (e: any) {
