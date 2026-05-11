@@ -87,6 +87,7 @@ export function AppSidebar() {
       { title: "תמונות", url: "/meeting-photos", icon: ImageIcon },
       { title: "לקוחות / פרויקטים", url: "/clients", icon: Users },
       { title: "תבניות סיכום פגישה", url: "/meeting-templates", icon: ClipboardList },
+      { title: "מילון מונחים", url: "/glossary", icon: BookOpen },
     ];
   } else if (workspace === "transcriber") {
     mainLabel = "מערכת תמלול";
