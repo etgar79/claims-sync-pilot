@@ -274,7 +274,7 @@ export function RecordingCard({
               {r.duration && (<><span>•</span><span>{r.duration}</span></>)}
             </div>
 
-            <div className="mt-2">
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
               <PipelineStatus
                 status={
                   r.pipeline_status ||
@@ -282,6 +282,7 @@ export function RecordingCard({
                 }
                 compact
               />
+              <QualityBadge score={r.quality_score} notes={r.quality_notes} />
             </div>
 
             {hasTranscript && (
