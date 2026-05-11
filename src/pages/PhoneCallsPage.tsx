@@ -65,14 +65,17 @@ export default function PhoneCallsPage({ workspace, title }: PhoneCallsPageProps
 
   const load = async () => {
     setLoading(true);
+    const scoped = await getScopedUserId();
     const baseSelect = workspace === "appraiser"
       ? "id, filename, duration, recorded_at, transcript_status, transcript, drive_url, source, case_id"
       : "id, filename, duration, recorded_at, transcript_status, transcript, drive_url, source, meeting_id";
-    const { data, error } = await supabase
+    let q = supabase
       .from(table)
       .select(baseSelect)
       .eq("source", "phone_call")
       .order("recorded_at", { ascending: false });
+    if (scoped) q = q.eq("user_id", scoped);
+    const { data, error } = await q;
     if (error) {
       toast.error(error.message);
       setLoading(false);
