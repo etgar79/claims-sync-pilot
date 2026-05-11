@@ -12,6 +12,7 @@ import { serviceLabel } from "@/lib/serviceLabels";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { MergeTranscriptsDialog } from "@/components/MergeTranscriptsDialog";
 import { EditMeetingDialog } from "@/components/EditMeetingDialog";
+import { TimestampedTranscript, type TranscriptSegment } from "@/components/TimestampedTranscript";
 import {
   AudioLines,
   Check,
