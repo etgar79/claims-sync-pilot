@@ -59,16 +59,16 @@ export function useCases() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const acting = getActAsUserId();
+    const scoped = await getScopedUserId();
     const cq = supabase.from("cases").select("*").order("updated_at", { ascending: false });
     const rq = supabase.from("recordings").select("*");
     const pq = supabase.from("photos").select("*");
     const nq = supabase.from("notes").select("*");
     const [casesRes, recRes, photoRes, noteRes] = await Promise.all([
-      acting ? cq.eq("user_id", acting) : cq,
-      acting ? rq.eq("user_id", acting) : rq,
-      acting ? pq.eq("user_id", acting) : pq,
-      acting ? nq.eq("user_id", acting) : nq,
+      scoped ? cq.eq("user_id", scoped) : cq,
+      scoped ? rq.eq("user_id", scoped) : rq,
+      scoped ? pq.eq("user_id", scoped) : pq,
+      scoped ? nq.eq("user_id", scoped) : nq,
     ]);
     const list = (casesRes.data ?? []).map((c) =>
       mapCase(c, recRes.data ?? [], photoRes.data ?? [], noteRes.data ?? [])
