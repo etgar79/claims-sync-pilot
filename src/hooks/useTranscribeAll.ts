@@ -53,7 +53,7 @@ async function callTranscribeEdge(
   file: File | Blob,
   service: TranscriptionService,
   duration: number,
-): Promise<string> {
+): Promise<{ text: string; segments: any[] | null }> {
   const fd = new FormData();
   const f = file instanceof File ? file : new File([file], "chunk.wav", { type: "audio/wav" });
   fd.append("file", f);
@@ -71,7 +71,7 @@ async function callTranscribeEdge(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error || `שגיאה ${res.status}`);
-  return (data.transcript as string) ?? "";
+  return { text: (data.transcript as string) ?? "", segments: Array.isArray(data.segments) ? data.segments : null };
 }
 
 async function runOne(opts: {
@@ -81,14 +81,14 @@ async function runOne(opts: {
   userId: string;
   duration: number;
   onProgress?: (status: string) => void;
-}): Promise<string> {
+}): Promise<{ text: string; segments: any[] | null }> {
   let transcript = "";
+  let segments: any[] | null = null;
 
   if (needsSplitting(opts.file)) {
     opts.onProgress?.(`מפצל קובץ גדול לחלקים...`);
     const chunks = await splitAudioFile(opts.file);
-    const parts: (string | null)[] = new Array(chunks.length).fill(null);
-    // Sequential to keep load gentle when running for multiple engines.
+    const parts: ({ text: string; segments: any[] | null } | null)[] = new Array(chunks.length).fill(null);
     for (let i = 0; i < chunks.length; i++) {
       const c = chunks[i];
       opts.onProgress?.(`מתמלל חלק ${i + 1}/${chunks.length}...`);
@@ -100,21 +100,39 @@ async function runOne(opts: {
       }
     }
     if (parts.every((p) => p == null)) throw new Error("כל החלקים נכשלו");
-    transcript = parts.map((t, i) => (t == null ? `\n[חלק ${i + 1} לא תומלל]\n` : t)).join("\n\n");
+    transcript = parts.map((p, i) => (p == null ? `\n[חלק ${i + 1} לא תומלל]\n` : p.text)).join("\n\n");
+    const stitched: any[] = [];
+    parts.forEach((p, idx) => {
+      if (!p || !p.segments) return;
+      const offset = chunks[idx].startSec || 0;
+      for (const s of p.segments) {
+        stitched.push({
+          start: (Number(s.start) || 0) + offset,
+          end: (Number(s.end) || 0) + offset,
+          text: s.text,
+          words: Array.isArray(s.words)
+            ? s.words.map((w: any) => ({ start: (Number(w.start) || 0) + offset, end: (Number(w.end) || 0) + offset, text: w.text }))
+            : undefined,
+        });
+      }
+    });
+    segments = stitched.length ? stitched : null;
   } else {
-    transcript = await callTranscribeEdge(opts.file, opts.service, opts.duration);
+    const r = await callTranscribeEdge(opts.file, opts.service, opts.duration);
+    transcript = r.text;
+    segments = r.segments;
   }
 
-  // Save as a version
   await supabase.from("transcript_versions").insert({
     recording_id: opts.recordingId,
     user_id: opts.userId,
     service: opts.service,
     transcript,
+    segments,
     is_merged: false,
   });
 
-  return transcript;
+  return { text: transcript, segments };
 }
 
 export function useTranscribeAll() {
