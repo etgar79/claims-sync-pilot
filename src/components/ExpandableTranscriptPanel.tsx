@@ -141,6 +141,8 @@ export function ExpandableTranscriptPanel({
   const [editingName, setEditingName] = useState(false);
   const lastSavedRef = useRef(item.transcript ?? "");
   const debounceRef = useRef<number | null>(null);
+  const [segments, setSegments] = useState<TranscriptSegment[] | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
   const { runAll, running } = useTranscribeAll();
 
   useEffect(() => {
