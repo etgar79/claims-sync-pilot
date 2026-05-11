@@ -271,14 +271,12 @@ Deno.serve(async (req) => {
     }
 
     // Build fallback chain: requested service first, then others, then Lovable AI as final safety net.
-    const runners: Record<Service, () => Promise<{ text: string; duration?: number }>> = {
+    const runners: Record<Service, () => Promise<TranscribeResult>> = {
       whisper: () => transcribeWhisper(file),
       elevenlabs: () => transcribeElevenLabs(file),
       ivrit_ai: () => transcribeIvritAi(file),
       lovable_ai: () => transcribeLovableAi(file),
     };
-    // For large files, prioritize ElevenLabs (supports up to ~1GB) over engines
-    // that hard-fail on size (Whisper >25MB, Lovable AI/Gemini >20MB, ivrit.ai ~25MB).
     const isLarge = file.size > 20 * 1024 * 1024;
     const fallbackOrder: Service[] = isLarge
       ? ["elevenlabs", "lovable_ai", "ivrit_ai", "whisper"]
@@ -288,7 +286,7 @@ Deno.serve(async (req) => {
       if (!order.includes(s)) order.push(s);
     }
 
-    let result: { text: string; duration?: number } | null = null;
+    let result: TranscribeResult | null = null;
     let usedService: Service = service;
     const warnings: string[] = [];
     for (const s of order) {
@@ -309,8 +307,7 @@ Deno.serve(async (req) => {
       throw new Error(`כל שירותי התמלול נכשלו. ${warnings.join(" | ")}`);
     }
 
-    // Choose best duration estimate: provider response > client-provided > rough size estimate
-    const sizeEstimate = file.size > 0 ? file.size / (16_000) : 0; // ~16KB/s rough fallback
+    const sizeEstimate = file.size > 0 ? file.size / (16_000) : 0;
     const durationSec = Number.isFinite(result.duration) && (result.duration as number) > 0
       ? (result.duration as number)
       : Number.isFinite(clientDuration) && clientDuration > 0
@@ -328,6 +325,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       transcript: result.text,
+      segments: result.segments ?? null,
       service: usedService,
       requested_service: service,
       fallback_used: usedService !== service,
