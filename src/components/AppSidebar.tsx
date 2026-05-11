@@ -72,6 +72,7 @@ export function AppSidebar() {
       { title: "שיחות טלפון", url: "/phone-calls", icon: Phone },
       { title: "תמונות", url: "/photos", icon: ImageIcon },
       { title: "תבניות דוחות", url: "/templates", icon: FileText },
+      { title: "מילון מונחים", url: "/glossary", icon: BookOpen },
       { title: "אבחון תמלול", url: "/transcribe-debug", icon: Bug },
     ];
   } else if (workspace === "architect") {
