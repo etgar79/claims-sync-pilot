@@ -74,11 +74,14 @@ export default function TranscriptsPage({ workspace, title }: Props) {
   const load = async () => {
     setLoading(true);
     try {
+      const scoped = await getScopedUserId();
       if (workspace === "appraiser") {
-        const { data, error } = await supabase
+        let q = supabase
           .from("recordings")
           .select("id, filename, recorded_at, transcript, transcript_status, transcription_service, drive_url, case_id")
           .order("recorded_at", { ascending: false });
+        if (scoped) q = q.eq("user_id", scoped);
+        const { data, error } = await q;
         if (error) throw error;
         const recs = data ?? [];
         const ids = Array.from(new Set(recs.map((r: any) => r.case_id).filter(Boolean)));
@@ -100,10 +103,12 @@ export default function TranscriptsPage({ workspace, title }: Props) {
           };
         }));
       } else {
-        const { data, error } = await supabase
+        let q = supabase
           .from("meeting_recordings")
           .select("id, filename, recorded_at, transcript, transcript_status, transcription_service, drive_url, meeting_id")
           .order("recorded_at", { ascending: false });
+        if (scoped) q = q.eq("user_id", scoped);
+        const { data, error } = await q;
         if (error) throw error;
         const recs = data ?? [];
         const ids = Array.from(new Set(recs.map((r: any) => r.meeting_id).filter(Boolean)));
