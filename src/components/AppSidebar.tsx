@@ -67,6 +67,7 @@ export function AppSidebar() {
       { title: "לקוחות", url: "/clients", icon: Users },
       { title: "הקלטות שטח", url: "/recordings", icon: Mic },
       { title: "תמלולים", url: "/transcripts", icon: FileText },
+      { title: "משימות", url: "/tasks", icon: ListChecks },
       { title: "שיחות טלפון", url: "/phone-calls", icon: Phone },
       { title: "תמונות", url: "/photos", icon: ImageIcon },
       { title: "תבניות דוחות", url: "/templates", icon: FileText },
@@ -79,6 +80,7 @@ export function AppSidebar() {
       { title: "פגישות", url: "/meetings", icon: Calendar },
       { title: "הקלטות פגישה", url: "/meeting-recordings", icon: Mic },
       { title: "תמלולי פגישות", url: "/meeting-transcripts", icon: FileText },
+      { title: "משימות", url: "/tasks", icon: ListChecks },
       { title: "שיחות טלפון", url: "/meeting-phone-calls", icon: Phone },
       { title: "תמונות", url: "/meeting-photos", icon: ImageIcon },
       { title: "לקוחות / פרויקטים", url: "/clients", icon: Users },
@@ -89,11 +91,13 @@ export function AppSidebar() {
     mainItems = [
       { title: "הקלטות שלי", url: "/transcribe", icon: Mic },
       { title: "תמלולים", url: "/transcripts", icon: FileText },
+      { title: "משימות", url: "/tasks", icon: ListChecks },
     ];
   } else if (workspace === "admin") {
     mainLabel = "סקירה כללית";
     mainItems = [
       { title: "סקירה כללית", url: "/", icon: LayoutDashboard },
+      { title: "משימות", url: "/tasks", icon: ListChecks },
     ];
   } else {
     // No role yet — show only Settings/Logout in management; keep main empty
