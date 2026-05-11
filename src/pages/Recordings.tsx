@@ -18,6 +18,7 @@ import { ExpandableTranscriptPanel } from "@/components/ExpandableTranscriptPane
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { RecordCallButton } from "@/components/RecordCallButton";
 import { useDriveSync } from "@/hooks/useDriveSync";
+import { getActAsUserId, useActAsUser } from "@/lib/actAs";
 
 type FilterMode = "all" | "ready" | "pending";
 
@@ -54,10 +55,13 @@ const Recordings = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const acting = getActAsUserId();
+    let q = supabase
       .from("recordings")
       .select("id, filename, duration, recorded_at, transcript_status, transcript, drive_url, drive_file_id, case_id, source, tags")
       .order("recorded_at", { ascending: false });
+    if (acting) q = q.eq("user_id", acting);
+    const { data, error } = await q;
     if (error) {
       toast.error(error.message);
       setLoading(false);
@@ -85,17 +89,16 @@ const Recordings = () => {
     setLoading(false);
   };
 
+  const { actAsId } = useActAsUser();
   useEffect(() => {
     load();
-    // Auto-sync from Drive on mount (silent — no toast spam)
     void sync().then((r) => { if (r && r.added > 0) load(); });
-    // Re-sync periodically while page is open (every 2 minutes)
     const id = window.setInterval(() => {
       void sync().then((r) => { if (r && r.added > 0) load(); });
     }, 120_000);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [actAsId]);
 
   const filtered = items.filter((r) => {
     if (filterMode === "ready" && !r.transcript) return false;

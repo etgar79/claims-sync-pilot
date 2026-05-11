@@ -18,6 +18,7 @@ import { ExpandableTranscriptPanel } from "@/components/ExpandableTranscriptPane
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { RecordCallButton } from "@/components/RecordCallButton";
 import { useDriveSync } from "@/hooks/useDriveSync";
+import { getActAsUserId, useActAsUser } from "@/lib/actAs";
 
 interface Row {
   id: string;
@@ -51,10 +52,13 @@ const MeetingRecordings = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const acting = getActAsUserId();
+    let q = supabase
       .from("meeting_recordings")
       .select("id, filename, duration, recorded_at, transcript_status, transcript, drive_url, drive_file_id, meeting_id, source, tags")
       .order("recorded_at", { ascending: false });
+    if (acting) q = q.eq("user_id", acting);
+    const { data, error } = await q;
     if (error) {
       toast.error(error.message);
       setLoading(false);
@@ -71,6 +75,7 @@ const MeetingRecordings = () => {
     setLoading(false);
   };
 
+  const { actAsId } = useActAsUser();
   useEffect(() => {
     load();
     void sync().then((r) => { if (r && r.added > 0) load(); });
@@ -79,7 +84,7 @@ const MeetingRecordings = () => {
     }, 120_000);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [actAsId]);
 
   const filtered = items.filter((r) => {
     if (filterMode === "ready" && !r.transcript) return false;

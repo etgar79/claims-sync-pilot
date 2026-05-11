@@ -13,6 +13,7 @@ import { Plus, Calendar, MapPin, Users, Loader2, Search, Sparkles, Clock, CheckC
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { getActAsUserId, getEffectiveUserId, useActAsUser } from "@/lib/actAs";
 import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
 import { AssignToMeetingDialog } from "@/components/AssignToMeetingDialog";
 import { EditMeetingDialog } from "@/components/EditMeetingDialog";
@@ -87,16 +88,16 @@ const Meetings = () => {
 
   const load = async () => {
     setLoading(true);
+    const acting = getActAsUserId();
+    const mq = supabase.from("meetings").select("*").order("meeting_date", { ascending: false, nullsFirst: false });
+    const uq = supabase
+      .from("meeting_recordings")
+      .select("id, filename, duration, recorded_at, drive_url, source")
+      .is("meeting_id", null)
+      .order("recorded_at", { ascending: false });
     const [mRes, urRes] = await Promise.all([
-      supabase
-        .from("meetings")
-        .select("*")
-        .order("meeting_date", { ascending: false, nullsFirst: false }),
-      supabase
-        .from("meeting_recordings")
-        .select("id, filename, duration, recorded_at, drive_url, source")
-        .is("meeting_id", null)
-        .order("recorded_at", { ascending: false }),
+      acting ? mq.eq("user_id", acting) : mq,
+      acting ? uq.eq("user_id", acting) : uq,
     ]);
     if (mRes.error) toast.error(mRes.error.message);
     setMeetings(mRes.data || []);
@@ -104,9 +105,10 @@ const Meetings = () => {
     setLoading(false);
   };
 
+  const { actAsId } = useActAsUser();
   useEffect(() => {
     load();
-  }, []);
+  }, [actAsId]);
 
   const handleCreate = async () => {
     if (!form.title.trim()) {
@@ -114,8 +116,8 @@ const Meetings = () => {
       return;
     }
     setCreating(true);
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) {
+    const targetUid = await getEffectiveUserId();
+    if (!targetUid) {
       toast.error("יש להתחבר תחילה");
       setCreating(false);
       return;
@@ -123,7 +125,7 @@ const Meetings = () => {
     const { data, error } = await supabase
       .from("meetings")
       .insert({
-        user_id: auth.user.id,
+        user_id: targetUid,
         title: form.title,
         client_name: form.client_name || null,
         project_name: form.project_name || null,
