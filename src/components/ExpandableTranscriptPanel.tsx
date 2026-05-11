@@ -154,7 +154,18 @@ export function ExpandableTranscriptPanel({
     setFilenameDraft(item.filename);
     setEditingName(false);
     void loadVersions();
+    void loadSegments();
   }, [open, mode, item.id, item.transcript, item.filename]);
+
+  const loadSegments = async () => {
+    const { data } = await supabase
+      .from(item.table)
+      .select("segments")
+      .eq("id", item.id)
+      .maybeSingle();
+    const segs = (data as any)?.segments;
+    setSegments(Array.isArray(segs) && segs.length ? (segs as TranscriptSegment[]) : null);
+  };
 
   useEffect(() => {
     if (!open || !item.audioUrl) return;
