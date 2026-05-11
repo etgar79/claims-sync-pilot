@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, CheckCircle2, X, Pencil, ListChecks, Send, Calendar as CalIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { getActAsUserId } from "@/lib/actAs";
+import { getScopedUserId } from "@/lib/actAs";
 import { useActiveWorkspace } from "@/hooks/useActiveWorkspace";
 
 interface ExtractedTask {
