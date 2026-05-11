@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
+import { PipelineToastListener } from "./components/PipelineToastListener.tsx";
 import { Loader2 } from "lucide-react";
 
 const Index = lazy(() => import("./pages/Index.tsx"));
@@ -39,6 +40,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <PipelineToastListener />
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
             <Routes>
               <Route path="/auth" element={<Auth />} />
