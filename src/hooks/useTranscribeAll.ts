@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { TranscriptionService } from "@/components/TranscribeDialog";
 import { needsSplitting, splitAudioFile } from "@/lib/audioSplitter";
+import { triggerAutoPipeline } from "@/lib/autoPipeline";
 
 // Always include lovable_ai as the guaranteed-available engine. If external
 // engines (ivrit_ai/whisper/elevenlabs) are misconfigured or rate-limited,
