@@ -76,6 +76,35 @@ export function RecordingCard({
   const [nameDraft, setNameDraft] = useState(r.filename);
   const [renaming, setRenaming] = useState(false);
   const [savingTranscript, setSavingTranscript] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
+
+  const cleanupTranscript = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!r.transcript) return;
+    setCleaning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("cleanup-transcript", {
+        body: {
+          transcript: r.transcript,
+          workspace_kind: workspace,
+          recording_id: r.id,
+          table: tableName,
+        },
+      });
+      if (error || (data as any)?.error) {
+        throw new Error((data as any)?.error || error?.message);
+      }
+      const score = (data as any)?.quality_score;
+      toast.success("התמלול נוקה ושופר", {
+        description: score != null ? `ציון איכות: ${score}` : undefined,
+      });
+      onRenamed?.(); // reuse refresh callback if provided
+    } catch (err: any) {
+      toast.error("ניקוי תמלול נכשל", { description: err?.message });
+    } finally {
+      setCleaning(false);
+    }
+  };
 
   const saveTranscriptToDrive = async (e: React.MouseEvent) => {
     e.stopPropagation();
