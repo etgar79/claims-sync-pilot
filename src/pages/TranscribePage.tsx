@@ -14,6 +14,7 @@ import { TranscribeDialog } from "@/components/TranscribeDialog";
 import { ExpandableTranscriptPanel } from "@/components/ExpandableTranscriptPanel";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { serviceLabel } from "@/lib/serviceLabels";
+import { getScopedUserId } from "@/lib/actAs";
 
 interface Row {
   id: string;
@@ -93,10 +94,13 @@ const TranscribePage = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const scoped = await getScopedUserId();
+    let q = supabase
       .from("recordings")
       .select("id, filename, duration, recorded_at, transcript, transcript_status, transcription_service, drive_url, drive_file_id")
       .order("recorded_at", { ascending: false });
+    if (scoped) q = q.eq("user_id", scoped);
+    const { data, error } = await q;
     if (error) {
       toast.error(error.message);
     } else {

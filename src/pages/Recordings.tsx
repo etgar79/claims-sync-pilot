@@ -18,7 +18,7 @@ import { ExpandableTranscriptPanel } from "@/components/ExpandableTranscriptPane
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { RecordCallButton } from "@/components/RecordCallButton";
 import { useDriveSync } from "@/hooks/useDriveSync";
-import { getActAsUserId, useActAsUser } from "@/lib/actAs";
+import { getScopedUserId, useActAsUser } from "@/lib/actAs";
 
 type FilterMode = "all" | "ready" | "pending";
 
@@ -55,12 +55,12 @@ const Recordings = () => {
 
   const load = async () => {
     setLoading(true);
-    const acting = getActAsUserId();
+    const scoped = await getScopedUserId();
     let q = supabase
       .from("recordings")
       .select("id, filename, duration, recorded_at, transcript_status, transcript, drive_url, drive_file_id, case_id, source, tags, pipeline_status, summary, quality_score, quality_notes")
       .order("recorded_at", { ascending: false });
-    if (acting) q = q.eq("user_id", acting);
+    if (scoped) q = q.eq("user_id", scoped);
     const { data, error } = await q;
     if (error) {
       toast.error(error.message);
