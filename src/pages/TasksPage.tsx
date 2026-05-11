@@ -14,6 +14,7 @@ import { useActiveWorkspace } from "@/hooks/useActiveWorkspace";
 
 interface ExtractedTask {
   id: string;
+  user_id: string;
   title: string;
   notes: string | null;
   due: string | null;
