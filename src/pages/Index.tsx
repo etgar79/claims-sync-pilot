@@ -12,6 +12,7 @@ import { CaseStatus } from "@/data/sampleCases";
 import { Search, Plus, FolderOpen, Mic, Image as ImageIcon, TrendingUp, Cloud, Loader2, LogOut } from "lucide-react";
 import { useCases } from "@/hooks/useCases";
 import { supabase } from "@/integrations/supabase/client";
+import { TodoNowCards } from "@/components/TodoNowCards";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -83,11 +84,14 @@ const Index = () => {
             </Button>
           </header>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gradient-to-b from-muted/30 to-transparent">
-            <StatCard icon={FolderOpen} label="תיקים פעילים" value={stats.active.toString()} color="primary" />
-            <StatCard icon={Mic} label="ממתין לתמלול" value={stats.pendingTranscripts.toString()} color="warning" />
-            <StatCard icon={ImageIcon} label="סך תמונות" value={stats.totalPhotos.toString()} color="accent" />
-            <StatCard icon={TrendingUp} label="תיקים פתוחים" value={stats.openCases.toString()} color="success" />
+          <div className="p-4 bg-gradient-to-b from-muted/30 to-transparent space-y-4">
+            <TodoNowCards workspace="appraiser" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard icon={FolderOpen} label="תיקים פעילים" value={stats.active.toString()} color="primary" />
+              <StatCard icon={Mic} label="ממתין לתמלול" value={stats.pendingTranscripts.toString()} color="warning" />
+              <StatCard icon={ImageIcon} label="סך תמונות" value={stats.totalPhotos.toString()} color="accent" />
+              <StatCard icon={TrendingUp} label="תיקים פתוחים" value={stats.openCases.toString()} color="success" />
+            </div>
           </div>
 
           <div className="flex-1 flex overflow-hidden border-t border-border">
