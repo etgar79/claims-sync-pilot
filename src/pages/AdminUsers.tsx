@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, Link } from "react-router-dom";
+import { Navigate, Link, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Card } from "@/components/ui/card";
@@ -9,12 +9,13 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Loader2, Users, Search, FolderOpen, Calendar, Mic, FileText, Eye, ExternalLink, Shield, Briefcase, Building2,
+  Loader2, Users, Search, FolderOpen, Calendar, Mic, FileText, Eye, ExternalLink, Shield, Briefcase, Building2, UserCog,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserRoles, type AppRole } from "@/hooks/useUserRoles";
 import { TranscriptViewerDialog } from "@/components/TranscriptViewerDialog";
+import { setActAs } from "@/lib/actAs";
 
 interface UserRow {
   user_id: string;
