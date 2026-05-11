@@ -46,10 +46,7 @@ export default function TasksPage() {
   const { workspace } = useActiveWorkspace();
 
   const userIdFilter = async (): Promise<string | null> => {
-    const acting = getActAsUserId();
-    if (acting) return acting;
-    const { data } = await supabase.auth.getUser();
-    return data.user?.id ?? null;
+    return getScopedUserId();
   };
 
   const load = async () => {
