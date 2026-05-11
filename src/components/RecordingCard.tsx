@@ -271,6 +271,16 @@ export function RecordingCard({
               {r.duration && (<><span>•</span><span>{r.duration}</span></>)}
             </div>
 
+            <div className="mt-2">
+              <PipelineStatus
+                status={
+                  r.pipeline_status ||
+                  (r.summary ? "tasks_ready" : r.transcript ? "transcribed" : "uploaded")
+                }
+                compact
+              />
+            </div>
+
             {hasTranscript && (
               <p className="text-xs text-muted-foreground/80 mt-2 line-clamp-2 leading-relaxed">
                 {r.transcript!.slice(0, 200)}{r.transcript!.length > 200 ? "…" : ""}
