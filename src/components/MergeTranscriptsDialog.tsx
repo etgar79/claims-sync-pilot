@@ -77,16 +77,20 @@ export function MergeTranscriptsDialog({ recordingId, table = "recordings", onMe
     }
     setMerging(true);
     try {
+      const workspaceKind = table === "meeting_recordings" ? "architect" : "appraiser";
       const { data, error } = await supabase.functions.invoke("merge-transcripts", {
         body: {
           versions: chosen.map((v) => ({ service: serviceLabel(v.service), text: v.transcript })),
           language: "he",
+          workspace_kind: workspaceKind,
         },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
 
       const merged = (data as any).merged_transcript as string;
+      const qualityScore = (data as any).quality_score as number | null;
+      const qualityNotes = (data as any).quality_notes as string | null;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("לא מחובר");
 
@@ -98,6 +102,8 @@ export function MergeTranscriptsDialog({ recordingId, table = "recordings", onMe
         transcript: merged,
         is_merged: true,
         source_version_ids: chosen.map((v) => v.id),
+        quality_score: qualityScore,
+        quality_notes: qualityNotes,
       });
 
       // Update main recording transcript
@@ -107,6 +113,8 @@ export function MergeTranscriptsDialog({ recordingId, table = "recordings", onMe
           transcript: merged,
           transcript_status: "completed",
           transcription_service: "merged",
+          quality_score: qualityScore,
+          quality_notes: qualityNotes,
         })
         .eq("id", recordingId);
 
