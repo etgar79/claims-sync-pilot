@@ -13,7 +13,7 @@ import { Plus, Calendar, MapPin, Users, Loader2, Search, Sparkles, Clock, CheckC
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserRoles } from "@/hooks/useUserRoles";
-import { getActAsUserId, getEffectiveUserId, useActAsUser } from "@/lib/actAs";
+import { getScopedUserId, getEffectiveUserId, useActAsUser } from "@/lib/actAs";
 import { WorkspaceFolderBanner } from "@/components/WorkspaceFolderBanner";
 import { AssignToMeetingDialog } from "@/components/AssignToMeetingDialog";
 import { EditMeetingDialog } from "@/components/EditMeetingDialog";
