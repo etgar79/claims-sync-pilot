@@ -192,14 +192,14 @@ export function useTranscribeAll() {
       const duration = await getAudioDuration(file);
 
       // Run all services in sequence (so failures are isolated and to be gentle on rate limits)
-      const versions: { service: string; text: string }[] = [];
+      const versions: { service: string; text: string; segments: any[] | null }[] = [];
       const failures: { service: string; error: string }[] = [];
 
       for (const svc of SERVICES) {
         setProgress(`מתמלל עם ${SERVICE_NAMES[svc]}...`);
         try {
-          const text = await runOne({ service: svc, file, recordingId, userId: user.id, duration, onProgress: setProgress });
-          if (text?.trim()) versions.push({ service: svc, text });
+          const r = await runOne({ service: svc, file, recordingId, userId: user.id, duration, onProgress: setProgress });
+          if (r.text?.trim()) versions.push({ service: svc, text: r.text, segments: r.segments });
         } catch (e: any) {
           console.error(`Service ${svc} failed:`, e);
           failures.push({ service: svc, error: e?.message || "שגיאה" });
@@ -216,6 +216,9 @@ export function useTranscribeAll() {
         });
       }
 
+      // Pick segments from the version with the richest timestamp data (for use as the main row)
+      const segmentsForMain = versions.find((v) => v.segments && v.segments.length > 0)?.segments ?? null;
+
       // If only one succeeded - just use it directly
       if (versions.length === 1) {
         const single = versions[0];
@@ -223,6 +226,7 @@ export function useTranscribeAll() {
           .from(table)
           .update({
             transcript: single.text,
+            segments: single.segments,
             transcript_status: "completed",
             transcription_service: single.service,
           })
@@ -236,18 +240,19 @@ export function useTranscribeAll() {
       // Merge with the configured AI engine
       setProgress("ממזג את כל הגרסאות עם AI...");
       const mergeRes = await supabase.functions.invoke("merge-transcripts", {
-        body: { versions, language: "he", context },
+        body: { versions: versions.map((v) => ({ service: v.service, text: v.text })), language: "he", context },
       });
       if (mergeRes.error) throw mergeRes.error;
       const merged: string = mergeRes.data?.merged_transcript;
       if (!merged) throw new Error("המיזוג לא החזיר תוצאה");
 
-      // Save merged version
+      // Save merged version (no per-word stamps; reuse best available segments for context)
       await supabase.from("transcript_versions").insert({
         recording_id: recordingId,
         user_id: user.id,
         service: "merged",
         transcript: merged,
+        segments: segmentsForMain,
         is_merged: true,
       });
 
@@ -256,6 +261,7 @@ export function useTranscribeAll() {
         .from(table)
         .update({
           transcript: merged,
+          segments: segmentsForMain,
           transcript_status: "completed",
           transcription_service: "merged",
         })
