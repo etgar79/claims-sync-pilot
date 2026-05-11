@@ -104,6 +104,54 @@ export type Database = {
         }
         Relationships: []
       }
+      extracted_tasks: {
+        Row: {
+          created_at: string
+          due: string | null
+          id: string
+          notes: string | null
+          source_case_id: string | null
+          source_meeting_id: string | null
+          source_meeting_recording_id: string | null
+          source_recording_id: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          workspace_kind: string
+        }
+        Insert: {
+          created_at?: string
+          due?: string | null
+          id?: string
+          notes?: string | null
+          source_case_id?: string | null
+          source_meeting_id?: string | null
+          source_meeting_recording_id?: string | null
+          source_recording_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          workspace_kind?: string
+        }
+        Update: {
+          created_at?: string
+          due?: string | null
+          id?: string
+          notes?: string | null
+          source_case_id?: string | null
+          source_meeting_id?: string | null
+          source_meeting_recording_id?: string | null
+          source_recording_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          workspace_kind?: string
+        }
+        Relationships: []
+      }
       google_drive_connections: {
         Row: {
           access_token: string
@@ -149,8 +197,11 @@ export type Database = {
           filename: string
           id: string
           meeting_id: string | null
+          pipeline_status: string
           recorded_at: string
           source: string
+          summary: string | null
+          summary_generated_at: string | null
           tags: string[] | null
           transcript: string | null
           transcript_status: string
@@ -165,8 +216,11 @@ export type Database = {
           filename: string
           id?: string
           meeting_id?: string | null
+          pipeline_status?: string
           recorded_at?: string
           source?: string
+          summary?: string | null
+          summary_generated_at?: string | null
           tags?: string[] | null
           transcript?: string | null
           transcript_status?: string
@@ -181,8 +235,11 @@ export type Database = {
           filename?: string
           id?: string
           meeting_id?: string | null
+          pipeline_status?: string
           recorded_at?: string
           source?: string
+          summary?: string | null
+          summary_generated_at?: string | null
           tags?: string[] | null
           transcript?: string | null
           transcript_status?: string
@@ -362,8 +419,11 @@ export type Database = {
           duration: string | null
           filename: string
           id: string
+          pipeline_status: string
           recorded_at: string
           source: string
+          summary: string | null
+          summary_generated_at: string | null
           tags: string[] | null
           transcript: string | null
           transcript_status: string
@@ -378,8 +438,11 @@ export type Database = {
           duration?: string | null
           filename: string
           id?: string
+          pipeline_status?: string
           recorded_at?: string
           source?: string
+          summary?: string | null
+          summary_generated_at?: string | null
           tags?: string[] | null
           transcript?: string | null
           transcript_status?: string
@@ -394,8 +457,11 @@ export type Database = {
           duration?: string | null
           filename?: string
           id?: string
+          pipeline_status?: string
           recorded_at?: string
           source?: string
+          summary?: string | null
+          summary_generated_at?: string | null
           tags?: string[] | null
           transcript?: string | null
           transcript_status?: string
@@ -445,6 +511,93 @@ export type Database = {
           template_kind?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      summary_templates: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          is_system: boolean
+          name: string
+          prompt: string
+          updated_at: string
+          user_id: string
+          workspace_kind: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          is_system?: boolean
+          name: string
+          prompt: string
+          updated_at?: string
+          user_id: string
+          workspace_kind: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          is_system?: boolean
+          name?: string
+          prompt?: string
+          updated_at?: string
+          user_id?: string
+          workspace_kind?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          due: string | null
+          google_task_id: string | null
+          id: string
+          notes: string | null
+          source_case_id: string | null
+          source_extracted_id: string | null
+          source_meeting_id: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          workspace_kind: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          due?: string | null
+          google_task_id?: string | null
+          id?: string
+          notes?: string | null
+          source_case_id?: string | null
+          source_extracted_id?: string | null
+          source_meeting_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          workspace_kind?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          due?: string | null
+          google_task_id?: string | null
+          id?: string
+          notes?: string | null
+          source_case_id?: string | null
+          source_extracted_id?: string | null
+          source_meeting_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          workspace_kind?: string
         }
         Relationships: []
       }

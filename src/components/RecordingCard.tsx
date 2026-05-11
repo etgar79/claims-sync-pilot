@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { exportTranscriptToPdf, downloadTranscriptTxt } from "@/lib/exportTranscriptPdf";
+import { PipelineStatus } from "@/components/PipelineStatus";
 
 const STATUS = {
   pending: { label: "ממתין", icon: Clock, cls: "bg-muted text-muted-foreground border-border" },
@@ -27,6 +28,8 @@ export interface RecordingCardData {
   duration: string | null;
   recorded_at: string;
   transcript_status: string;
+  pipeline_status?: string | null;
+  summary?: string | null;
   transcript: string | null;
   drive_url: string | null;
   drive_file_id?: string | null;
@@ -266,6 +269,16 @@ export function RecordingCard({
               <span>•</span>
               <span>{new Date(r.recorded_at).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}</span>
               {r.duration && (<><span>•</span><span>{r.duration}</span></>)}
+            </div>
+
+            <div className="mt-2">
+              <PipelineStatus
+                status={
+                  r.pipeline_status ||
+                  (r.summary ? "tasks_ready" : r.transcript ? "transcribed" : "uploaded")
+                }
+                compact
+              />
             </div>
 
             {hasTranscript && (

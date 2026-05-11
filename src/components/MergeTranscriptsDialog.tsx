@@ -113,6 +113,14 @@ export function MergeTranscriptsDialog({ recordingId, table = "recordings", onMe
       toast.success("תמלול-על נוצר בהצלחה!", {
         description: `שולב מ-${chosen.length} גרסאות`,
       });
+      try {
+        const { triggerAutoPipeline } = await import("@/lib/autoPipeline");
+        triggerAutoPipeline({
+          recordingId,
+          table: (table as "recordings" | "meeting_recordings") ?? "recordings",
+          workspaceKind: table === "meeting_recordings" ? "architect" : "appraiser",
+        });
+      } catch {}
       onMerged?.(merged);
       setOpen(false);
     } catch (e: any) {

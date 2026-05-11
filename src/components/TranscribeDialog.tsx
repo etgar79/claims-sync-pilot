@@ -282,6 +282,16 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
         });
       }
 
+      // Trigger auto-pipeline (summary + extract tasks) in background
+      try {
+        const { triggerAutoPipeline } = await import("@/lib/autoPipeline");
+        triggerAutoPipeline({
+          recordingId,
+          table,
+          workspaceKind: table === "meeting_recordings" ? "architect" : "appraiser",
+        });
+      } catch {}
+
       const label = SERVICES.find((s) => s.id === usedService)?.name ?? "תמלול חלופי";
       if (failedChunks.length > 0) {
         toast.warning(`הושלם תמלול חלקי (${label}). חלקים שנכשלו: ${failedChunks.join(", ")}`, { id: toastId });
