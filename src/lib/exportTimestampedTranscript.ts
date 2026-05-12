@@ -139,8 +139,14 @@ export async function exportTimestampedDocx(segments: TranscriptSegment[], meta:
     tableHeader: true,
   });
 
-  const bodyRows = segments.map((seg) =>
-    new TableRow({
+  const bodyRows = segments.map((seg) => {
+    const speakerLabel = formatSpeakerLabel(seg.speaker);
+    const textRuns: TextRun[] = [];
+    if (speakerLabel) {
+      textRuns.push(new TextRun({ text: `${speakerLabel}: `, bold: true, color: "0A66C2" }));
+    }
+    textRuns.push(new TextRun({ text: seg.text || "" }));
+    return new TableRow({
       children: [
         new TableCell({
           borders: cellBorders,
@@ -150,11 +156,11 @@ export async function exportTimestampedDocx(segments: TranscriptSegment[], meta:
         new TableCell({
           borders: cellBorders,
           width: { size: 7560, type: WidthType.DXA },
-          children: [new Paragraph({ alignment: AlignmentType.RIGHT, bidirectional: true, children: [new TextRun({ text: seg.text || "" })] })],
+          children: [new Paragraph({ alignment: AlignmentType.RIGHT, bidirectional: true, children: textRuns })],
         }),
       ],
-    })
-  );
+    });
+  });
 
   const headingChildren: Paragraph[] = [
     new Paragraph({ heading: HeadingLevel.HEADING_1, alignment: AlignmentType.RIGHT, bidirectional: true, children: [new TextRun({ text: "תמלול עם חותמות זמן", bold: true })] }),
