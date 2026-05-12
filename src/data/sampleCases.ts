@@ -1,6 +1,14 @@
 export type CaseStatus = "active" | "pending" | "completed" | "archived";
 export type CaseType = "property" | "vehicle" | "damage" | "other";
 
+export interface TranscriptSegment {
+  start: number;
+  end: number;
+  text: string;
+  speaker?: string;
+  words?: { start: number; end: number; text: string; speaker?: string }[];
+}
+
 export interface Recording {
   id: string;
   filename: string;
@@ -9,6 +17,7 @@ export interface Recording {
   transcript?: string;
   transcriptStatus: "pending" | "processing" | "completed" | "failed";
   driveUrl?: string;
+  segments?: TranscriptSegment[];
 }
 
 export interface Photo {
