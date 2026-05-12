@@ -1,5 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { logError } from "@/lib/systemLog";
 
 type Props = { children: React.ReactNode };
 type State = { hasError: boolean };
@@ -11,8 +12,13 @@ export class AppErrorBoundary extends React.Component<Props, State> {
     return { hasError: true };
   }
 
-  componentDidCatch(error: unknown) {
+  componentDidCatch(error: unknown, info: React.ErrorInfo) {
     console.error("App render error", error);
+    const err = error as any;
+    logError("react.boundary", err?.message || "App render error", {
+      stack: err?.stack,
+      componentStack: info?.componentStack,
+    });
   }
 
   render() {
