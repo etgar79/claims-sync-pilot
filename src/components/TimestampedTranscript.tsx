@@ -1,5 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { formatSpeakerLabel } from "@/lib/serviceLabels";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export interface TranscriptWord {
   start: number;
