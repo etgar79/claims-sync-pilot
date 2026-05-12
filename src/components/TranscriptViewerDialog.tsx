@@ -19,6 +19,9 @@ import { toast } from "sonner";
 import { exportTranscriptToPdf, downloadTranscriptTxt } from "@/lib/exportTranscriptPdf";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
+import { TimestampedTranscript, type TranscriptSegment } from "@/components/TimestampedTranscript";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 type TableName = "recordings" | "meeting_recordings";
 
