@@ -60,6 +60,7 @@ const MeetingDetail = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedMode, setExpandedMode] = useState<"view" | "edit">("view");
+  const [showTimestampsMap, setShowTimestampsMap] = useState<Record<string, boolean>>({});
 
   const [statusUpdating, setStatusUpdating] = useState(false);
   const { runAll, running: runningAll } = useTranscribeAll();
