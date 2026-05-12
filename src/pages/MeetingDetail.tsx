@@ -45,6 +45,7 @@ interface Recording {
   transcription_service: string | null;
   drive_url: string | null;
   recorded_at: string;
+  segments?: TranscriptSegment[];
 }
 
 const MeetingDetail = () => {
