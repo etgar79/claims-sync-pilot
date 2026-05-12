@@ -1,7 +1,11 @@
-import jsPDF from "jspdf";
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType, BorderStyle, ShadingType } from "docx";
 import { saveAs } from "file-saver";
+import { htmlToPdf } from "@/lib/exportTranscriptPdf";
 import type { TranscriptSegment } from "@/components/TimestampedTranscript";
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+}
 
 function fmt(sec: number) {
   if (!isFinite(sec) || sec < 0) sec = 0;
