@@ -13,9 +13,37 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
 type Service = "ivrit_ai" | "whisper" | "elevenlabs" | "lovable_ai";
 
-interface WordStamp { start: number; end: number; text: string }
-interface Segment { start: number; end: number; text: string; words?: WordStamp[] }
+interface WordStamp { start: number; end: number; text: string; speaker?: string }
+interface Segment { start: number; end: number; text: string; speaker?: string; words?: WordStamp[] }
 interface TranscribeResult { text: string; duration?: number; segments?: Segment[] }
+
+// Normalize a speaker label to a stable English form: "Speaker 1", "Speaker 2"...
+function normalizeSpeaker(raw: unknown): string | undefined {
+  if (raw === null || raw === undefined) return undefined;
+  const s = String(raw).trim();
+  if (!s) return undefined;
+  const m = s.match(/(\d+)/);
+  if (m) {
+    const n = Number(m[1]);
+    // Many providers index from 0; bump to 1-based for display friendliness.
+    return `Speaker ${n === 0 ? 1 : n}`;
+  }
+  return `Speaker ${s}`;
+}
+
+// Heuristic diarization for engines without speaker labels:
+// switch speaker on long silence (>1.2s) between segments.
+function applyHeuristicSpeakers(segments: Segment[]): Segment[] {
+  if (!segments.length) return segments;
+  let speakerIdx = 1;
+  const out: Segment[] = [];
+  for (let i = 0; i < segments.length; i++) {
+    const prev = out[out.length - 1];
+    if (prev && (segments[i].start - prev.end) > 1.2) speakerIdx = speakerIdx === 1 ? 2 : 1;
+    out.push({ ...segments[i], speaker: `Speaker ${speakerIdx}` });
+  }
+  return out;
+}
 
 // Cost per second of audio (USD). Conservative estimates.
 // Lovable AI runs on Gemini 2.5 Flash with audio input — billed per token.
