@@ -294,10 +294,33 @@ const MeetingDetail = () => {
                         </div>
                         {r.transcript ? (
                           <>
+                            {r.segments && r.segments.length > 0 && (
+                              <div className="flex items-center justify-end gap-2 pb-1 border-b border-border/50 mb-2">
+                                <Label htmlFor={`ts-toggle-${r.id}`} className="text-xs text-muted-foreground cursor-pointer">
+                                  תוויות זמן
+                                </Label>
+                                <Switch
+                                  id={`ts-toggle-${r.id}`}
+                                  checked={showTimestampsMap[r.id] ?? true}
+                                  onCheckedChange={(checked) =>
+                                    setShowTimestampsMap((prev) => ({ ...prev, [r.id]: checked }))
+                                  }
+                                />
+                              </div>
+                            )}
                             <div className="rounded-md border border-border bg-muted/50 p-3">
-                              <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words">
-                                {r.transcript}
-                              </p>
+                              {r.segments && r.segments.length > 0 ? (
+                                <TimestampedTranscript
+                                  segments={r.segments}
+                                  fallbackText={r.transcript}
+                                  hideToggle
+                                  showTimestamps={showTimestampsMap[r.id] ?? true}
+                                />
+                              ) : (
+                                <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words">
+                                  {r.transcript}
+                                </p>
+                              )}
                             </div>
                             <div className="flex flex-wrap gap-2 mt-3">
                               <TranscribeDialog
