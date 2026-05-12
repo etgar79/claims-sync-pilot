@@ -263,6 +263,7 @@ function RecordingCard({ recording, appraisalCase, onUpdated }: { recording: Rec
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(recording.transcript ?? "");
   const [saving, setSaving] = useState(false);
+  const [showTimestamps, setShowTimestamps] = useState(true);
   const { runAll, running: runningAll } = useTranscribeAll();
   const [progressMsg, setProgressMsg] = useState<string>("");
 
