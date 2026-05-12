@@ -15,13 +15,13 @@ export async function systemLog({ level, source, message, context }: LogInput) {
   try {
     const { data: auth } = await supabase.auth.getUser();
     const user_id = auth?.user?.id ?? null;
-    await supabase.from("system_logs").insert({
+    await supabase.from("system_logs").insert([{
       level,
       source,
       message: message.slice(0, 2000),
-      context: context ?? null,
+      context: (context ?? null) as any,
       user_id,
-    });
+    }]);
   } catch (e) {
     // Never throw from logger
     console.warn("[systemLog] failed", e);
