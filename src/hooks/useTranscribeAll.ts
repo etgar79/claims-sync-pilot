@@ -101,21 +101,10 @@ async function runOne(opts: {
     }
     if (parts.every((p) => p == null)) throw new Error("כל החלקים נכשלו");
     transcript = parts.map((p, i) => (p == null ? `\n[חלק ${i + 1} לא תומלל]\n` : p.text)).join("\n\n");
-    const stitched: any[] = [];
-    parts.forEach((p, idx) => {
-      if (!p || !p.segments) return;
-      const offset = chunks[idx].startSec || 0;
-      for (const s of p.segments) {
-        stitched.push({
-          start: (Number(s.start) || 0) + offset,
-          end: (Number(s.end) || 0) + offset,
-          text: s.text,
-          words: Array.isArray(s.words)
-            ? s.words.map((w: any) => ({ start: (Number(w.start) || 0) + offset, end: (Number(w.end) || 0) + offset, text: w.text }))
-            : undefined,
-        });
-      }
-    });
+    const { stitchChunkSegments } = await import("@/lib/stitchSegments");
+    const stitched = stitchChunkSegments(
+      parts.map((p, idx) => ({ segments: p?.segments ?? null, startSec: chunks[idx].startSec || 0 })),
+    );
     segments = stitched.length ? stitched : null;
   } else {
     const r = await callTranscribeEdge(opts.file, opts.service, opts.duration);
