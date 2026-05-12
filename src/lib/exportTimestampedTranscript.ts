@@ -2,6 +2,7 @@ import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, Width
 import { saveAs } from "file-saver";
 import { htmlToPdf } from "@/lib/exportTranscriptPdf";
 import type { TranscriptSegment } from "@/components/TimestampedTranscript";
+import { formatSpeakerLabel } from "@/lib/serviceLabels";
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
