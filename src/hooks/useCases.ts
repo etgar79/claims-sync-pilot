@@ -33,6 +33,7 @@ function mapCase(c: Row, recordings: Row[], photos: Row[], notes: Row[]): Apprai
         transcript: r.transcript ?? undefined,
         transcriptStatus: r.transcript_status,
         driveUrl: r.drive_url ?? undefined,
+        segments: r.segments ?? undefined,
       })),
     photos: photos
       .filter((p) => p.case_id === c.id)

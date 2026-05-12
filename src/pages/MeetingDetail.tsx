@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowRight, Upload, Loader2, Sparkles, FileAudio, Save, CheckCircle2, Wand2, FolderOpen, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,7 @@ import { EditMeetingDialog } from "@/components/EditMeetingDialog";
 import { ExpandableTranscriptPanel } from "@/components/ExpandableTranscriptPanel";
 import { serviceLabel } from "@/lib/serviceLabels";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
+import { TimestampedTranscript, type TranscriptSegment } from "@/components/TimestampedTranscript";
 
 interface Meeting {
   id: string;
@@ -43,6 +45,7 @@ interface Recording {
   transcription_service: string | null;
   drive_url: string | null;
   recorded_at: string;
+  segments?: TranscriptSegment[];
 }
 
 const MeetingDetail = () => {
@@ -57,6 +60,7 @@ const MeetingDetail = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedMode, setExpandedMode] = useState<"view" | "edit">("view");
+  const [showTimestampsMap, setShowTimestampsMap] = useState<Record<string, boolean>>({});
 
   const [statusUpdating, setStatusUpdating] = useState(false);
   const { runAll, running: runningAll } = useTranscribeAll();
@@ -290,10 +294,33 @@ const MeetingDetail = () => {
                         </div>
                         {r.transcript ? (
                           <>
+                            {r.segments && r.segments.length > 0 && (
+                              <div className="flex items-center justify-end gap-2 pb-1 border-b border-border/50 mb-2">
+                                <Label htmlFor={`ts-toggle-${r.id}`} className="text-xs text-muted-foreground cursor-pointer">
+                                  תוויות זמן
+                                </Label>
+                                <Switch
+                                  id={`ts-toggle-${r.id}`}
+                                  checked={showTimestampsMap[r.id] ?? true}
+                                  onCheckedChange={(checked) =>
+                                    setShowTimestampsMap((prev) => ({ ...prev, [r.id]: checked }))
+                                  }
+                                />
+                              </div>
+                            )}
                             <div className="rounded-md border border-border bg-muted/50 p-3">
-                              <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words">
-                                {r.transcript}
-                              </p>
+                              {r.segments && r.segments.length > 0 ? (
+                                <TimestampedTranscript
+                                  segments={r.segments}
+                                  fallbackText={r.transcript}
+                                  hideToggle
+                                  showTimestamps={showTimestampsMap[r.id] ?? true}
+                                />
+                              ) : (
+                                <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words">
+                                  {r.transcript}
+                                </p>
+                              )}
                             </div>
                             <div className="flex flex-wrap gap-2 mt-3">
                               <TranscribeDialog
