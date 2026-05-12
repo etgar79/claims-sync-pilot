@@ -108,29 +108,38 @@ async function transcribeElevenLabs(file: File): Promise<TranscribeResult> {
   const rawWords: any[] = Array.isArray(data.words) ? data.words : [];
   const words: WordStamp[] = rawWords
     .filter((w) => w && (w.type === undefined || w.type === "word"))
-    .map((w) => ({ start: Number(w.start) || 0, end: Number(w.end) || 0, text: String(w.text ?? w.word ?? "") }));
+    .map((w) => ({
+      start: Number(w.start) || 0,
+      end: Number(w.end) || 0,
+      text: String(w.text ?? w.word ?? ""),
+      speaker: normalizeSpeaker(w.speaker_id ?? w.speaker),
+    }));
   const segments: Segment[] = [];
   let cur: WordStamp[] = [];
   let curStart = 0;
+  let curSpeaker: string | undefined = undefined;
   for (let i = 0; i < words.length; i++) {
     const w = words[i];
-    if (cur.length === 0) curStart = w.start;
+    if (cur.length === 0) { curStart = w.start; curSpeaker = w.speaker; }
     cur.push(w);
     const next = words[i + 1];
     const gap = next ? next.start - w.end : Infinity;
+    const speakerChange = next && next.speaker && curSpeaker && next.speaker !== curSpeaker;
     const endsSentence = /[.!?…׃]\s*$/.test(w.text) || /\n/.test(w.text);
-    if (endsSentence || gap > 0.8 || cur.length >= 25) {
+    if (speakerChange || endsSentence || gap > 0.8 || cur.length >= 25) {
       segments.push({
         start: curStart,
         end: w.end,
         text: cur.map((x) => x.text).join(" ").replace(/\s+([,.!?])/g, "$1").trim(),
+        speaker: curSpeaker,
         words: cur,
       });
       cur = [];
+      curSpeaker = undefined;
     }
   }
   if (cur.length) {
-    segments.push({ start: curStart, end: cur[cur.length - 1].end, text: cur.map((x) => x.text).join(" ").trim(), words: cur });
+    segments.push({ start: curStart, end: cur[cur.length - 1].end, text: cur.map((x) => x.text).join(" ").trim(), speaker: curSpeaker, words: cur });
   }
   return {
     text: data.text ?? segments.map((s) => s.text).join(" "),
