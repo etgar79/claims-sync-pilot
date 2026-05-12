@@ -2,6 +2,7 @@ import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, Width
 import { saveAs } from "file-saver";
 import { htmlToPdf } from "@/lib/exportTranscriptPdf";
 import type { TranscriptSegment } from "@/components/TimestampedTranscript";
+import { formatSpeakerLabel } from "@/lib/serviceLabels";
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -36,15 +37,17 @@ function escapeCsv(value: string) {
   return `"${s}"`;
 }
 
-/** CSV with columns: segment_index, start, end, text, word_index, word_start, word_end, word */
+/** CSV with columns: speaker, segment_start, segment_end, segment_text, word_start, word_end, word */
 export function exportTimestampedCsv(segments: TranscriptSegment[], meta: TimestampedExportMeta) {
   const rows: string[] = [];
-  rows.push(["segment_index", "segment_start", "segment_end", "segment_text", "word_index", "word_start", "word_end", "word"].join(","));
+  rows.push(["segment_index", "speaker", "segment_start", "segment_end", "segment_text", "word_index", "word_start", "word_end", "word"].join(","));
   segments.forEach((seg, i) => {
+    const speaker = seg.speaker ?? "";
     if (seg.words && seg.words.length) {
       seg.words.forEach((w, j) => {
         rows.push([
           i + 1,
+          escapeCsv(speaker),
           fmt(seg.start),
           fmt(seg.end),
           escapeCsv(seg.text),
@@ -57,6 +60,7 @@ export function exportTimestampedCsv(segments: TranscriptSegment[], meta: Timest
     } else {
       rows.push([
         i + 1,
+        escapeCsv(speaker),
         fmt(seg.start),
         fmt(seg.end),
         escapeCsv(seg.text),
@@ -82,12 +86,18 @@ export async function exportTimestampedPdf(segments: TranscriptSegment[], meta: 
   if (meta.client) headerLines.push(`<div style="font-size:12px;color:#444">לקוח: ${escapeHtml(meta.client)}</div>`);
   headerLines.push(`<hr style="border:none;border-top:1px solid #ccc;margin:12px 0"/>`);
 
-  const rows = segments.map((seg) => `
+  const hasSpeakers = segments.some((s) => !!s.speaker);
+  const rows = segments.map((seg) => {
+    const speakerCell = hasSpeakers
+      ? `<td style="vertical-align:top;padding:4px 6px;width:70px;color:#0a66c2;white-space:nowrap;border-bottom:1px solid #eee">${escapeHtml(formatSpeakerLabel(seg.speaker) ?? "")}</td>`
+      : "";
+    return `
     <tr>
       <td style="vertical-align:top;padding:4px 6px;width:80px;font-family:monospace;color:#0a66c2;white-space:nowrap;border-bottom:1px solid #eee">[${fmt(seg.start)}]</td>
+      ${speakerCell}
       <td style="vertical-align:top;padding:4px 6px;border-bottom:1px solid #eee">${escapeHtml(seg.text || "")}</td>
-    </tr>
-  `).join("");
+    </tr>`;
+  }).join("");
 
   const html = `
     ${headerLines.join("")}
@@ -95,6 +105,7 @@ export async function exportTimestampedPdf(segments: TranscriptSegment[], meta: 
       <thead>
         <tr>
           <th style="text-align:right;padding:6px;background:#f3f4f6;border-bottom:2px solid #ddd;width:80px">זמן</th>
+          ${hasSpeakers ? `<th style="text-align:right;padding:6px;background:#f3f4f6;border-bottom:2px solid #ddd;width:70px">דובר</th>` : ""}
           <th style="text-align:right;padding:6px;background:#f3f4f6;border-bottom:2px solid #ddd">טקסט</th>
         </tr>
       </thead>
@@ -128,8 +139,14 @@ export async function exportTimestampedDocx(segments: TranscriptSegment[], meta:
     tableHeader: true,
   });
 
-  const bodyRows = segments.map((seg) =>
-    new TableRow({
+  const bodyRows = segments.map((seg) => {
+    const speakerLabel = formatSpeakerLabel(seg.speaker);
+    const textRuns: TextRun[] = [];
+    if (speakerLabel) {
+      textRuns.push(new TextRun({ text: `${speakerLabel}: `, bold: true, color: "0A66C2" }));
+    }
+    textRuns.push(new TextRun({ text: seg.text || "" }));
+    return new TableRow({
       children: [
         new TableCell({
           borders: cellBorders,
@@ -139,11 +156,11 @@ export async function exportTimestampedDocx(segments: TranscriptSegment[], meta:
         new TableCell({
           borders: cellBorders,
           width: { size: 7560, type: WidthType.DXA },
-          children: [new Paragraph({ alignment: AlignmentType.RIGHT, bidirectional: true, children: [new TextRun({ text: seg.text || "" })] })],
+          children: [new Paragraph({ alignment: AlignmentType.RIGHT, bidirectional: true, children: textRuns })],
         }),
       ],
-    })
-  );
+    });
+  });
 
   const headingChildren: Paragraph[] = [
     new Paragraph({ heading: HeadingLevel.HEADING_1, alignment: AlignmentType.RIGHT, bidirectional: true, children: [new TextRun({ text: "תמלול עם חותמות זמן", bold: true })] }),

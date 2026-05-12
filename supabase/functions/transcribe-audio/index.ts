@@ -13,9 +13,37 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
 type Service = "ivrit_ai" | "whisper" | "elevenlabs" | "lovable_ai";
 
-interface WordStamp { start: number; end: number; text: string }
-interface Segment { start: number; end: number; text: string; words?: WordStamp[] }
+interface WordStamp { start: number; end: number; text: string; speaker?: string }
+interface Segment { start: number; end: number; text: string; speaker?: string; words?: WordStamp[] }
 interface TranscribeResult { text: string; duration?: number; segments?: Segment[] }
+
+// Normalize a speaker label to a stable English form: "Speaker 1", "Speaker 2"...
+function normalizeSpeaker(raw: unknown): string | undefined {
+  if (raw === null || raw === undefined) return undefined;
+  const s = String(raw).trim();
+  if (!s) return undefined;
+  const m = s.match(/(\d+)/);
+  if (m) {
+    const n = Number(m[1]);
+    // Many providers index from 0; bump to 1-based for display friendliness.
+    return `Speaker ${n === 0 ? 1 : n}`;
+  }
+  return `Speaker ${s}`;
+}
+
+// Heuristic diarization for engines without speaker labels:
+// switch speaker on long silence (>1.2s) between segments.
+function applyHeuristicSpeakers(segments: Segment[]): Segment[] {
+  if (!segments.length) return segments;
+  let speakerIdx = 1;
+  const out: Segment[] = [];
+  for (let i = 0; i < segments.length; i++) {
+    const prev = out[out.length - 1];
+    if (prev && (segments[i].start - prev.end) > 1.2) speakerIdx = speakerIdx === 1 ? 2 : 1;
+    out.push({ ...segments[i], speaker: `Speaker ${speakerIdx}` });
+  }
+  return out;
+}
 
 // Cost per second of audio (USD). Conservative estimates.
 // Lovable AI runs on Gemini 2.5 Flash with audio input — billed per token.
@@ -55,7 +83,9 @@ async function transcribeWhisper(file: File): Promise<TranscribeResult> {
         return { start, end, text: String(s.text ?? "").trim(), words: segWords.length ? segWords : undefined };
       })
     : [];
-  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined, segments: segments.length ? segments : undefined };
+  // Whisper has no diarization — apply silence-gap heuristic.
+  const diarized = applyHeuristicSpeakers(segments);
+  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined, segments: diarized.length ? diarized : undefined };
 }
 
 async function transcribeElevenLabs(file: File): Promise<TranscribeResult> {
@@ -78,29 +108,38 @@ async function transcribeElevenLabs(file: File): Promise<TranscribeResult> {
   const rawWords: any[] = Array.isArray(data.words) ? data.words : [];
   const words: WordStamp[] = rawWords
     .filter((w) => w && (w.type === undefined || w.type === "word"))
-    .map((w) => ({ start: Number(w.start) || 0, end: Number(w.end) || 0, text: String(w.text ?? w.word ?? "") }));
+    .map((w) => ({
+      start: Number(w.start) || 0,
+      end: Number(w.end) || 0,
+      text: String(w.text ?? w.word ?? ""),
+      speaker: normalizeSpeaker(w.speaker_id ?? w.speaker),
+    }));
   const segments: Segment[] = [];
   let cur: WordStamp[] = [];
   let curStart = 0;
+  let curSpeaker: string | undefined = undefined;
   for (let i = 0; i < words.length; i++) {
     const w = words[i];
-    if (cur.length === 0) curStart = w.start;
+    if (cur.length === 0) { curStart = w.start; curSpeaker = w.speaker; }
     cur.push(w);
     const next = words[i + 1];
     const gap = next ? next.start - w.end : Infinity;
+    const speakerChange = next && next.speaker && curSpeaker && next.speaker !== curSpeaker;
     const endsSentence = /[.!?…׃]\s*$/.test(w.text) || /\n/.test(w.text);
-    if (endsSentence || gap > 0.8 || cur.length >= 25) {
+    if (speakerChange || endsSentence || gap > 0.8 || cur.length >= 25) {
       segments.push({
         start: curStart,
         end: w.end,
         text: cur.map((x) => x.text).join(" ").replace(/\s+([,.!?])/g, "$1").trim(),
+        speaker: curSpeaker,
         words: cur,
       });
       cur = [];
+      curSpeaker = undefined;
     }
   }
   if (cur.length) {
-    segments.push({ start: curStart, end: cur[cur.length - 1].end, text: cur.map((x) => x.text).join(" ").trim(), words: cur });
+    segments.push({ start: curStart, end: cur[cur.length - 1].end, text: cur.map((x) => x.text).join(" ").trim(), speaker: curSpeaker, words: cur });
   }
   return {
     text: data.text ?? segments.map((s) => s.text).join(" "),
@@ -136,7 +175,8 @@ async function transcribeIvritAi(file: File): Promise<TranscribeResult> {
         return { start, end, text: String(s.text ?? "").trim(), words: segWords.length ? segWords : undefined };
       })
     : [];
-  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined, segments: segments.length ? segments : undefined };
+  const diarized = applyHeuristicSpeakers(segments);
+  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined, segments: diarized.length ? diarized : undefined };
 }
 
 // Memory-efficient base64 (avoids huge intermediate strings on big files)
@@ -178,12 +218,12 @@ async function transcribeLovableAi(file: File): Promise<TranscribeResult> {
       messages: [
         {
           role: "system",
-          content: "אתה מערכת תמלול. תמלל את ההקלטה לעברית במדויק. החזר את הטקסט כשהוא מחולק לקטעים קצרים, כשבתחילת כל קטע מופיעה חותמת זמן בפורמט [mm:ss] (לדוגמה: [00:12]). אל תוסיף הקדמות, הערות, או טקסט מחוץ לקטעים. כל קטע בשורה נפרדת.",
+          content: "אתה מערכת תמלול. תמלל את ההקלטה לעברית במדויק. כשמזוהים מספר דוברים, סמן בתחילת כל קטע גם את זהות הדובר. הפורמט המדויק לכל שורה: [mm:ss] Speaker N: הטקסט. (לדוגמה: [00:12] Speaker 1: שלום). השתמש תמיד באנגלית 'Speaker' עם מספר 1, 2, 3 וכו'. אם יש דובר יחיד בלבד, אפשר להשמיט את ה-Speaker. אל תוסיף הקדמות, הערות או טקסט מחוץ לקטעים. כל קטע בשורה נפרדת.",
         },
         {
           role: "user",
           content: [
-            { type: "text", text: "תמלל את ההקלטה הבאה לעברית עם חותמות זמן [mm:ss] בתחילת כל משפט/קטע:" },
+            { type: "text", text: "תמלל את ההקלטה הבאה לעברית עם חותמות זמן ושמות דוברים בפורמט [mm:ss] Speaker N:" },
             { type: "input_audio", input_audio: { data: b64, format } },
           ],
         },
@@ -193,18 +233,19 @@ async function transcribeLovableAi(file: File): Promise<TranscribeResult> {
   if (!res.ok) throw new Error(`Lovable AI failed [${res.status}]: ${await res.text()}`);
   const data = await res.json();
   const raw: string = data?.choices?.[0]?.message?.content ?? "";
-  // Parse [mm:ss] or [hh:mm:ss] prefixes into segments.
+  // Parse [mm:ss] (Speaker N:)? prefixes into segments.
   const segments: Segment[] = [];
-  const lineRe = /\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s*([^\n]*)/g;
+  const lineRe = /\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s*(?:Speaker\s*(\d+)\s*:\s*)?([^\n]*)/gi;
   let m: RegExpExecArray | null;
   const cleanLines: string[] = [];
   while ((m = lineRe.exec(raw)) !== null) {
     const a = Number(m[1]); const b = Number(m[2]); const c = m[3] ? Number(m[3]) : null;
     const start = c !== null ? a * 3600 + b * 60 + c : a * 60 + b;
-    const text = (m[4] ?? "").trim();
+    const speaker = m[4] ? `Speaker ${Number(m[4])}` : undefined;
+    const text = (m[5] ?? "").trim();
     if (text) {
-      segments.push({ start, end: start, text });
-      cleanLines.push(text);
+      segments.push({ start, end: start, text, speaker });
+      cleanLines.push(speaker ? `${speaker}: ${text}` : text);
     }
   }
   // Fill end timestamps using next segment's start.

@@ -1,60 +1,51 @@
-# תיקון שגיאת `no drive file linked` בתמלול איכותי
+## מטרה
+תמלול נקי יותר עם הפרדת דוברים יציבה + חותמת זמן לכל קטע/שורת דובר.
 
-## האבחון
+## מה משנים
 
-מצאתי את הרשומה האחרונה שעליה ניסית לתמלל:
+### 1) פורמט דוברים יציב (Speaker N)
+- ב-DB נשמור תמיד באנגלית: `Speaker 1`, `Speaker 2`... (לא נשבר ב-RTL/JSON/PDF/CSV).
+- בתצוגה (UI בלבד) נמיר ל"דובר 1/2/3" דרך helper `formatSpeakerLabel()` ב-`src/lib/serviceLabels.ts`.
+- ב-exports (PDF/Word/CSV) — אותו helper, כך שהפלט עקבי.
 
-- קובץ: `audio1495552574.mp3`
-- משתמש: `9aa018ac...`
-- סטטוס: `failed`
-- `drive_file_id`: ריק
-- `drive_url`: ריק
+### 2) דיאריזציה אמיתית (זיהוי דוברים)
+- ב-`supabase/functions/transcribe-audio/index.ts`:
+  - **ElevenLabs Scribe**: כבר תומך ב-`diarize: true` — נפעיל ונקרא לשדה `speaker` שחוזר על כל word/segment.
+  - **Whisper/OpenAI**: אין דיאריזציה מובנית. נוסיף heuristic על בסיס פאוזות (>1.2s בין segments) + שינוי "speaker turn" לפי המודל אם זמין; אחרת נשאיר Speaker יחיד.
+  - **Gemini (Lovable AI)**: נעדכן ה-prompt להחזיר JSON עם `speaker` per segment ("Speaker 1/2/3...").
+- מבנה `segments` שמורחב:
+  ```ts
+  { start, end, text, speaker?: string, words?: { start, end, text, speaker? }[] }
+  ```
+- ב-merge (`merge-transcripts`): נשמר את הדיאריזציה מהמנוע שיש לו את הציון הגבוה (עדיפות ElevenLabs).
 
-לכן התמלול האיכותי נכשל: הוא מנסה להוריד את האודיו מה-Drive, אבל לרשומה אין קישור לקובץ.
+### 3) תווית זמן לכל שורת דובר ב-UI
+- `src/components/TimestampedTranscript.tsx`:
+  - קיבוץ segments ל"בלוקים של דובר" (segments רצופים מאותו speaker מתאחדים).
+  - כל בלוק יוצג כך:
+    ```
+    [דובר 1 · 00:12]   טקסט הקטע…
+    [דובר 2 · 00:19]   תגובה…
+    ```
+  - ה-timestamp לחיץ → seek לאודיו (כבר קיים).
+  - Hover על מילה → tooltip עם הזמן המדויק (כבר קיים).
 
-בנוסף, למשתמש הזה יש Drive מחובר ותיקייה קיימת מסוג `architect_meetings`, אבל אין לו תיקיית `appraiser_recordings`. לכן צריך שהעלאת `/transcribe` תשתמש בתיקיית ההקלטות האישית של היוזר עם fallback נכון, ולא בתיקייה מרכזית של האדמין.
+### 4) Exports עם דובר + זמן
+- `src/lib/exportTimestampedTranscript.ts`:
+  - **CSV**: עמודה חדשה `speaker` (Speaker 1/2/3 — אנגלית, לתאימות Excel).
+  - **PDF/Word**: עמודה/קידומת `[דובר 1 · 00:12]` בכל שורה.
+- `src/lib/exportTranscriptPdf.ts`: כשאין segments, מתעלם — אין שינוי לנתיב הישן.
 
-## מה אתקן
+### 5) בלי שינוי schema
+- `segments` כבר `jsonb` ב-`recordings` / `meeting_recordings` / `transcript_versions` — נוסיף `speaker` בתוך אותו JSON, ללא migration.
 
-### 1. העלאה ל-Drive האישי בלבד
-אעדכן את מסלול ההעלאה של `/transcribe` כך ש:
+## שינויים בקבצים
+- `supabase/functions/transcribe-audio/index.ts` — diarize per provider
+- `supabase/functions/merge-transcripts/index.ts` — שמירת speaker
+- `src/lib/serviceLabels.ts` — `formatSpeakerLabel()`
+- `src/components/TimestampedTranscript.tsx` — קיבוץ לפי דובר + תווית `[דובר N · mm:ss]`
+- `src/lib/exportTimestampedTranscript.ts` — speaker בעמודה/קידומת
+- `src/components/TranscribeDialog.tsx` / `useTranscribeAll.ts` — stitch של speaker בין chunks (offset על speaker IDs כדי שלא יתערבבו)
 
-- ישתמש בחיבור ה-Google Drive של המשתמש המחובר.
-- ישמור לתיקיית ההקלטות האישית של אותו משתמש.
-- יתמוך ב-fallback לתיקייה קיימת כמו `architect_meetings` אם זו התיקייה שהוגדרה בעבר.
-- לא ישתמש יותר בתיקיית התמלולים המרכזית של האדמין עבור העלאות רגילות של היוזר.
-
-### 2. לא ליצור רשומות שבורות
-אשנה את סדר הפעולות:
-
-1. קודם יוצרים session העלאה ל-Drive.
-2. מעלים את הקובץ ל-Drive.
-3. רק אחרי ש-Drive מחזיר `fileId` ו-link — יוצרים רשומה ב-`recordings`.
-
-כך לא תישאר יותר רשומה עם `drive_file_id` ריק.
-
-### 3. לנקות את הרשומה השבורה הקיימת
-אמחק/אסתיר את הרשומה השבורה הנוכחית (`audio1495552574.mp3`) כדי שלא תמשיך להופיע ולייצר את אותה שגיאה.
-
-### 4. הודעת שגיאה ברורה
-אם איכשהו משתמש מנסה לתמלל רשומה בלי קובץ Drive, ההודעה תהיה בעברית ברורה:
-
-"הקובץ לא נשמר ב-Drive ולכן אי אפשר לתמלל אותו. העלה את הקובץ מחדש."
-
-במקום ההודעה הטכנית באנגלית.
-
-## קבצים שיטופלו
-
-- `src/pages/TranscribePage.tsx`
-- `supabase/functions/upload-transcriber-file/index.ts`
-- `src/components/TranscribeDialog.tsx`
-- ניקוי נתון שבור בטבלת `recordings`
-
-## תוצאה צפויה
-
-אחרי התיקון:
-
-- הקובץ יישמר ב-Drive של היוזר בלבד.
-- הרשומה תיווצר רק אם יש `drive_file_id` תקין.
-- כפתור **תמלול איכותי** יוכל להוריד את הקובץ ולהתחיל תמלול.
-- לא תופיע יותר שגיאת `no drive file linked` על העלאות חדשות.
+## נקודות לתשומת לב
+- בקבצים שפוצלו ל

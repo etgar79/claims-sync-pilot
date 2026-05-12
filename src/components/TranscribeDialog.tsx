@@ -251,22 +251,11 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
           .map((r, i) => (r == null ? `\n[חלק ${i + 1} לא תומלל]\n` : r.text))
           .join("\n\n");
 
-        // Stitch segments using each chunk's startSec offset.
-        const stitched: any[] = [];
-        results.forEach((r, idx) => {
-          if (!r || !r.segments) return;
-          const offset = chunks[idx].startSec || 0;
-          for (const s of r.segments) {
-            stitched.push({
-              start: (Number(s.start) || 0) + offset,
-              end: (Number(s.end) || 0) + offset,
-              text: s.text,
-              words: Array.isArray(s.words)
-                ? s.words.map((w: any) => ({ start: (Number(w.start) || 0) + offset, end: (Number(w.end) || 0) + offset, text: w.text }))
-                : undefined,
-            });
-          }
-        });
+        // Stitch segments using each chunk's startSec offset (and remap speakers globally).
+        const { stitchChunkSegments } = await import("@/lib/stitchSegments");
+        const stitched = stitchChunkSegments(
+          results.map((r, idx) => ({ segments: r?.segments ?? null, startSec: chunks[idx].startSec || 0 })),
+        );
         finalSegments = stitched.length ? stitched : null;
 
         if (failedChunks.length === chunks.length) {
