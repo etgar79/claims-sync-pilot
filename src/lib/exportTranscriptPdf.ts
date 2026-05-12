@@ -1,61 +1,77 @@
 import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 export interface TranscriptPdfMeta {
   filename: string;
   recordedAt?: string | null;
-  context?: string | null; // e.g. "תיק 1234 • דירת רוזן" / "פגישה: שיפוץ סלון"
+  context?: string | null;
   client?: string | null;
 }
 
-export function exportTranscriptToPdf(transcript: string, meta: TranscriptPdfMeta) {
-  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  pdf.setR2L(true);
-  pdf.setFont("helvetica", "normal");
+function safeName(filename: string) {
+  return filename.replace(/\.[^.]+$/, "").replace(/[^\w\u0590-\u05FF\-_. ]+/g, "_");
+}
 
-  const margin = 15;
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const usableWidth = pageWidth - margin * 2;
-  const lineHeight = 6;
-  let y = margin;
+/** Render HTML to a multi-page A4 PDF (handles Hebrew/RTL via browser fonts). */
+export async function htmlToPdf(html: string, downloadName: string) {
+  const container = document.createElement("div");
+  container.style.position = "fixed";
+  container.style.left = "-10000px";
+  container.style.top = "0";
+  container.style.width = "794px"; // ~A4 @ 96dpi
+  container.style.background = "#ffffff";
+  container.style.color = "#000000";
+  container.style.padding = "40px";
+  container.style.fontFamily = "Arial, 'Segoe UI', Tahoma, sans-serif";
+  container.style.fontSize = "14px";
+  container.style.lineHeight = "1.6";
+  container.setAttribute("dir", "rtl");
+  container.innerHTML = html;
+  document.body.appendChild(container);
 
-  const writeLine = (text: string, size = 11, bold = false) => {
-    pdf.setFontSize(size);
-    pdf.setFont("helvetica", bold ? "bold" : "normal");
-    const wrapped = pdf.splitTextToSize(text || " ", usableWidth);
-    for (const w of wrapped) {
-      if (y + lineHeight > pageHeight - margin) {
-        pdf.addPage();
-        y = margin;
-      }
-      pdf.text(w, pageWidth - margin, y, { align: "right" });
-      y += lineHeight;
+  try {
+    const canvas = await html2canvas(container, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const imgData = canvas.toDataURL("image/jpeg", 0.92);
+
+    let heightLeft = imgHeight;
+    let position = 0;
+    pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
     }
-  };
+    pdf.save(downloadName);
+  } finally {
+    document.body.removeChild(container);
+  }
+}
 
-  writeLine("תמלול", 18, true);
-  y += 2;
-  writeLine(`קובץ: ${meta.filename}`, 11);
-  if (meta.recordedAt) writeLine(`תאריך: ${new Date(meta.recordedAt).toLocaleString("he-IL")}`, 11);
-  if (meta.context) writeLine(meta.context, 11);
-  if (meta.client) writeLine(`לקוח: ${meta.client}`, 11);
-  y += 4;
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+}
 
-  // Divider
-  pdf.setDrawColor(180);
-  pdf.line(margin, y, pageWidth - margin, y);
-  y += 4;
-
-  // Body — split by blank lines into paragraphs
+export async function exportTranscriptToPdf(transcript: string, meta: TranscriptPdfMeta) {
+  const lines: string[] = [];
+  lines.push(`<h1 style="font-size:22px;margin:0 0 8px;font-weight:700">תמלול</h1>`);
+  lines.push(`<div style="font-size:12px;color:#444">קובץ: ${escapeHtml(meta.filename)}</div>`);
+  if (meta.recordedAt) lines.push(`<div style="font-size:12px;color:#444">תאריך: ${escapeHtml(new Date(meta.recordedAt).toLocaleString("he-IL"))}</div>`);
+  if (meta.context) lines.push(`<div style="font-size:12px;color:#444">${escapeHtml(meta.context)}</div>`);
+  if (meta.client) lines.push(`<div style="font-size:12px;color:#444">לקוח: ${escapeHtml(meta.client)}</div>`);
+  lines.push(`<hr style="border:none;border-top:1px solid #ccc;margin:12px 0"/>`);
   const paragraphs = transcript.split(/\n\s*\n/);
   for (const para of paragraphs) {
-    const lines = para.split("\n");
-    for (const line of lines) writeLine(line, 11);
-    y += 2;
+    const inner = para.split("\n").map(escapeHtml).join("<br/>");
+    lines.push(`<p style="margin:0 0 10px;white-space:pre-wrap">${inner}</p>`);
   }
-
-  const safeName = meta.filename.replace(/\.[^.]+$/, "").replace(/[^\w\u0590-\u05FF\-_. ]+/g, "_");
-  pdf.save(`transcript-${safeName}.pdf`);
+  await htmlToPdf(lines.join(""), `transcript-${safeName(meta.filename)}.pdf`);
 }
 
 export function downloadTranscriptTxt(transcript: string, filename: string) {
@@ -63,8 +79,7 @@ export function downloadTranscriptTxt(transcript: string, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  const safeName = filename.replace(/\.[^.]+$/, "").replace(/[^\w\u0590-\u05FF\-_. ]+/g, "_");
-  a.download = `transcript-${safeName}.txt`;
+  a.download = `transcript-${safeName(filename)}.txt`;
   document.body.appendChild(a);
   a.click();
   a.remove();
