@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowRight, Upload, Loader2, Sparkles, FileAudio, Save, CheckCircle2, Wand2, FolderOpen, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,7 @@ import { EditMeetingDialog } from "@/components/EditMeetingDialog";
 import { ExpandableTranscriptPanel } from "@/components/ExpandableTranscriptPanel";
 import { serviceLabel } from "@/lib/serviceLabels";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
+import { TimestampedTranscript, type TranscriptSegment } from "@/components/TimestampedTranscript";
 
 interface Meeting {
   id: string;
