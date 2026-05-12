@@ -1,5 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { formatSpeakerLabel } from "@/lib/serviceLabels";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export interface TranscriptWord {
   start: number;
@@ -52,16 +54,32 @@ interface Props {
   /** Optional: when provided, clicking a segment seeks the audio. */
   onSeek?: (seconds: number) => void;
   className?: string;
+  /** Initial value for the timestamps toggle (default: true). */
+  defaultShowTimestamps?: boolean;
+  /** Hide the internal toggle (e.g. when parent provides its own). */
+  hideToggle?: boolean;
+  /** Controlled override for showing timestamps. */
+  showTimestamps?: boolean;
 }
 
 /**
  * Renders a transcript grouped by speaker with a [דובר N · mm:ss] label per turn.
- * Words inside a segment expose their timestamp via tooltip on hover.
+ * Includes a built-in toggle to hide all timestamps for a clean prose view.
  * Falls back to plain text when segments are unavailable.
  */
-export function TimestampedTranscript({ segments, fallbackText, onSeek, className }: Props) {
+export function TimestampedTranscript({
+  segments,
+  fallbackText,
+  onSeek,
+  className,
+  defaultShowTimestamps = true,
+  hideToggle,
+  showTimestamps: showTimestampsProp,
+}: Props) {
   const blocks = useMemo(() => groupBySpeaker(Array.isArray(segments) ? segments : []), [segments]);
   const hasSpeakers = useMemo(() => blocks.some((b) => !!b.speaker), [blocks]);
+  const [internalShow, setInternalShow] = useState(defaultShowTimestamps);
+  const showTimes = showTimestampsProp ?? internalShow;
 
   if (!blocks.length) {
     return (
@@ -73,11 +91,24 @@ export function TimestampedTranscript({ segments, fallbackText, onSeek, classNam
 
   return (
     <div dir="rtl" className={`space-y-3 text-sm leading-relaxed ${className ?? ""}`}>
+      {!hideToggle && (
+        <div className="flex items-center justify-end gap-2 pb-1 border-b border-border/50">
+          <Label htmlFor="ts-toggle" className="text-xs text-muted-foreground cursor-pointer">
+            תוויות זמן
+          </Label>
+          <Switch
+            id="ts-toggle"
+            checked={showTimes}
+            onCheckedChange={setInternalShow}
+            disabled={showTimestampsProp !== undefined}
+          />
+        </div>
+      )}
       {blocks.map((block, bi) => {
         const speakerLabel = formatSpeakerLabel(block.speaker);
         return (
           <div key={bi} className="space-y-1">
-            {/* Speaker + start-time header */}
+            {/* Speaker (+ optional start-time) header */}
             {hasSpeakers && (
               <button
                 type="button"
@@ -87,39 +118,47 @@ export function TimestampedTranscript({ segments, fallbackText, onSeek, classNam
                 title={onSeek ? `נגן מ-${fmt(block.start)}` : fmt(block.start)}
               >
                 <span>{speakerLabel ?? "דובר"}</span>
-                <span className="font-mono tabular-nums opacity-80">· {fmt(block.start)}</span>
+                {showTimes && (
+                  <span className="font-mono tabular-nums opacity-80">· {fmt(block.start)}</span>
+                )}
               </button>
             )}
-            <div className="space-y-1.5">
-              {block.segments.map((seg, i) => (
-                <div key={i} className="flex gap-2 items-baseline">
-                  <button
-                    type="button"
-                    onClick={() => onSeek?.(seg.start)}
-                    className="shrink-0 font-mono text-[11px] tabular-nums text-primary hover:underline disabled:cursor-default disabled:no-underline"
-                    disabled={!onSeek}
-                    title={onSeek ? `נגן מ-${fmt(seg.start)}` : fmt(seg.start)}
-                  >
-                    [{fmt(seg.start)}]
-                  </button>
-                  <p className="flex-1">
-                    {seg.words && seg.words.length > 0
-                      ? seg.words.map((w, j) => (
-                          <span
-                            key={j}
-                            title={fmt(w.start)}
-                            onClick={() => onSeek?.(w.start)}
-                            className={onSeek ? "cursor-pointer hover:bg-primary/10 rounded px-0.5" : "hover:bg-muted/50 rounded px-0.5"}
-                          >
-                            {w.text}
-                            {j < seg.words!.length - 1 ? " " : ""}
-                          </span>
-                        ))
-                      : seg.text}
-                  </p>
-                </div>
-              ))}
-            </div>
+            {showTimes ? (
+              <div className="space-y-1.5">
+                {block.segments.map((seg, i) => (
+                  <div key={i} className="flex gap-2 items-baseline">
+                    <button
+                      type="button"
+                      onClick={() => onSeek?.(seg.start)}
+                      className="shrink-0 font-mono text-[11px] tabular-nums text-primary hover:underline disabled:cursor-default disabled:no-underline"
+                      disabled={!onSeek}
+                      title={onSeek ? `נגן מ-${fmt(seg.start)}` : fmt(seg.start)}
+                    >
+                      [{fmt(seg.start)}]
+                    </button>
+                    <p className="flex-1">
+                      {seg.words && seg.words.length > 0
+                        ? seg.words.map((w, j) => (
+                            <span
+                              key={j}
+                              title={fmt(w.start)}
+                              onClick={() => onSeek?.(w.start)}
+                              className={onSeek ? "cursor-pointer hover:bg-primary/10 rounded px-0.5" : "hover:bg-muted/50 rounded px-0.5"}
+                            >
+                              {w.text}
+                              {j < seg.words!.length - 1 ? " " : ""}
+                            </span>
+                          ))
+                        : seg.text}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-foreground">
+                {block.segments.map((s) => s.text).join(" ").replace(/\s+/g, " ").trim()}
+              </p>
+            )}
           </div>
         );
       })}

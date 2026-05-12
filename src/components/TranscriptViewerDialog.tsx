@@ -19,6 +19,9 @@ import { toast } from "sonner";
 import { exportTranscriptToPdf, downloadTranscriptTxt } from "@/lib/exportTranscriptPdf";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { TranscribeDialog } from "@/components/TranscribeDialog";
+import { TimestampedTranscript, type TranscriptSegment } from "@/components/TimestampedTranscript";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 type TableName = "recordings" | "meeting_recordings";
 
@@ -71,6 +74,8 @@ export function TranscriptViewerDialog({
   const { runAll, running } = useTranscribeAll();
   const lastSavedRef = useRef<string>(transcript ?? "");
   const debounceRef = useRef<number | null>(null);
+  const [segments, setSegments] = useState<TranscriptSegment[] | null>(null);
+  const [showTimestamps, setShowTimestamps] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -78,9 +83,20 @@ export function TranscriptViewerDialog({
       lastSavedRef.current = transcript ?? "";
       setSaveState("idle");
       void loadVersions();
+      void loadSegments();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, recordingId]);
+
+  const loadSegments = async () => {
+    const { data } = await supabase
+      .from(table)
+      .select("segments")
+      .eq("id", recordingId)
+      .maybeSingle();
+    const segs = (data as any)?.segments;
+    setSegments(Array.isArray(segs) && segs.length ? segs : null);
+  };
 
   const loadVersions = async () => {
     const { data } = await supabase
@@ -292,17 +308,36 @@ export function TranscriptViewerDialog({
             </div>
           </DialogHeader>
 
-          {/* Body — single editor */}
+          {/* Body — view/edit transcript */}
           <div className="flex-1 min-h-0 flex flex-col md:flex-row">
-            <div className="flex-1 min-h-0 p-4 md:p-5">
-              <Textarea
-                dir="rtl"
-                value={edited}
-                onChange={(e) => setEdited(e.target.value)}
-                placeholder={transcript ? "" : "אין תמלול עדיין — לחץ על ⋯ כדי להפיק תמלול"}
-                className="h-full min-h-[400px] resize-none text-sm leading-relaxed font-sans border-0 focus-visible:ring-0 shadow-none p-0 bg-transparent"
-              />
+            <div className="flex-1 min-h-0 p-4 md:p-5 flex flex-col">
+              {segments && segments.length > 0 && (
+                <div className="flex items-center justify-end gap-2 pb-2 mb-2 border-b">
+                  <Label htmlFor="tvd-ts" className="text-xs text-muted-foreground cursor-pointer">
+                    תצוגת זמנים
+                  </Label>
+                  <Switch
+                    id="tvd-ts"
+                    checked={showTimestamps}
+                    onCheckedChange={setShowTimestamps}
+                  />
+                </div>
+              )}
+              {showTimestamps && segments && segments.length > 0 ? (
+                <ScrollArea className="flex-1 min-h-[400px]">
+                  <TimestampedTranscript segments={segments} fallbackText={edited} hideToggle />
+                </ScrollArea>
+              ) : (
+                <Textarea
+                  dir="rtl"
+                  value={edited}
+                  onChange={(e) => setEdited(e.target.value)}
+                  placeholder={transcript ? "" : "אין תמלול עדיין — לחץ על ⋯ כדי להפיק תמלול"}
+                  className="h-full min-h-[400px] resize-none text-sm leading-relaxed font-sans border-0 focus-visible:ring-0 shadow-none p-0 bg-transparent"
+                />
+              )}
             </div>
+
 
             {/* Right rail — collapsible tools */}
             <div className="md:w-72 border-t md:border-t-0 md:border-r bg-muted/20 flex flex-col">
