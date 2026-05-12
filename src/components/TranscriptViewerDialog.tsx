@@ -74,6 +74,8 @@ export function TranscriptViewerDialog({
   const { runAll, running } = useTranscribeAll();
   const lastSavedRef = useRef<string>(transcript ?? "");
   const debounceRef = useRef<number | null>(null);
+  const [segments, setSegments] = useState<TranscriptSegment[] | null>(null);
+  const [showTimestamps, setShowTimestamps] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -81,9 +83,20 @@ export function TranscriptViewerDialog({
       lastSavedRef.current = transcript ?? "";
       setSaveState("idle");
       void loadVersions();
+      void loadSegments();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, recordingId]);
+
+  const loadSegments = async () => {
+    const { data } = await supabase
+      .from(table)
+      .select("segments")
+      .eq("id", recordingId)
+      .maybeSingle();
+    const segs = (data as any)?.segments;
+    setSegments(Array.isArray(segs) && segs.length ? segs : null);
+  };
 
   const loadVersions = async () => {
     const { data } = await supabase
