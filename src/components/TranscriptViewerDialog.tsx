@@ -308,17 +308,36 @@ export function TranscriptViewerDialog({
             </div>
           </DialogHeader>
 
-          {/* Body — single editor */}
+          {/* Body — view/edit transcript */}
           <div className="flex-1 min-h-0 flex flex-col md:flex-row">
-            <div className="flex-1 min-h-0 p-4 md:p-5">
-              <Textarea
-                dir="rtl"
-                value={edited}
-                onChange={(e) => setEdited(e.target.value)}
-                placeholder={transcript ? "" : "אין תמלול עדיין — לחץ על ⋯ כדי להפיק תמלול"}
-                className="h-full min-h-[400px] resize-none text-sm leading-relaxed font-sans border-0 focus-visible:ring-0 shadow-none p-0 bg-transparent"
-              />
+            <div className="flex-1 min-h-0 p-4 md:p-5 flex flex-col">
+              {segments && segments.length > 0 && (
+                <div className="flex items-center justify-end gap-2 pb-2 mb-2 border-b">
+                  <Label htmlFor="tvd-ts" className="text-xs text-muted-foreground cursor-pointer">
+                    תצוגת זמנים
+                  </Label>
+                  <Switch
+                    id="tvd-ts"
+                    checked={showTimestamps}
+                    onCheckedChange={setShowTimestamps}
+                  />
+                </div>
+              )}
+              {showTimestamps && segments && segments.length > 0 ? (
+                <ScrollArea className="flex-1 min-h-[400px]">
+                  <TimestampedTranscript segments={segments} fallbackText={edited} hideToggle />
+                </ScrollArea>
+              ) : (
+                <Textarea
+                  dir="rtl"
+                  value={edited}
+                  onChange={(e) => setEdited(e.target.value)}
+                  placeholder={transcript ? "" : "אין תמלול עדיין — לחץ על ⋯ כדי להפיק תמלול"}
+                  className="h-full min-h-[400px] resize-none text-sm leading-relaxed font-sans border-0 focus-visible:ring-0 shadow-none p-0 bg-transparent"
+                />
+              )}
             </div>
+
 
             {/* Right rail — collapsible tools */}
             <div className="md:w-72 border-t md:border-t-0 md:border-r bg-muted/20 flex flex-col">
