@@ -137,13 +137,13 @@ export async function exportTimestampedDocx(segments: TranscriptSegment[], meta:
       new TableCell({
         borders: cellBorders,
         width: { size: 1800, type: WidthType.DXA },
-        shading: { fill: "EEEEEE", type: "clear" as any, color: "auto" },
+        shading: { fill: "EEEEEE", type: ShadingType.CLEAR, color: "auto" },
         children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: "זמן", bold: true })] })],
       }),
       new TableCell({
         borders: cellBorders,
         width: { size: 7560, type: WidthType.DXA },
-        shading: { fill: "EEEEEE", type: "clear" as any, color: "auto" },
+        shading: { fill: "EEEEEE", type: ShadingType.CLEAR, color: "auto" },
         children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: "טקסט", bold: true })] })],
       }),
     ],
