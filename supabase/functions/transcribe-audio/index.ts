@@ -175,7 +175,8 @@ async function transcribeIvritAi(file: File): Promise<TranscribeResult> {
         return { start, end, text: String(s.text ?? "").trim(), words: segWords.length ? segWords : undefined };
       })
     : [];
-  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined, segments: segments.length ? segments : undefined };
+  const diarized = applyHeuristicSpeakers(segments);
+  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined, segments: diarized.length ? diarized : undefined };
 }
 
 // Memory-efficient base64 (avoids huge intermediate strings on big files)
