@@ -352,11 +352,32 @@ function RecordingCard({ recording, appraisalCase, onUpdated }: { recording: Rec
           </div>
         </div>
       ) : recording.transcript ? (
-        <div className="mt-3">
+        <div className="mt-3 space-y-2">
+          {recording.segments && recording.segments.length > 0 && (
+            <div className="flex items-center justify-end gap-2 pb-1 border-b border-border/50">
+              <Label htmlFor={`ts-toggle-${recording.id}`} className="text-xs text-muted-foreground cursor-pointer">
+                תוויות זמן
+              </Label>
+              <Switch
+                id={`ts-toggle-${recording.id}`}
+                checked={showTimestamps}
+                onCheckedChange={setShowTimestamps}
+              />
+            </div>
+          )}
           <div className="p-3 bg-muted/50 rounded-md border border-border">
-            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-              {recording.transcript}
-            </p>
+            {recording.segments && recording.segments.length > 0 ? (
+              <TimestampedTranscript
+                segments={recording.segments as TranscriptSegment[]}
+                fallbackText={recording.transcript}
+                hideToggle
+                showTimestamps={showTimestamps}
+              />
+            ) : (
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                {recording.transcript}
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap justify-end gap-2 mt-2">
             <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
