@@ -92,9 +92,11 @@ async function transcribeElevenLabs(file: File): Promise<TranscribeResult> {
   if (!ELEVENLABS_API_KEY) throw new Error("ELEVENLABS_API_KEY is not configured");
   const fd = new FormData();
   fd.append("file", file);
-  fd.append("model_id", "scribe_v2");
+  // scribe_v1 הוא המודל הציבורי המתועד שתומך ב-diarization אמיתי
+  fd.append("model_id", "scribe_v1");
   fd.append("language_code", "heb");
   fd.append("diarize", "true");
+  fd.append("timestamps_granularity", "word");
   fd.append("tag_audio_events", "true");
   const res = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
     method: "POST",
