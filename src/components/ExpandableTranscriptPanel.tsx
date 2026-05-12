@@ -8,6 +8,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { exportTranscriptToPdf, downloadTranscriptTxt } from "@/lib/exportTranscriptPdf";
+import { exportTimestampedCsv, exportTimestampedPdf, exportTimestampedDocx } from "@/lib/exportTimestampedTranscript";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { serviceLabel } from "@/lib/serviceLabels";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { MergeTranscriptsDialog } from "@/components/MergeTranscriptsDialog";
@@ -560,6 +569,46 @@ export function ExpandableTranscriptPanel({
               <Button size="sm" variant="outline" onClick={() => downloadTranscriptTxt(edited, item.filename)} className="gap-1.5" disabled={!edited}>
                 <FileDown className="h-3.5 w-3.5" /> TXT
               </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1.5" disabled={!segments || segments.length === 0}>
+                    <Download className="h-3.5 w-3.5" /> ייצוא מתוזמן
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>תמלול עם חותמות זמן</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => segments && exportTimestampedPdf(segments, {
+                      filename: item.filename, recordedAt: item.recordedAt, context: item.context, client: item.client,
+                    })}
+                  >
+                    <Download className="h-3.5 w-3.5 ml-2" /> PDF (עם זמנים)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      if (!segments) return;
+                      try {
+                        await exportTimestampedDocx(segments, {
+                          filename: item.filename, recordedAt: item.recordedAt, context: item.context, client: item.client,
+                        });
+                      } catch (e: any) {
+                        toast.error("שגיאה בייצוא Word", { description: e?.message });
+                      }
+                    }}
+                  >
+                    <FileDown className="h-3.5 w-3.5 ml-2" /> Word (.docx)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => segments && exportTimestampedCsv(segments, {
+                      filename: item.filename, recordedAt: item.recordedAt, context: item.context, client: item.client,
+                    })}
+                  >
+                    <FileDown className="h-3.5 w-3.5 ml-2" /> CSV (זמן + טקסט + מילים)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               {onAssign && (
                 <Button size="sm" variant="outline" onClick={onAssign} className="gap-1.5">
                   <Tag className="h-3.5 w-3.5" /> {item.assignLabel ?? "שייך"}
