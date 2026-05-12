@@ -31,6 +31,7 @@ const TranscribeDebug = lazy(() => import("./pages/TranscribeDebug.tsx"));
 const TasksPage = lazy(() => import("./pages/TasksPage.tsx"));
 const GlossaryPage = lazy(() => import("./pages/GlossaryPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const LogsPage = lazy(() => import("./pages/LogsPage.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ const App = () => (
               <Route path="/admin" element={<ProtectedRoute allow={["admin"]}><Admin /></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute allow={["admin"]}><AdminUsers /></ProtectedRoute>} />
               <Route path="/usage" element={<ProtectedRoute allow={["admin"]}><Usage /></ProtectedRoute>} />
+              <Route path="/admin/logs" element={<ProtectedRoute allow={["admin"]}><LogsPage /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
