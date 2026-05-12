@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { AppraisalCase, Recording } from "@/data/sampleCases";
+import { AppraisalCase, Recording, TranscriptSegment } from "@/data/sampleCases";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Calendar, MapPin, User, Phone, ExternalLink, Mic, Image as ImageIcon, FileText, Play, Loader2, CheckCircle2, Clock, Mail, FolderOpen, Cloud, Sparkles, RefreshCw, Pencil, Save, X, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +18,7 @@ import { MergeTranscriptsDialog } from "./MergeTranscriptsDialog";
 import { ActionItemsDialog } from "./ActionItemsDialog";
 import { useTranscribeAll } from "@/hooks/useTranscribeAll";
 import { UploadPhotosButton } from "./UploadPhotosButton";
+import { TimestampedTranscript } from "./TimestampedTranscript";
 
 interface CaseDetailProps {
   appraisalCase: AppraisalCase;
