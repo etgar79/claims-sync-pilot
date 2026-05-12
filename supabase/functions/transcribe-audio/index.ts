@@ -218,12 +218,12 @@ async function transcribeLovableAi(file: File): Promise<TranscribeResult> {
       messages: [
         {
           role: "system",
-          content: "אתה מערכת תמלול. תמלל את ההקלטה לעברית במדויק. החזר את הטקסט כשהוא מחולק לקטעים קצרים, כשבתחילת כל קטע מופיעה חותמת זמן בפורמט [mm:ss] (לדוגמה: [00:12]). אל תוסיף הקדמות, הערות, או טקסט מחוץ לקטעים. כל קטע בשורה נפרדת.",
+          content: "אתה מערכת תמלול. תמלל את ההקלטה לעברית במדויק. כשמזוהים מספר דוברים, סמן בתחילת כל קטע גם את זהות הדובר. הפורמט המדויק לכל שורה: [mm:ss] Speaker N: הטקסט. (לדוגמה: [00:12] Speaker 1: שלום). השתמש תמיד באנגלית 'Speaker' עם מספר 1, 2, 3 וכו'. אם יש דובר יחיד בלבד, אפשר להשמיט את ה-Speaker. אל תוסיף הקדמות, הערות או טקסט מחוץ לקטעים. כל קטע בשורה נפרדת.",
         },
         {
           role: "user",
           content: [
-            { type: "text", text: "תמלל את ההקלטה הבאה לעברית עם חותמות זמן [mm:ss] בתחילת כל משפט/קטע:" },
+            { type: "text", text: "תמלל את ההקלטה הבאה לעברית עם חותמות זמן ושמות דוברים בפורמט [mm:ss] Speaker N:" },
             { type: "input_audio", input_audio: { data: b64, format } },
           ],
         },
@@ -233,18 +233,19 @@ async function transcribeLovableAi(file: File): Promise<TranscribeResult> {
   if (!res.ok) throw new Error(`Lovable AI failed [${res.status}]: ${await res.text()}`);
   const data = await res.json();
   const raw: string = data?.choices?.[0]?.message?.content ?? "";
-  // Parse [mm:ss] or [hh:mm:ss] prefixes into segments.
+  // Parse [mm:ss] (Speaker N:)? prefixes into segments.
   const segments: Segment[] = [];
-  const lineRe = /\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s*([^\n]*)/g;
+  const lineRe = /\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s*(?:Speaker\s*(\d+)\s*:\s*)?([^\n]*)/gi;
   let m: RegExpExecArray | null;
   const cleanLines: string[] = [];
   while ((m = lineRe.exec(raw)) !== null) {
     const a = Number(m[1]); const b = Number(m[2]); const c = m[3] ? Number(m[3]) : null;
     const start = c !== null ? a * 3600 + b * 60 + c : a * 60 + b;
-    const text = (m[4] ?? "").trim();
+    const speaker = m[4] ? `Speaker ${Number(m[4])}` : undefined;
+    const text = (m[5] ?? "").trim();
     if (text) {
-      segments.push({ start, end: start, text });
-      cleanLines.push(text);
+      segments.push({ start, end: start, text, speaker });
+      cleanLines.push(speaker ? `${speaker}: ${text}` : text);
     }
   }
   // Fill end timestamps using next segment's start.
