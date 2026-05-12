@@ -86,12 +86,18 @@ export async function exportTimestampedPdf(segments: TranscriptSegment[], meta: 
   if (meta.client) headerLines.push(`<div style="font-size:12px;color:#444">לקוח: ${escapeHtml(meta.client)}</div>`);
   headerLines.push(`<hr style="border:none;border-top:1px solid #ccc;margin:12px 0"/>`);
 
-  const rows = segments.map((seg) => `
+  const hasSpeakers = segments.some((s) => !!s.speaker);
+  const rows = segments.map((seg) => {
+    const speakerCell = hasSpeakers
+      ? `<td style="vertical-align:top;padding:4px 6px;width:70px;color:#0a66c2;white-space:nowrap;border-bottom:1px solid #eee">${escapeHtml(formatSpeakerLabel(seg.speaker) ?? "")}</td>`
+      : "";
+    return `
     <tr>
       <td style="vertical-align:top;padding:4px 6px;width:80px;font-family:monospace;color:#0a66c2;white-space:nowrap;border-bottom:1px solid #eee">[${fmt(seg.start)}]</td>
+      ${speakerCell}
       <td style="vertical-align:top;padding:4px 6px;border-bottom:1px solid #eee">${escapeHtml(seg.text || "")}</td>
-    </tr>
-  `).join("");
+    </tr>`;
+  }).join("");
 
   const html = `
     ${headerLines.join("")}
@@ -99,6 +105,7 @@ export async function exportTimestampedPdf(segments: TranscriptSegment[], meta: 
       <thead>
         <tr>
           <th style="text-align:right;padding:6px;background:#f3f4f6;border-bottom:2px solid #ddd;width:80px">זמן</th>
+          ${hasSpeakers ? `<th style="text-align:right;padding:6px;background:#f3f4f6;border-bottom:2px solid #ddd;width:70px">דובר</th>` : ""}
           <th style="text-align:right;padding:6px;background:#f3f4f6;border-bottom:2px solid #ddd">טקסט</th>
         </tr>
       </thead>
