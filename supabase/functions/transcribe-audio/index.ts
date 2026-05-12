@@ -83,7 +83,9 @@ async function transcribeWhisper(file: File): Promise<TranscribeResult> {
         return { start, end, text: String(s.text ?? "").trim(), words: segWords.length ? segWords : undefined };
       })
     : [];
-  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined, segments: segments.length ? segments : undefined };
+  // Whisper has no diarization — apply silence-gap heuristic.
+  const diarized = applyHeuristicSpeakers(segments);
+  return { text: data.text ?? "", duration: typeof data.duration === "number" ? data.duration : undefined, segments: diarized.length ? diarized : undefined };
 }
 
 async function transcribeElevenLabs(file: File): Promise<TranscribeResult> {
