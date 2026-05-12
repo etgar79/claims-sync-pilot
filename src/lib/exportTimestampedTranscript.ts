@@ -72,63 +72,37 @@ export function exportTimestampedCsv(segments: TranscriptSegment[], meta: Timest
   saveAs(blob, `transcript-${safeName(meta.filename)}.csv`);
 }
 
-/** PDF with timestamp column (RTL Hebrew-friendly). */
-export function exportTimestampedPdf(segments: TranscriptSegment[], meta: TimestampedExportMeta) {
-  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  pdf.setR2L(true);
-  pdf.setFont("helvetica", "normal");
+/** PDF with timestamp column — uses HTML rendering for proper Hebrew/RTL. */
+export async function exportTimestampedPdf(segments: TranscriptSegment[], meta: TimestampedExportMeta) {
+  const headerLines: string[] = [];
+  headerLines.push(`<h1 style="font-size:22px;margin:0 0 8px;font-weight:700">תמלול עם חותמות זמן</h1>`);
+  headerLines.push(`<div style="font-size:12px;color:#444">קובץ: ${escapeHtml(meta.filename)}</div>`);
+  if (meta.recordedAt) headerLines.push(`<div style="font-size:12px;color:#444">תאריך: ${escapeHtml(new Date(meta.recordedAt).toLocaleString("he-IL"))}</div>`);
+  if (meta.context) headerLines.push(`<div style="font-size:12px;color:#444">${escapeHtml(meta.context)}</div>`);
+  if (meta.client) headerLines.push(`<div style="font-size:12px;color:#444">לקוח: ${escapeHtml(meta.client)}</div>`);
+  headerLines.push(`<hr style="border:none;border-top:1px solid #ccc;margin:12px 0"/>`);
 
-  const margin = 15;
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const usableWidth = pageWidth - margin * 2;
-  const timeColWidth = 22;
-  const textColWidth = usableWidth - timeColWidth - 4;
-  const lineHeight = 6;
-  let y = margin;
+  const rows = segments.map((seg) => `
+    <tr>
+      <td style="vertical-align:top;padding:4px 6px;width:80px;font-family:monospace;color:#0a66c2;white-space:nowrap;border-bottom:1px solid #eee">[${fmt(seg.start)}]</td>
+      <td style="vertical-align:top;padding:4px 6px;border-bottom:1px solid #eee">${escapeHtml(seg.text || "")}</td>
+    </tr>
+  `).join("");
 
-  const writeHeader = (text: string, size = 11, bold = false) => {
-    pdf.setFontSize(size);
-    pdf.setFont("helvetica", bold ? "bold" : "normal");
-    const wrapped = pdf.splitTextToSize(text || " ", usableWidth);
-    for (const w of wrapped) {
-      if (y + lineHeight > pageHeight - margin) { pdf.addPage(); y = margin; }
-      pdf.text(w, pageWidth - margin, y, { align: "right" });
-      y += lineHeight;
-    }
-  };
+  const html = `
+    ${headerLines.join("")}
+    <table style="width:100%;border-collapse:collapse;font-size:13px" dir="rtl">
+      <thead>
+        <tr>
+          <th style="text-align:right;padding:6px;background:#f3f4f6;border-bottom:2px solid #ddd;width:80px">זמן</th>
+          <th style="text-align:right;padding:6px;background:#f3f4f6;border-bottom:2px solid #ddd">טקסט</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
 
-  writeHeader("תמלול עם חותמות זמן", 18, true);
-  y += 2;
-  writeHeader(`קובץ: ${meta.filename}`, 11);
-  if (meta.recordedAt) writeHeader(`תאריך: ${new Date(meta.recordedAt).toLocaleString("he-IL")}`, 11);
-  if (meta.context) writeHeader(meta.context, 11);
-  if (meta.client) writeHeader(`לקוח: ${meta.client}`, 11);
-  y += 4;
-  pdf.setDrawColor(180);
-  pdf.line(margin, y, pageWidth - margin, y);
-  y += 4;
-
-  pdf.setFontSize(10);
-  for (const seg of segments) {
-    const timeStr = `[${fmt(seg.start)}]`;
-    const wrapped = pdf.splitTextToSize(seg.text || " ", textColWidth);
-    const blockHeight = wrapped.length * lineHeight;
-    if (y + blockHeight > pageHeight - margin) { pdf.addPage(); y = margin; }
-    // time on the right (RTL: right side is start)
-    pdf.setFont("helvetica", "bold");
-    pdf.text(timeStr, pageWidth - margin, y, { align: "right" });
-    pdf.setFont("helvetica", "normal");
-    // text after time column
-    let ty = y;
-    for (const w of wrapped) {
-      pdf.text(w, pageWidth - margin - timeColWidth - 2, ty, { align: "right" });
-      ty += lineHeight;
-    }
-    y = ty + 1;
-  }
-
-  pdf.save(`transcript-${safeName(meta.filename)}.pdf`);
+  await htmlToPdf(html, `transcript-${safeName(meta.filename)}.pdf`);
 }
 
 /** DOCX with a 2-column table (זמן | טקסט) — friendly for sharing/editing. */
