@@ -37,15 +37,17 @@ function escapeCsv(value: string) {
   return `"${s}"`;
 }
 
-/** CSV with columns: segment_index, start, end, text, word_index, word_start, word_end, word */
+/** CSV with columns: speaker, segment_start, segment_end, segment_text, word_start, word_end, word */
 export function exportTimestampedCsv(segments: TranscriptSegment[], meta: TimestampedExportMeta) {
   const rows: string[] = [];
-  rows.push(["segment_index", "segment_start", "segment_end", "segment_text", "word_index", "word_start", "word_end", "word"].join(","));
+  rows.push(["segment_index", "speaker", "segment_start", "segment_end", "segment_text", "word_index", "word_start", "word_end", "word"].join(","));
   segments.forEach((seg, i) => {
+    const speaker = seg.speaker ?? "";
     if (seg.words && seg.words.length) {
       seg.words.forEach((w, j) => {
         rows.push([
           i + 1,
+          escapeCsv(speaker),
           fmt(seg.start),
           fmt(seg.end),
           escapeCsv(seg.text),
@@ -58,6 +60,7 @@ export function exportTimestampedCsv(segments: TranscriptSegment[], meta: Timest
     } else {
       rows.push([
         i + 1,
+        escapeCsv(speaker),
         fmt(seg.start),
         fmt(seg.end),
         escapeCsv(seg.text),
