@@ -43,6 +43,9 @@ const PricingAdmin = () => {
   const [platformFee, setPlatformFee] = useState("0");
   const [savingFee, setSavingFee] = useState(false);
   const [savingBulk, setSavingBulk] = useState(false);
+  const [calcCost, setCalcCost] = useState("40");
+  const [calcUsers, setCalcUsers] = useState("10");
+  const [calcRecover, setCalcRecover] = useState("50");
 
   const load = async () => {
     setLoading(true);
@@ -194,6 +197,55 @@ const PricingAdmin = () => {
                 <Button onClick={savePlatformFee} disabled={savingFee}>
                   {savingFee ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 ml-1" />} שמור
                 </Button>
+              </div>
+
+              {/* Calculator */}
+              <div className="mt-4 p-3 rounded-lg border bg-muted/30">
+                <div className="text-xs font-semibold mb-2">🧮 מחשבון דמי מנוי</div>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                  <div>
+                    <Label className="text-xs">עלות תשתית $/חודש</Label>
+                    <Input
+                      type="number" step="0.01" value={calcCost}
+                      onChange={(e) => setCalcCost(e.target.value)} className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">יוזרים פעילים</Label>
+                    <Input
+                      type="number" step="1" min="1" value={calcUsers}
+                      onChange={(e) => setCalcUsers(e.target.value)} className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">% להחזיר</Label>
+                    <Input
+                      type="number" step="1" min="0" max="100" value={calcRecover}
+                      onChange={(e) => setCalcRecover(e.target.value)} className="mt-1"
+                    />
+                  </div>
+                  <div className="text-sm">
+                    {(() => {
+                      const c = Number(calcCost) || 0;
+                      const u = Math.max(1, Number(calcUsers) || 1);
+                      const r = Number(calcRecover) || 0;
+                      const perUser = (c * (r / 100)) / u;
+                      return (
+                        <div className="space-y-1">
+                          <div className="text-muted-foreground text-xs">דמי מנוי ליוזר:</div>
+                          <div className="text-lg font-bold text-primary">${perUser.toFixed(2)}</div>
+                          <Button
+                            size="sm" variant="outline" className="h-7 text-xs"
+                            onClick={() => setPlatformFee(perUser.toFixed(2))}
+                            disabled={!perUser}
+                          >
+                            השתמש בערך הזה
+                          </Button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
               </div>
             </Card>
 
