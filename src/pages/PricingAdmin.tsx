@@ -352,7 +352,7 @@ const PricingAdmin = () => {
                               <Input
                                 type="number"
                                 step="0.000000001"
-                                defaultValue={r.cost_per_unit_usd}
+                                defaultValue={usdToIls(r.cost_per_unit_usd)}
                                 onChange={(e) => setDraft({ ...draft, [r.id]: { ...d, cost_per_unit_usd: Number(e.target.value) } })}
                               />
                             </td>
