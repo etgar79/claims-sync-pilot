@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { logAiUsage } from "../_shared/usage-log.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -177,15 +178,14 @@ ${versionsBlock}
       // fallback: use raw content as transcript
     }
 
-    // Track usage
-    await supabase.from("usage_events").insert({
-      user_id: user.id,
-      event_type: "transcript_merge",
-      service: "gemini-2.5-pro",
-      quantity: versions.length,
-      unit: "versions",
-      cost_usd: 0,
-      metadata: {
+    // Track real cost based on token usage from AI gateway response
+    await logAiUsage({
+      userId: user.id,
+      model: "google/gemini-2.5-pro",
+      usage: aiData.usage,
+      eventType: "transcript_merge",
+      meta: {
+        versions: versions.length,
         services: versions.map((v) => v.service),
         char_count: mergedTranscript.length,
         with_diarization: true,
