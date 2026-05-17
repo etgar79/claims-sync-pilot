@@ -85,7 +85,8 @@ const PricingAdmin = () => {
     if (!d) return;
     const orig = rows.find((r) => r.id === id);
     if (!orig) return;
-    const cost = d.cost_per_unit_usd ?? orig.cost_per_unit_usd;
+    // d.cost_per_unit_usd actually stores ILS while editing — convert to USD for DB
+    const cost = d.cost_per_unit_usd !== undefined ? ilsToUsd(d.cost_per_unit_usd) : orig.cost_per_unit_usd;
     const markup = d.markup_pct ?? orig.markup_pct;
     const { error } = await supabase.rpc("apply_pricing_change", {
       p_service: orig.service,
