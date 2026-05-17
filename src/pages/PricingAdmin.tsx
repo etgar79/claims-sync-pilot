@@ -106,7 +106,7 @@ const PricingAdmin = () => {
     const { error } = await supabase.rpc("apply_pricing_change", {
       p_service: newRow.service.trim(),
       p_unit: newRow.unit,
-      p_cost: Number(newRow.cost),
+      p_cost: ilsToUsd(Number(newRow.cost)),
       p_markup: Number(newRow.markup) || 0,
       p_notes: null,
     });
