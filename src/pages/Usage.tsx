@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, DollarSign, Activity, Mic, Sparkles, Download, ChevronDown, ChevronLeft } from "lucide-react";
+import { Loader2, DollarSign, Activity, Mic, Sparkles, Download, ChevronDown, ChevronLeft, Tag, Receipt } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { serviceLabel } from "@/lib/serviceLabels";
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 interface UsageRow {
   id: string;
@@ -19,6 +20,7 @@ interface UsageRow {
   quantity: number;
   unit: string;
   cost_usd: number;
+  billable_usd: number;
   metadata: any;
   created_at: string;
 }
@@ -28,12 +30,7 @@ interface Profile {
   display_name: string | null;
 }
 
-const RANGE_DAYS: Record<string, number> = {
-  "7": 7,
-  "30": 30,
-  "90": 90,
-  "365": 365,
-};
+const RANGE_DAYS: Record<string, number> = { "7": 7, "30": 30, "90": 90, "365": 365 };
 
 const Usage = () => {
   const { isAdmin, loading: rolesLoading } = useUserRoles();
@@ -41,6 +38,7 @@ const Usage = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState("30");
+  const [userFilter, setUserFilter] = useState<string>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const load = async () => {
@@ -71,68 +69,93 @@ const Usage = () => {
     return m;
   }, [profiles]);
 
+  const filteredEvents = useMemo(
+    () => (userFilter === "all" ? events : events.filter((e) => e.user_id === userFilter)),
+    [events, userFilter],
+  );
+
   // Aggregate per user
   const perUser = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        user_id: string;
-        name: string;
-        totalCost: number;
-        events: number;
-        transcriptionSec: number;
-        aiTokens: number;
-        byService: Record<string, { count: number; cost: number }>;
-      }
-    >();
-    events.forEach((e) => {
+    const map = new Map<string, {
+      user_id: string;
+      name: string;
+      totalCost: number;
+      totalBillable: number;
+      events: number;
+      transcriptionSec: number;
+      aiTokens: number;
+      byService: Record<string, { count: number; cost: number; billable: number }>;
+    }>();
+    filteredEvents.forEach((e) => {
       const cur = map.get(e.user_id) ?? {
         user_id: e.user_id,
         name: profileMap.get(e.user_id) || `${e.user_id.slice(0, 8)}...`,
         totalCost: 0,
+        totalBillable: 0,
         events: 0,
         transcriptionSec: 0,
         aiTokens: 0,
         byService: {},
       };
       cur.totalCost += Number(e.cost_usd);
+      cur.totalBillable += Number(e.billable_usd ?? e.cost_usd);
       cur.events += 1;
-      if (e.event_type === "transcription") cur.transcriptionSec += Number(e.quantity);
-      if (e.event_type === "ai_summary") cur.aiTokens += Number(e.quantity);
-      const s = cur.byService[e.service] ?? { count: 0, cost: 0 };
+      if (e.unit === "seconds") cur.transcriptionSec += Number(e.quantity);
+      if (e.unit === "tokens") cur.aiTokens += Number(e.quantity);
+      const s = cur.byService[e.service] ?? { count: 0, cost: 0, billable: 0 };
       s.count += 1;
       s.cost += Number(e.cost_usd);
+      s.billable += Number(e.billable_usd ?? e.cost_usd);
       cur.byService[e.service] = s;
       map.set(e.user_id, cur);
     });
-    return Array.from(map.values()).sort((a, b) => b.totalCost - a.totalCost);
-  }, [events, profileMap]);
+    return Array.from(map.values()).sort((a, b) => b.totalBillable - a.totalBillable);
+  }, [filteredEvents, profileMap]);
 
   const totals = useMemo(() => {
     return perUser.reduce(
       (acc, u) => ({
         cost: acc.cost + u.totalCost,
+        billable: acc.billable + u.totalBillable,
         events: acc.events + u.events,
         transcriptionMin: acc.transcriptionMin + u.transcriptionSec / 60,
         aiTokens: acc.aiTokens + u.aiTokens,
       }),
-      { cost: 0, events: 0, transcriptionMin: 0, aiTokens: 0 },
+      { cost: 0, billable: 0, events: 0, transcriptionMin: 0, aiTokens: 0 },
     );
   }, [perUser]);
+
+  // Monthly chart data: bars per user per month
+  const chartData = useMemo(() => {
+    const byMonth = new Map<string, Record<string, number>>();
+    filteredEvents.forEach((e) => {
+      const d = new Date(e.created_at);
+      const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const name = profileMap.get(e.user_id) || `${e.user_id.slice(0, 6)}`;
+      const m = byMonth.get(month) ?? {};
+      m[name] = (m[name] ?? 0) + Number(e.billable_usd ?? e.cost_usd);
+      byMonth.set(month, m);
+    });
+    return Array.from(byMonth.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, vals]) => ({ month, ...vals }));
+  }, [filteredEvents, profileMap]);
+  const topUserNames = useMemo(() => perUser.slice(0, 5).map((u) => u.name), [perUser]);
 
   const fmtUsd = (n: number) => `$${n.toFixed(4)}`;
   const fmtMin = (sec: number) => `${(sec / 60).toFixed(1)} דק'`;
 
   const exportCsv = () => {
-    const header = ["משתמש", "תאריך", "סוג", "שירות", "כמות", "יחידה", "עלות (USD)"];
-    const rows = events.map((e) => [
+    const header = ["משתמש", "תאריך", "סוג", "שירות", "כמות", "יחידה", "עלות גלם (USD)", "לחיוב (USD)"];
+    const rows = filteredEvents.map((e) => [
       profileMap.get(e.user_id) || e.user_id,
       new Date(e.created_at).toLocaleString("he-IL"),
-      e.event_type === "transcription" ? "תמלול" : "סיכום AI",
+      e.event_type,
       serviceLabel(e.service),
       Number(e.quantity).toFixed(2),
-      e.unit === "seconds" ? "שניות" : "טוקנים",
+      e.unit,
       Number(e.cost_usd).toFixed(6),
+      Number(e.billable_usd ?? e.cost_usd).toFixed(6),
     ]);
     const csv = [header, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
@@ -140,6 +163,35 @@ const Usage = () => {
     const a = document.createElement("a");
     a.href = url;
     a.download = `usage_${range}d.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportInvoice = (userId: string) => {
+    const u = perUser.find((p) => p.user_id === userId);
+    if (!u) return;
+    const userEvents = filteredEvents.filter((e) => e.user_id === userId);
+    const lines: string[] = [];
+    lines.push(`חשבונית טיוטה — ${u.name}`);
+    lines.push(`טווח: ${RANGE_DAYS[range]} ימים אחרונים`);
+    lines.push("");
+    lines.push("פירוט לפי שירות:");
+    Object.entries(u.byService).forEach(([svc, info]) => {
+      lines.push(`  ${serviceLabel(svc)}: ${info.count} פעולות — לחיוב $${info.billable.toFixed(4)} (עלות גלם $${info.cost.toFixed(4)})`);
+    });
+    lines.push("");
+    lines.push(`סה"כ עלות גלם: $${u.totalCost.toFixed(4)}`);
+    lines.push(`סה"כ לחיוב:   $${u.totalBillable.toFixed(4)}`);
+    lines.push("");
+    lines.push("פעולות:");
+    userEvents.forEach((e) => {
+      lines.push(`  ${new Date(e.created_at).toLocaleString("he-IL")} | ${serviceLabel(e.service)} | ${Number(e.quantity).toFixed(2)} ${e.unit} | $${Number(e.billable_usd ?? e.cost_usd).toFixed(6)}`);
+    });
+    const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `invoice_${u.name}_${range}d.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -154,74 +206,99 @@ const Usage = () => {
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         <main className="flex-1 flex flex-col">
-          <header className="flex items-center justify-between border-b border-border bg-card p-4">
+          <header className="flex items-center justify-between border-b border-border bg-card p-4 flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <SidebarTrigger />
               <DollarSign className="h-6 w-6" />
               <div>
-                <h1 className="text-2xl font-bold">צריכת שירותים ועלויות</h1>
-                <p className="text-sm text-muted-foreground">מעקב עלויות AI לכל משתמש</p>
+                <h1 className="text-2xl font-bold">צריכה ועלויות אמיתיות</h1>
+                <p className="text-sm text-muted-foreground">עלות גלם ולחיוב לפי יוזר — מבוסס על המחירים שב-<Link to="/admin/pricing" className="underline">ניהול תמחור</Link></p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Select value={range} onValueChange={setRange}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select value={userFilter} onValueChange={setUserFilter}>
+                <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="7">7 ימים אחרונים</SelectItem>
-                  <SelectItem value="30">30 ימים אחרונים</SelectItem>
-                  <SelectItem value="90">90 ימים אחרונים</SelectItem>
-                  <SelectItem value="365">שנה אחרונה</SelectItem>
+                  <SelectItem value="all">כל המשתמשים</SelectItem>
+                  {profiles.map((p) => (
+                    <SelectItem key={p.user_id} value={p.user_id}>{p.display_name || p.user_id.slice(0, 8)}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" onClick={exportCsv} disabled={events.length === 0}>
-                <Download className="h-4 w-4 ml-2" />
-                ייצוא CSV
+              <Select value={range} onValueChange={setRange}>
+                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 ימים</SelectItem>
+                  <SelectItem value="30">30 ימים</SelectItem>
+                  <SelectItem value="90">90 ימים</SelectItem>
+                  <SelectItem value="365">שנה</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" onClick={exportCsv} disabled={filteredEvents.length === 0}>
+                <Download className="h-4 w-4 ml-2" /> CSV
               </Button>
+              <Link to="/admin/pricing">
+                <Button variant="outline"><Tag className="h-4 w-4 ml-2" /> מחירים</Button>
+              </Link>
             </div>
           </header>
 
           <div className="flex-1 p-6 space-y-6">
-            {/* Totals */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <Card className="p-4">
-                <div className="text-sm text-muted-foreground">עלות כוללת</div>
+                <div className="text-sm text-muted-foreground">עלות גלם</div>
                 <div className="text-2xl font-bold mt-1 flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-green-500" />
+                  <DollarSign className="h-5 w-5 text-muted-foreground" />
                   {fmtUsd(totals.cost)}
                 </div>
               </Card>
-              <Card className="p-4">
-                <div className="text-sm text-muted-foreground">סה"כ פעולות</div>
+              <Card className="p-4 ring-2 ring-primary/30">
+                <div className="text-sm text-muted-foreground">לחיוב (כולל רווח)</div>
                 <div className="text-2xl font-bold mt-1 flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-blue-500" />
-                  {totals.events}
+                  <Receipt className="h-5 w-5 text-green-600" />
+                  {fmtUsd(totals.billable)}
                 </div>
+              </Card>
+              <Card className="p-4">
+                <div className="text-sm text-muted-foreground">פעולות</div>
+                <div className="text-2xl font-bold mt-1 flex items-center gap-2"><Activity className="h-5 w-5 text-blue-500" />{totals.events}</div>
               </Card>
               <Card className="p-4">
                 <div className="text-sm text-muted-foreground">דקות תמלול</div>
-                <div className="text-2xl font-bold mt-1 flex items-center gap-2">
-                  <Mic className="h-5 w-5 text-purple-500" />
-                  {totals.transcriptionMin.toFixed(1)}
-                </div>
+                <div className="text-2xl font-bold mt-1 flex items-center gap-2"><Mic className="h-5 w-5 text-purple-500" />{totals.transcriptionMin.toFixed(1)}</div>
               </Card>
               <Card className="p-4">
                 <div className="text-sm text-muted-foreground">טוקני AI</div>
-                <div className="text-2xl font-bold mt-1 flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-orange-500" />
-                  {totals.aiTokens.toLocaleString("he-IL")}
-                </div>
+                <div className="text-2xl font-bold mt-1 flex items-center gap-2"><Sparkles className="h-5 w-5 text-orange-500" />{totals.aiTokens.toLocaleString("he-IL")}</div>
               </Card>
             </div>
 
-            {/* Per-user breakdown */}
+            {chartData.length > 0 && (
+              <Card className="p-4">
+                <h3 className="text-sm font-semibold mb-3">לחיוב לפי חודש (5 יוזרים מובילים)</h3>
+                <div style={{ width: "100%", height: 260 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis tickFormatter={(v) => `$${Number(v).toFixed(2)}`} />
+                      <Tooltip formatter={(v: number) => `$${Number(v).toFixed(4)}`} />
+                      <Legend />
+                      {topUserNames.map((name, i) => (
+                        <Bar key={name} dataKey={name} stackId="a" fill={`hsl(${(i * 67) % 360} 70% 50%)`} />
+                      ))}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+            )}
+
             {loading ? (
               <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
             ) : perUser.length === 0 ? (
               <Card className="p-12 text-center">
                 <h3 className="text-lg font-semibold mb-2">אין שימוש בטווח שנבחר</h3>
-                <p className="text-muted-foreground">ברגע שמשתמשים יבצעו תמלול או סיכום AI, השימוש יוצג כאן</p>
+                <p className="text-muted-foreground">ברגע שמשתמשים יבצעו תמלול או סיכום, השימוש יוצג כאן</p>
               </Card>
             ) : (
               <Card className="overflow-hidden">
@@ -234,13 +311,15 @@ const Usage = () => {
                         <th className="text-right p-3">פעולות</th>
                         <th className="text-right p-3">דקות תמלול</th>
                         <th className="text-right p-3">טוקני AI</th>
-                        <th className="text-right p-3">עלות כוללת</th>
+                        <th className="text-right p-3">עלות גלם</th>
+                        <th className="text-right p-3">לחיוב</th>
+                        <th className="text-right p-3"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {perUser.map((u) => {
                         const isOpen = expanded === u.user_id;
-                        const userEvents = events.filter((e) => e.user_id === u.user_id);
+                        const userEvents = filteredEvents.filter((e) => e.user_id === u.user_id);
                         return (
                           <>
                             <tr
@@ -255,18 +334,28 @@ const Usage = () => {
                               <td className="p-3">{u.events}</td>
                               <td className="p-3">{fmtMin(u.transcriptionSec)}</td>
                               <td className="p-3">{u.aiTokens.toLocaleString("he-IL")}</td>
-                              <td className="p-3 font-bold text-green-600">{fmtUsd(u.totalCost)}</td>
+                              <td className="p-3 text-muted-foreground">{fmtUsd(u.totalCost)}</td>
+                              <td className="p-3 font-bold text-green-600">{fmtUsd(u.totalBillable)}</td>
+                              <td className="p-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(ev) => { ev.stopPropagation(); exportInvoice(u.user_id); }}
+                                >
+                                  <Receipt className="h-3 w-3 ml-1" /> חשבונית
+                                </Button>
+                              </td>
                             </tr>
                             {isOpen && (
                               <tr key={`${u.user_id}-detail`} className="border-t border-border bg-muted/30">
-                                <td colSpan={6} className="p-4">
+                                <td colSpan={8} className="p-4">
                                   <div className="space-y-3">
                                     <div>
                                       <h4 className="font-semibold text-sm mb-2">פירוט לפי שירות</h4>
                                       <div className="flex gap-2 flex-wrap">
                                         {Object.entries(u.byService).map(([svc, info]) => (
                                           <Badge key={svc} variant="outline" className="gap-1">
-                                            {serviceLabel(svc)}: {info.count} פעולות • {fmtUsd(info.cost)}
+                                            {serviceLabel(svc)}: {info.count} • לחיוב {fmtUsd(info.billable)}
                                           </Badge>
                                         ))}
                                       </div>
@@ -282,20 +371,22 @@ const Usage = () => {
                                               <th className="text-right p-2">שירות</th>
                                               <th className="text-right p-2">כמות</th>
                                               <th className="text-right p-2">עלות</th>
+                                              <th className="text-right p-2">לחיוב</th>
                                             </tr>
                                           </thead>
                                           <tbody>
                                             {userEvents.slice(0, 50).map((e) => (
                                               <tr key={e.id} className="border-t border-border">
                                                 <td className="p-2">{new Date(e.created_at).toLocaleString("he-IL")}</td>
-                                                <td className="p-2">{e.event_type === "transcription" ? "תמלול" : "סיכום AI"}</td>
+                                                <td className="p-2">{e.event_type}</td>
                                                 <td className="p-2">{serviceLabel(e.service)}</td>
                                                 <td className="p-2">
                                                   {e.unit === "seconds"
                                                     ? `${(Number(e.quantity) / 60).toFixed(2)} דק'`
-                                                    : `${Number(e.quantity).toLocaleString("he-IL")} טוקנים`}
+                                                    : `${Number(e.quantity).toLocaleString("he-IL")} ${e.unit}`}
                                                 </td>
-                                                <td className="p-2 font-medium">{fmtUsd(Number(e.cost_usd))}</td>
+                                                <td className="p-2 text-muted-foreground">{fmtUsd(Number(e.cost_usd))}</td>
+                                                <td className="p-2 font-medium text-green-700">{fmtUsd(Number(e.billable_usd ?? e.cost_usd))}</td>
                                               </tr>
                                             ))}
                                           </tbody>
