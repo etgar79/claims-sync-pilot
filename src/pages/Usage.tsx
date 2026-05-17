@@ -160,7 +160,7 @@ const Usage = () => {
   }, [filteredEvents, profileMap]);
   const topUserNames = useMemo(() => perUser.slice(0, 5).map((u) => u.name), [perUser]);
 
-  const fmtUsd = (n: number) => `$${n.toFixed(4)}`;
+  const fmtUsd = (n: number) => fmtIls(n, 2);
   const fmtMin = (sec: number) => `${(sec / 60).toFixed(1)} דק'`;
 
   const exportCsv = () => {
