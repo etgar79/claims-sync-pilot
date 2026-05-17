@@ -40,11 +40,12 @@ const Usage = () => {
   const [range, setRange] = useState("30");
   const [userFilter, setUserFilter] = useState<string>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [platformFee, setPlatformFee] = useState(0);
 
   const load = async () => {
     setLoading(true);
     const since = new Date(Date.now() - RANGE_DAYS[range] * 86400_000).toISOString();
-    const [usageRes, profilesRes] = await Promise.all([
+    const [usageRes, profilesRes, settingsRes] = await Promise.all([
       supabase
         .from("usage_events")
         .select("*")
@@ -52,9 +53,11 @@ const Usage = () => {
         .order("created_at", { ascending: false })
         .limit(5000),
       supabase.from("profiles").select("user_id, display_name"),
+      supabase.from("app_settings").select("platform_monthly_fee_usd").eq("id", true).maybeSingle(),
     ]);
     setEvents(usageRes.data || []);
     setProfiles(profilesRes.data || []);
+    setPlatformFee(Number(settingsRes.data?.platform_monthly_fee_usd ?? 0));
     setLoading(false);
   };
 
@@ -81,10 +84,13 @@ const Usage = () => {
       name: string;
       totalCost: number;
       totalBillable: number;
+      platformFeeTotal: number;
+      activeMonths: number;
       events: number;
       transcriptionSec: number;
       aiTokens: number;
       byService: Record<string, { count: number; cost: number; billable: number }>;
+      _months: Set<string>;
     }>();
     filteredEvents.forEach((e) => {
       const cur = map.get(e.user_id) ?? {
@@ -92,16 +98,21 @@ const Usage = () => {
         name: profileMap.get(e.user_id) || `${e.user_id.slice(0, 8)}...`,
         totalCost: 0,
         totalBillable: 0,
+        platformFeeTotal: 0,
+        activeMonths: 0,
         events: 0,
         transcriptionSec: 0,
         aiTokens: 0,
         byService: {},
+        _months: new Set<string>(),
       };
       cur.totalCost += Number(e.cost_usd);
       cur.totalBillable += Number(e.billable_usd ?? e.cost_usd);
       cur.events += 1;
       if (e.unit === "seconds") cur.transcriptionSec += Number(e.quantity);
       if (e.unit === "tokens") cur.aiTokens += Number(e.quantity);
+      const d = new Date(e.created_at);
+      cur._months.add(`${d.getFullYear()}-${d.getMonth() + 1}`);
       const s = cur.byService[e.service] ?? { count: 0, cost: 0, billable: 0 };
       s.count += 1;
       s.cost += Number(e.cost_usd);
@@ -109,8 +120,14 @@ const Usage = () => {
       cur.byService[e.service] = s;
       map.set(e.user_id, cur);
     });
+    // apply platform fee per active month
+    map.forEach((u) => {
+      u.activeMonths = u._months.size;
+      u.platformFeeTotal = u.activeMonths * platformFee;
+      u.totalBillable += u.platformFeeTotal;
+    });
     return Array.from(map.values()).sort((a, b) => b.totalBillable - a.totalBillable);
-  }, [filteredEvents, profileMap]);
+  }, [filteredEvents, profileMap, platformFee]);
 
   const totals = useMemo(() => {
     return perUser.reduce(
@@ -253,11 +270,14 @@ const Usage = () => {
                 </div>
               </Card>
               <Card className="p-4 ring-2 ring-primary/30">
-                <div className="text-sm text-muted-foreground">לחיוב (כולל רווח)</div>
+                <div className="text-sm text-muted-foreground">לחיוב (כולל רווח{platformFee > 0 ? " + מנוי" : ""})</div>
                 <div className="text-2xl font-bold mt-1 flex items-center gap-2">
                   <Receipt className="h-5 w-5 text-green-600" />
                   {fmtUsd(totals.billable)}
                 </div>
+                {platformFee > 0 && (
+                  <div className="text-xs text-muted-foreground mt-1">+${platformFee.toFixed(2)}/יוזר/חודש דמי מנוי</div>
+                )}
               </Card>
               <Card className="p-4">
                 <div className="text-sm text-muted-foreground">פעולות</div>

@@ -6,7 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Tag, Plus, Save, Trash2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Loader2, Tag, Plus, Save, Trash2, Percent, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { serviceLabel } from "@/lib/serviceLabels";
@@ -38,17 +39,25 @@ const PricingAdmin = () => {
   const [draft, setDraft] = useState<Record<string, Partial<PricingRow>>>({});
   const [adding, setAdding] = useState(false);
   const [newRow, setNewRow] = useState({ service: "", unit: "seconds", cost: "", markup: "0" });
+  const [bulkMarkup, setBulkMarkup] = useState("");
+  const [platformFee, setPlatformFee] = useState("0");
+  const [savingFee, setSavingFee] = useState(false);
+  const [savingBulk, setSavingBulk] = useState(false);
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("service_pricing")
-      .select("*")
-      .order("service")
-      .order("unit")
-      .order("effective_from", { ascending: false });
-    if (error) toast.error("שגיאה בטעינה: " + error.message);
-    setRows(data ?? []);
+    const [pricingRes, settingsRes] = await Promise.all([
+      supabase
+        .from("service_pricing")
+        .select("*")
+        .order("service")
+        .order("unit")
+        .order("effective_from", { ascending: false }),
+      supabase.from("app_settings").select("platform_monthly_fee_usd").eq("id", true).maybeSingle(),
+    ]);
+    if (pricingRes.error) toast.error("שגיאה בטעינה: " + pricingRes.error.message);
+    setRows(pricingRes.data ?? []);
+    setPlatformFee(String(settingsRes.data?.platform_monthly_fee_usd ?? 0));
     setLoading(false);
   };
 
@@ -56,7 +65,6 @@ const PricingAdmin = () => {
     if (isAdmin) load();
   }, [isAdmin]);
 
-  // Group: only show the most recent active row per (service, unit)
   const currentRows = useMemo(() => {
     const seen = new Set<string>();
     return rows.filter((r) => {
@@ -73,32 +81,29 @@ const PricingAdmin = () => {
     if (!d) return;
     const orig = rows.find((r) => r.id === id);
     if (!orig) return;
-    // Strategy: insert a new effective row, mark old inactive — preserves history.
-    const { error: insertErr } = await supabase.from("service_pricing").insert({
-      service: orig.service,
-      unit: orig.unit,
-      cost_per_unit_usd: d.cost_per_unit_usd ?? orig.cost_per_unit_usd,
-      markup_pct: d.markup_pct ?? orig.markup_pct,
-      notes: d.notes ?? orig.notes,
-      is_active: true,
+    const cost = d.cost_per_unit_usd ?? orig.cost_per_unit_usd;
+    const markup = d.markup_pct ?? orig.markup_pct;
+    const { error } = await supabase.rpc("apply_pricing_change", {
+      p_service: orig.service,
+      p_unit: orig.unit,
+      p_cost: cost,
+      p_markup: markup,
+      p_notes: d.notes ?? orig.notes,
     });
-    if (insertErr) return toast.error(insertErr.message);
-    await supabase.from("service_pricing").update({ is_active: false }).eq("id", id);
-    toast.success("המחיר עודכן (נוצרה גרסה חדשה)");
-    setDraft((prev) => {
-      const { [id]: _, ...rest } = prev;
-      return rest;
-    });
+    if (error) return toast.error(error.message);
+    toast.success("עודכן + הוחל רטרואקטיבית על כל ההיסטוריה");
+    setDraft((prev) => { const { [id]: _, ...rest } = prev; return rest; });
     load();
   };
 
   const addRow = async () => {
     if (!newRow.service.trim() || !newRow.cost) return toast.error("חסר שירות או מחיר");
-    const { error } = await supabase.from("service_pricing").insert({
-      service: newRow.service.trim(),
-      unit: newRow.unit,
-      cost_per_unit_usd: Number(newRow.cost),
-      markup_pct: Number(newRow.markup) || 0,
+    const { error } = await supabase.rpc("apply_pricing_change", {
+      p_service: newRow.service.trim(),
+      p_unit: newRow.unit,
+      p_cost: Number(newRow.cost),
+      p_markup: Number(newRow.markup) || 0,
+      p_notes: null,
     });
     if (error) return toast.error(error.message);
     toast.success("נוסף מחיר חדש");
@@ -113,6 +118,32 @@ const PricingAdmin = () => {
     if (error) return toast.error(error.message);
     toast.success("הושבת");
     load();
+  };
+
+  const applyBulkMarkup = async () => {
+    const m = Number(bulkMarkup);
+    if (Number.isNaN(m)) return toast.error("מספר לא תקין");
+    if (!confirm(`לקבוע ${m}% רווח לכל השירותים הפעילים + לעדכן רטרואקטיבית את כל ההיסטוריה?`)) return;
+    setSavingBulk(true);
+    const { error } = await supabase.rpc("apply_bulk_markup", { p_markup: m });
+    setSavingBulk(false);
+    if (error) return toast.error(error.message);
+    toast.success(`רווח ${m}% הוחל על כל השירותים וההיסטוריה`);
+    setBulkMarkup("");
+    load();
+  };
+
+  const savePlatformFee = async () => {
+    const fee = Number(platformFee);
+    if (Number.isNaN(fee) || fee < 0) return toast.error("מספר לא תקין");
+    setSavingFee(true);
+    const { error } = await supabase
+      .from("app_settings")
+      .update({ platform_monthly_fee_usd: fee, updated_at: new Date().toISOString() })
+      .eq("id", true);
+    setSavingFee(false);
+    if (error) return toast.error(error.message);
+    toast.success("דמי המנוי החודשיים עודכנו");
   };
 
   if (rolesLoading) {
@@ -131,7 +162,7 @@ const PricingAdmin = () => {
               <Tag className="h-6 w-6" />
               <div>
                 <h1 className="text-2xl font-bold">ניהול תמחור</h1>
-                <p className="text-sm text-muted-foreground">מחירי שירותים ואחוזי רווח לחיוב — כל עדכון נשמר כגרסה חדשה</p>
+                <p className="text-sm text-muted-foreground">מחירי שירותים, אחוזי רווח ודמי מנוי קבועים — שינויים מוחלים רטרואקטיבית על כל ההיסטוריה</p>
               </div>
             </div>
             <Button onClick={() => setAdding(true)} variant="outline">
@@ -140,6 +171,59 @@ const PricingAdmin = () => {
           </header>
 
           <div className="flex-1 p-6 space-y-6">
+            {/* Platform fixed monthly fee */}
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Building2 className="h-5 w-5 text-primary" />
+                <h2 className="font-semibold">דמי מנוי קבועים על המערכת</h2>
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">
+                סכום קבוע ב-USD שמתווסף לכל יוזר פעיל בכל חודש — כדי להחזיר עלויות תשתית קבועות. (לדוגמה: אם המערכת עולה $20/חודש ל-10 יוזרים, הגדר $1 כדי להחזיר חצי).
+              </p>
+              <div className="flex items-end gap-3">
+                <div>
+                  <Label className="text-xs">USD לכל יוזר פעיל / חודש</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={platformFee}
+                    onChange={(e) => setPlatformFee(e.target.value)}
+                    className="w-40 mt-1"
+                  />
+                </div>
+                <Button onClick={savePlatformFee} disabled={savingFee}>
+                  {savingFee ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 ml-1" />} שמור
+                </Button>
+              </div>
+            </Card>
+
+            {/* Bulk markup */}
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Percent className="h-5 w-5 text-primary" />
+                <h2 className="font-semibold">רווח אחיד לכל השירותים</h2>
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">
+                קביעת אחוז רווח אחיד על כל השירותים הפעילים בבת אחת. השינוי מוחל גם רטרואקטיבית על כל ההיסטוריה.
+              </p>
+              <div className="flex items-end gap-3">
+                <div>
+                  <Label className="text-xs">רווח % לכל השירותים</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="לדוגמה: 200"
+                    value={bulkMarkup}
+                    onChange={(e) => setBulkMarkup(e.target.value)}
+                    className="w-40 mt-1"
+                  />
+                </div>
+                <Button onClick={applyBulkMarkup} disabled={savingBulk || !bulkMarkup}>
+                  {savingBulk ? <Loader2 className="h-4 w-4 animate-spin" /> : <Percent className="h-4 w-4 ml-1" />} החל על כולם + רטרו
+                </Button>
+              </div>
+            </Card>
+
             {loading ? (
               <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
             ) : (
@@ -230,7 +314,7 @@ const PricingAdmin = () => {
                             <td className="p-3 flex gap-1">
                               {dirty && (
                                 <Button size="sm" onClick={() => saveRow(r.id)}>
-                                  <Save className="h-3 w-3 ml-1" /> שמור
+                                  <Save className="h-3 w-3 ml-1" /> שמור + רטרו
                                 </Button>
                               )}
                               <Button size="sm" variant="ghost" onClick={() => deactivate(r.id)}>
@@ -244,7 +328,7 @@ const PricingAdmin = () => {
                   </table>
                 </div>
                 <div className="p-3 text-xs text-muted-foreground border-t bg-muted/20">
-                  שמירה יוצרת גרסת מחיר חדשה. עסקאות עבר נשארות עם המחיר ההיסטורי שלהן.
+                  שמירה יוצרת גרסת מחיר חדשה ומעדכנת רטרואקטיבית את כל החיובים הקודמים של אותו שירות.
                 </div>
               </Card>
             )}

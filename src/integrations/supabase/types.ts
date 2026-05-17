@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          id: boolean
+          platform_monthly_fee_usd: number
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          platform_monthly_fee_usd?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          platform_monthly_fee_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cases: {
         Row: {
           address: string | null
@@ -855,6 +873,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_bulk_markup: { Args: { p_markup: number }; Returns: undefined }
+      apply_pricing_change: {
+        Args: {
+          p_cost: number
+          p_markup: number
+          p_notes?: string
+          p_service: string
+          p_unit: string
+        }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
