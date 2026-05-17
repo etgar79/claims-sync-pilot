@@ -289,7 +289,7 @@ const PricingAdmin = () => {
                       <tr>
                         <th className="text-right p-3">שירות</th>
                         <th className="text-right p-3">יחידה</th>
-                        <th className="text-right p-3">מחיר ליחידה (USD)</th>
+                        <th className="text-right p-3">מחיר ליחידה (₪)</th>
                         <th className="text-right p-3">רווח %</th>
                         <th className="text-right p-3">בתוקף מ-</th>
                         <th className="text-right p-3">הערות</th>
