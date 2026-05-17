@@ -38,6 +38,7 @@ import { useBranding } from "@/hooks/useBranding";
 import { useActiveWorkspace } from "@/hooks/useActiveWorkspace";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { ADMIN_TOOLS_ITEMS } from "@/config/adminMenu";
+import { AdminUserSwitcher } from "./AdminUserSwitcher";
 
 type Item = { title: string; url: string; icon: any };
 
@@ -141,6 +142,16 @@ export function AppSidebar() {
             </span>
           </div>
         </div>
+        {isAdmin && (
+          <div className="mt-3 group-data-[collapsible=icon]:hidden">
+            <AdminUserSwitcher />
+          </div>
+        )}
+        {isAdmin && (
+          <div className="mt-2 hidden group-data-[collapsible=icon]:flex justify-center">
+            <AdminUserSwitcher collapsed />
+          </div>
+        )}
       </SidebarHeader>
 
       <SidebarContent className="px-2 gap-4">
