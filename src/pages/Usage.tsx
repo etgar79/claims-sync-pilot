@@ -195,15 +195,15 @@ const Usage = () => {
     lines.push("");
     lines.push("פירוט לפי שירות:");
     Object.entries(u.byService).forEach(([svc, info]) => {
-      lines.push(`  ${serviceLabel(svc)}: ${info.count} פעולות — לחיוב $${info.billable.toFixed(4)} (עלות גלם $${info.cost.toFixed(4)})`);
+      lines.push(`  ${serviceLabel(svc)}: ${info.count} פעולות — לחיוב ₪${usdToIls(info.billable).toFixed(2)} (עלות גלם ₪${usdToIls(info.cost).toFixed(2)})`);
     });
     lines.push("");
-    lines.push(`סה"כ עלות גלם: $${u.totalCost.toFixed(4)}`);
-    lines.push(`סה"כ לחיוב:   $${u.totalBillable.toFixed(4)}`);
+    lines.push(`סה"כ עלות גלם: ₪${usdToIls(u.totalCost).toFixed(2)}`);
+    lines.push(`סה"כ לחיוב:   ₪${usdToIls(u.totalBillable).toFixed(2)}`);
     lines.push("");
     lines.push("פעולות:");
     userEvents.forEach((e) => {
-      lines.push(`  ${new Date(e.created_at).toLocaleString("he-IL")} | ${serviceLabel(e.service)} | ${Number(e.quantity).toFixed(2)} ${e.unit} | $${Number(e.billable_usd ?? e.cost_usd).toFixed(6)}`);
+      lines.push(`  ${new Date(e.created_at).toLocaleString("he-IL")} | ${serviceLabel(e.service)} | ${Number(e.quantity).toFixed(2)} ${e.unit} | ₪${usdToIls(Number(e.billable_usd ?? e.cost_usd)).toFixed(4)}`);
     });
     const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
