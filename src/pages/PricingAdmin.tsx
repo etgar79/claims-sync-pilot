@@ -11,6 +11,7 @@ import { Loader2, Tag, Plus, Save, Trash2, Percent, Building2 } from "lucide-rea
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { serviceLabel } from "@/lib/serviceLabels";
+import { usdToIls, ilsToUsd, USD_TO_ILS } from "@/lib/currency";
 import { toast } from "sonner";
 
 interface PricingRow {
@@ -60,7 +61,7 @@ const PricingAdmin = () => {
     ]);
     if (pricingRes.error) toast.error("שגיאה בטעינה: " + pricingRes.error.message);
     setRows(pricingRes.data ?? []);
-    setPlatformFee(String(settingsRes.data?.platform_monthly_fee_usd ?? 0));
+    setPlatformFee(usdToIls(Number(settingsRes.data?.platform_monthly_fee_usd ?? 0)).toFixed(2));
     setLoading(false);
   };
 
@@ -84,7 +85,8 @@ const PricingAdmin = () => {
     if (!d) return;
     const orig = rows.find((r) => r.id === id);
     if (!orig) return;
-    const cost = d.cost_per_unit_usd ?? orig.cost_per_unit_usd;
+    // d.cost_per_unit_usd actually stores ILS while editing — convert to USD for DB
+    const cost = d.cost_per_unit_usd !== undefined ? ilsToUsd(d.cost_per_unit_usd) : orig.cost_per_unit_usd;
     const markup = d.markup_pct ?? orig.markup_pct;
     const { error } = await supabase.rpc("apply_pricing_change", {
       p_service: orig.service,
@@ -104,7 +106,7 @@ const PricingAdmin = () => {
     const { error } = await supabase.rpc("apply_pricing_change", {
       p_service: newRow.service.trim(),
       p_unit: newRow.unit,
-      p_cost: Number(newRow.cost),
+      p_cost: ilsToUsd(Number(newRow.cost)),
       p_markup: Number(newRow.markup) || 0,
       p_notes: null,
     });
@@ -137,8 +139,9 @@ const PricingAdmin = () => {
   };
 
   const savePlatformFee = async () => {
-    const fee = Number(platformFee);
-    if (Number.isNaN(fee) || fee < 0) return toast.error("מספר לא תקין");
+    const ils = Number(platformFee);
+    if (Number.isNaN(ils) || ils < 0) return toast.error("מספר לא תקין");
+    const fee = ilsToUsd(ils);
     setSavingFee(true);
     const { error } = await supabase
       .from("app_settings")
@@ -165,7 +168,7 @@ const PricingAdmin = () => {
               <Tag className="h-6 w-6" />
               <div>
                 <h1 className="text-2xl font-bold">ניהול תמחור</h1>
-                <p className="text-sm text-muted-foreground">מחירי שירותים, אחוזי רווח ודמי מנוי קבועים — שינויים מוחלים רטרואקטיבית על כל ההיסטוריה</p>
+                <p className="text-sm text-muted-foreground">מחירי שירותים, אחוזי רווח ודמי מנוי קבועים — הסכומים בש"ח (₪). שינויים מוחלים רטרואקטיבית על כל ההיסטוריה. שער המרה: 1$ ≈ ₪{USD_TO_ILS}</p>
               </div>
             </div>
             <Button onClick={() => setAdding(true)} variant="outline">
@@ -181,11 +184,11 @@ const PricingAdmin = () => {
                 <h2 className="font-semibold">דמי מנוי קבועים על המערכת</h2>
               </div>
               <p className="text-sm text-muted-foreground mb-3">
-                סכום קבוע ב-USD שמתווסף לכל יוזר פעיל בכל חודש — כדי להחזיר עלויות תשתית קבועות. (לדוגמה: אם המערכת עולה $20/חודש ל-10 יוזרים, הגדר $1 כדי להחזיר חצי).
+                סכום קבוע ב-₪ שמתווסף לכל יוזר פעיל בכל חודש — כדי להחזיר עלויות תשתית קבועות. (לדוגמה: אם המערכת עולה ₪75/חודש ל-10 יוזרים, הגדר ₪3.75 כדי להחזיר חצי).
               </p>
               <div className="flex items-end gap-3">
                 <div>
-                  <Label className="text-xs">USD לכל יוזר פעיל / חודש</Label>
+                  <Label className="text-xs">₪ לכל יוזר פעיל / חודש</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -204,7 +207,7 @@ const PricingAdmin = () => {
                 <div className="text-xs font-semibold mb-2">🧮 מחשבון דמי מנוי</div>
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
                   <div>
-                    <Label className="text-xs">עלות תשתית $/חודש</Label>
+                    <Label className="text-xs">עלות תשתית ₪/חודש</Label>
                     <Input
                       type="number" step="0.01" value={calcCost}
                       onChange={(e) => setCalcCost(e.target.value)} className="mt-1"
@@ -233,7 +236,7 @@ const PricingAdmin = () => {
                       return (
                         <div className="space-y-1">
                           <div className="text-muted-foreground text-xs">דמי מנוי ליוזר:</div>
-                          <div className="text-lg font-bold text-primary">${perUser.toFixed(2)}</div>
+                          <div className="text-lg font-bold text-primary">₪{perUser.toFixed(2)}</div>
                           <Button
                             size="sm" variant="outline" className="h-7 text-xs"
                             onClick={() => setPlatformFee(perUser.toFixed(2))}
@@ -286,7 +289,7 @@ const PricingAdmin = () => {
                       <tr>
                         <th className="text-right p-3">שירות</th>
                         <th className="text-right p-3">יחידה</th>
-                        <th className="text-right p-3">מחיר ליחידה (USD)</th>
+                        <th className="text-right p-3">מחיר ליחידה (₪)</th>
                         <th className="text-right p-3">רווח %</th>
                         <th className="text-right p-3">בתוקף מ-</th>
                         <th className="text-right p-3">הערות</th>
@@ -349,7 +352,7 @@ const PricingAdmin = () => {
                               <Input
                                 type="number"
                                 step="0.000000001"
-                                defaultValue={r.cost_per_unit_usd}
+                                defaultValue={usdToIls(r.cost_per_unit_usd)}
                                 onChange={(e) => setDraft({ ...draft, [r.id]: { ...d, cost_per_unit_usd: Number(e.target.value) } })}
                               />
                             </td>

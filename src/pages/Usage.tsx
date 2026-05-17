@@ -10,6 +10,7 @@ import { Loader2, DollarSign, Activity, Mic, Sparkles, Download, ChevronDown, Ch
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { serviceLabel } from "@/lib/serviceLabels";
+import { fmtIls, usdToIls } from "@/lib/currency";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 interface UsageRow {
@@ -159,11 +160,11 @@ const Usage = () => {
   }, [filteredEvents, profileMap]);
   const topUserNames = useMemo(() => perUser.slice(0, 5).map((u) => u.name), [perUser]);
 
-  const fmtUsd = (n: number) => `$${n.toFixed(4)}`;
+  const fmtUsd = (n: number) => fmtIls(n, 2);
   const fmtMin = (sec: number) => `${(sec / 60).toFixed(1)} דק'`;
 
   const exportCsv = () => {
-    const header = ["משתמש", "תאריך", "סוג", "שירות", "כמות", "יחידה", "עלות גלם (USD)", "לחיוב (USD)"];
+    const header = ["משתמש", "תאריך", "סוג", "שירות", "כמות", "יחידה", "עלות גלם (₪)", "לחיוב (₪)"];
     const rows = filteredEvents.map((e) => [
       profileMap.get(e.user_id) || e.user_id,
       new Date(e.created_at).toLocaleString("he-IL"),
@@ -171,8 +172,8 @@ const Usage = () => {
       serviceLabel(e.service),
       Number(e.quantity).toFixed(2),
       e.unit,
-      Number(e.cost_usd).toFixed(6),
-      Number(e.billable_usd ?? e.cost_usd).toFixed(6),
+      usdToIls(Number(e.cost_usd)).toFixed(4),
+      usdToIls(Number(e.billable_usd ?? e.cost_usd)).toFixed(4),
     ]);
     const csv = [header, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
@@ -194,15 +195,15 @@ const Usage = () => {
     lines.push("");
     lines.push("פירוט לפי שירות:");
     Object.entries(u.byService).forEach(([svc, info]) => {
-      lines.push(`  ${serviceLabel(svc)}: ${info.count} פעולות — לחיוב $${info.billable.toFixed(4)} (עלות גלם $${info.cost.toFixed(4)})`);
+      lines.push(`  ${serviceLabel(svc)}: ${info.count} פעולות — לחיוב ₪${usdToIls(info.billable).toFixed(2)} (עלות גלם ₪${usdToIls(info.cost).toFixed(2)})`);
     });
     lines.push("");
-    lines.push(`סה"כ עלות גלם: $${u.totalCost.toFixed(4)}`);
-    lines.push(`סה"כ לחיוב:   $${u.totalBillable.toFixed(4)}`);
+    lines.push(`סה"כ עלות גלם: ₪${usdToIls(u.totalCost).toFixed(2)}`);
+    lines.push(`סה"כ לחיוב:   ₪${usdToIls(u.totalBillable).toFixed(2)}`);
     lines.push("");
     lines.push("פעולות:");
     userEvents.forEach((e) => {
-      lines.push(`  ${new Date(e.created_at).toLocaleString("he-IL")} | ${serviceLabel(e.service)} | ${Number(e.quantity).toFixed(2)} ${e.unit} | $${Number(e.billable_usd ?? e.cost_usd).toFixed(6)}`);
+      lines.push(`  ${new Date(e.created_at).toLocaleString("he-IL")} | ${serviceLabel(e.service)} | ${Number(e.quantity).toFixed(2)} ${e.unit} | ₪${usdToIls(Number(e.billable_usd ?? e.cost_usd)).toFixed(4)}`);
     });
     const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -276,7 +277,7 @@ const Usage = () => {
                   {fmtUsd(totals.billable)}
                 </div>
                 {platformFee > 0 && (
-                  <div className="text-xs text-muted-foreground mt-1">+${platformFee.toFixed(2)}/יוזר/חודש דמי מנוי</div>
+                  <div className="text-xs text-muted-foreground mt-1">+₪{usdToIls(platformFee).toFixed(2)}/יוזר/חודש דמי מנוי</div>
                 )}
               </Card>
               <Card className="p-4">
@@ -301,8 +302,8 @@ const Usage = () => {
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="month" />
-                      <YAxis tickFormatter={(v) => `$${Number(v).toFixed(2)}`} />
-                      <Tooltip formatter={(v: number) => `$${Number(v).toFixed(4)}`} />
+                      <YAxis tickFormatter={(v) => `₪${usdToIls(Number(v)).toFixed(0)}`} />
+                      <Tooltip formatter={(v: number) => `₪${usdToIls(Number(v)).toFixed(2)}`} />
                       <Legend />
                       {topUserNames.map((name, i) => (
                         <Bar key={name} dataKey={name} stackId="a" fill={`hsl(${(i * 67) % 360} 70% 50%)`} />
