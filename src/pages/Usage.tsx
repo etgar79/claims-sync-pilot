@@ -84,10 +84,13 @@ const Usage = () => {
       name: string;
       totalCost: number;
       totalBillable: number;
+      platformFeeTotal: number;
+      activeMonths: number;
       events: number;
       transcriptionSec: number;
       aiTokens: number;
       byService: Record<string, { count: number; cost: number; billable: number }>;
+      _months: Set<string>;
     }>();
     filteredEvents.forEach((e) => {
       const cur = map.get(e.user_id) ?? {
@@ -95,16 +98,21 @@ const Usage = () => {
         name: profileMap.get(e.user_id) || `${e.user_id.slice(0, 8)}...`,
         totalCost: 0,
         totalBillable: 0,
+        platformFeeTotal: 0,
+        activeMonths: 0,
         events: 0,
         transcriptionSec: 0,
         aiTokens: 0,
         byService: {},
+        _months: new Set<string>(),
       };
       cur.totalCost += Number(e.cost_usd);
       cur.totalBillable += Number(e.billable_usd ?? e.cost_usd);
       cur.events += 1;
       if (e.unit === "seconds") cur.transcriptionSec += Number(e.quantity);
       if (e.unit === "tokens") cur.aiTokens += Number(e.quantity);
+      const d = new Date(e.created_at);
+      cur._months.add(`${d.getFullYear()}-${d.getMonth() + 1}`);
       const s = cur.byService[e.service] ?? { count: 0, cost: 0, billable: 0 };
       s.count += 1;
       s.cost += Number(e.cost_usd);
@@ -112,8 +120,14 @@ const Usage = () => {
       cur.byService[e.service] = s;
       map.set(e.user_id, cur);
     });
+    // apply platform fee per active month
+    map.forEach((u) => {
+      u.activeMonths = u._months.size;
+      u.platformFeeTotal = u.activeMonths * platformFee;
+      u.totalBillable += u.platformFeeTotal;
+    });
     return Array.from(map.values()).sort((a, b) => b.totalBillable - a.totalBillable);
-  }, [filteredEvents, profileMap]);
+  }, [filteredEvents, profileMap, platformFee]);
 
   const totals = useMemo(() => {
     return perUser.reduce(
