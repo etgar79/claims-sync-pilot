@@ -10,6 +10,7 @@ import { Loader2, DollarSign, Activity, Mic, Sparkles, Download, ChevronDown, Ch
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { serviceLabel } from "@/lib/serviceLabels";
+import { fmtIls, usdToIls } from "@/lib/currency";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 interface UsageRow {
