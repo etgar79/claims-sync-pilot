@@ -43,6 +43,9 @@ const PricingAdmin = () => {
   const [platformFee, setPlatformFee] = useState("0");
   const [savingFee, setSavingFee] = useState(false);
   const [savingBulk, setSavingBulk] = useState(false);
+  const [calcCost, setCalcCost] = useState("40");
+  const [calcUsers, setCalcUsers] = useState("10");
+  const [calcRecover, setCalcRecover] = useState("50");
 
   const load = async () => {
     setLoading(true);
