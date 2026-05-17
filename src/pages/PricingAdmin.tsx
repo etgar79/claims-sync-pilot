@@ -207,7 +207,7 @@ const PricingAdmin = () => {
                 <div className="text-xs font-semibold mb-2">🧮 מחשבון דמי מנוי</div>
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
                   <div>
-                    <Label className="text-xs">עלות תשתית $/חודש</Label>
+                    <Label className="text-xs">עלות תשתית ₪/חודש</Label>
                     <Input
                       type="number" step="0.01" value={calcCost}
                       onChange={(e) => setCalcCost(e.target.value)} className="mt-1"
