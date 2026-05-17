@@ -302,8 +302,8 @@ const Usage = () => {
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="month" />
-                      <YAxis tickFormatter={(v) => `$${Number(v).toFixed(2)}`} />
-                      <Tooltip formatter={(v: number) => `$${Number(v).toFixed(4)}`} />
+                      <YAxis tickFormatter={(v) => `₪${usdToIls(Number(v)).toFixed(0)}`} />
+                      <Tooltip formatter={(v: number) => `₪${usdToIls(Number(v)).toFixed(2)}`} />
                       <Legend />
                       {topUserNames.map((name, i) => (
                         <Bar key={name} dataKey={name} stackId="a" fill={`hsl(${(i * 67) % 360} 70% 50%)`} />
