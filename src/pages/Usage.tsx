@@ -277,7 +277,7 @@ const Usage = () => {
                   {fmtUsd(totals.billable)}
                 </div>
                 {platformFee > 0 && (
-                  <div className="text-xs text-muted-foreground mt-1">+${platformFee.toFixed(2)}/יוזר/חודש דמי מנוי</div>
+                  <div className="text-xs text-muted-foreground mt-1">+₪{usdToIls(platformFee).toFixed(2)}/יוזר/חודש דמי מנוי</div>
                 )}
               </Card>
               <Card className="p-4">
