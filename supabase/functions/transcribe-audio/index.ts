@@ -5,6 +5,7 @@
 // - elevenlabs → "איכות גבוהה"
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { logAudioUsage } from "../_shared/usage-log.ts";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
@@ -45,15 +46,8 @@ function applyHeuristicSpeakers(segments: Segment[]): Segment[] {
   return out;
 }
 
-// Cost per second of audio (USD). Conservative estimates.
-// Lovable AI runs on Gemini 2.5 Flash with audio input — billed per token.
-// Audio input ≈ 32 tokens/sec; pricing ~$0.30/M input tokens → ~$0.0000096/sec.
-const COST_PER_SECOND_USD: Record<Service, number> = {
-  ivrit_ai: 0.10 / 3600,    // ~$0.10/hour
-  whisper: 0.006 / 60,      // $0.006/minute = $0.36/hour
-  elevenlabs: 0.40 / 3600,  // ~$0.40/hour
-  lovable_ai: 32 * 0.30 / 1_000_000, // ≈ $0.0000096/sec ≈ $0.0346/hour
-};
+// Prices are now sourced from the `service_pricing` table at runtime
+// via the shared helper `logAudioUsage`. No hardcoded rates here.
 
 async function transcribeWhisper(file: File): Promise<TranscribeResult> {
   if (file.size > 25 * 1024 * 1024) throw new Error(`Whisper לא תומך בקבצים מעל 25MB (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
@@ -262,24 +256,12 @@ async function logUsage(opts: {
   durationSec: number;
   meta?: Record<string, unknown>;
 }) {
-  try {
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-    const cost = (COST_PER_SECOND_USD[opts.service] ?? 0) * opts.durationSec;
-    await admin.from("usage_events").insert({
-      user_id: opts.userId,
-      event_type: "transcription",
-      service: opts.service,
-      quantity: opts.durationSec,
-      unit: "seconds",
-      cost_usd: cost,
-      metadata: opts.meta ?? null,
-    });
-  } catch (e) {
-    console.error("usage log failed:", e);
-  }
+  await logAudioUsage({
+    userId: opts.userId,
+    service: opts.service,
+    durationSec: opts.durationSec,
+    meta: opts.meta,
+  });
 }
 
 Deno.serve(async (req) => {

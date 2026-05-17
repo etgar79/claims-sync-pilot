@@ -1,66 +1,104 @@
 
-# הפרדת נתונים לפי משתמש לאדמין
+# תמחור אמיתי לפי משתמש
 
-המטרה: לאפשר לאדמין לעבור בקלות בין נתונים של יוזרים שונים מכל מקום במערכת, בלי לחזור כל פעם ל-AdminUsers.
+המטרה: מסך עלויות שמשקף **את העלות האמיתית** של כל יוזר — מבוסס על תוכן ה-API responses האמיתיים ולא על אומדנים, עם אפשרות להוסיף markup לחיוב.
 
-## מצב נוכחי (קיים)
+## הבעיות הקיימות (אבחון)
 
-- `src/lib/actAs.ts` — תשתית "פעל כמשתמש" (localStorage + event).
-- `ActAsUserBanner` — באנר צהוב כשהאדמין מאמפרסן.
-- `AdminUsers` — מסך עם רשימת יוזרים + כפתור "פעל כמשתמש זה".
-- `getScopedUserId()` — כל דף רשימה מסנן `.eq("user_id", scoped)`.
+הרצתי שאילתה על `usage_events`:
+- `whisper`: 71 פעולות, $2.87
+- `elevenlabs`: 18 פעולות, $1.07
+- `lovable_ai` (transcription): 103 פעולות, $0.62
+- `gemini-2.5-pro` (transcript_merge): 3 פעולות, **$0.00** ← לא מתועד
 
-הבעיה: כדי להחליף יוזר צריך כל פעם לנווט ל-`/admin/users`, לבחור, לחזור. אין מסך-על של כולם.
+### פערים שזיהיתי בקוד:
+| Edge function | מה רץ | מה מתועד | פער |
+|---|---|---|---|
+| `transcribe-audio` | OpenAI/ElevenLabs/Lovable AI | ✓ לפי שניות | תמחור lovable_ai לא מדויק |
+| `summarize-case` | gemini-2.5-flash | ✓ לפי טוקנים | מחיר מקודד בקוד, לא ניתן לעריכה |
+| `merge-transcripts` | **gemini-2.5-pro** (יקר!) | `cost_usd: 0` | **לא מתועד בכלל** |
+| `cleanup-transcript` | gemini-2.5-flash | `cost_usd: 0` | **לא מתועד בכלל** |
+| `extract-action-items` | gemini-2.5-flash | אין | **לא מתועד בכלל** |
+| `auto-pipeline` | רץ 2-3 קריאות gemini-flash | אין | **לא מתועד בכלל** |
+
+**שורה תחתונה:** הדשבורד מציג כיום פחות מ-50% מהעלות האמיתית, וגם החלק המתועד מבוסס על מחירים מקודדים שלא ניתן לעדכן.
 
 ## מה נבנה
 
-### 1. `<AdminUserSwitcher />` — בורר גלובלי בסיידבר (הפיצ'ר העיקרי)
-רכיב חדש שמופיע **רק לאדמין**, בראש הסיידבר מתחת ללוגו:
-- Combobox עם רשימת כל היוזרים (`profiles` + `user_roles`) כולל אייקון תפקיד וספירת תיקים/הקלטות.
-- ברירת מחדל: "אני עצמי (מנהל)" — מצב רגיל.
-- בחירת יוזר → קורא ל-`setActAs(user_id, name)` ומבצע `navigate("/")` כדי לרענן.
-- כשבמצב אימפרסונציה — מראה את שם היוזר + X לחזרה למצב מנהל.
-- חיפוש חופשי בתוך ה-Combobox.
-- במצב סיידבר מכווץ — מציג רק אייקון `UserCog` עם tooltip.
+### 1. טבלת מחירים גמישה ב-DB
+טבלה חדשה `service_pricing` שאדמין יכול לערוך מה-UI:
+- `service` (whisper / elevenlabs / lovable_ai / gemini-2.5-flash / gemini-2.5-pro / gpt-5 וכו')
+- `unit` (`seconds` | `input_tokens` | `output_tokens`)
+- `cost_per_unit_usd` (numeric, דיוק גבוה)
+- `markup_pct` (ברירת מחדל 0 — תוספת רווח לחיוב)
+- `effective_from` (timestamp — שינוי מחיר עתידי לא משפיע על שורות עבר)
 
-### 2. דשבורד-על חדש: `/admin/overview`
-דף שמציג טבלה של **כל היוזרים זה ליד זה**:
-- עמודות: שם, תפקיד, #תיקים, #פגישות, #הקלטות, #תמלולים, #משימות פתוחות, פעילות אחרונה, שגיאות אחרונות (מ-`system_logs` level=error).
-- מיון לפי כל עמודה, חיפוש.
-- קליק על שורה → `setActAs` + מעבר לדשבורד היוזר.
-- כפתור "פתח כל הפעולות" → ניווט ל-AdminUsers הקיים לפרטים מלאים.
-- מתווסף ל-`ADMIN_TOOLS_ITEMS` בסיידבר ("סקירת יוזרים").
+Seed עם המחירים הנוכחיים. RLS: רק אדמין רואה ועורך.
 
-### 3. שיפור RoleHome לאדמין
-כשאדמין מתחבר ו-workspace=admin **ולא במצב impersonation** → redirect ל-`/admin/overview` (במקום דשבורד אישי ריק). אם הוא במצב אימפרסונציה → redirect ל-`/` של היוזר שהוא מאמפרסן.
+### 2. עמודת `billable_usd` ב-`usage_events`
+נוסיף עמודה מחושבת — `cost_usd * (1 + markup_pct/100)` בזמן ה-INSERT, שמורה בנפרד כדי שעדכון markup לא ישנה שורות עבר. כל המקום בקוד שמחשב עלות עכשיו ישתמש בערכים מ-`service_pricing` בזמן ריצה.
 
-### 4. אינדיקציה בכל מסך רשימה
-לא נשנה את ה-queries (כבר תקינים דרך `getScopedUserId`). אבל נוסיף ב-header של כל דף רשימה (Recordings/Cases/Tasks/...) טקסט קטן "מציג נתונים של: {שם}" — כדי שאדמין לא יתבלבל. נעשה זאת דרך hook משותף `useCurrentScopeLabel()` חדש.
+### 3. עדכון כל ה-edge functions שחסרות logging
+Helper מרכזי חדש `supabase/functions/_shared/usage-log.ts`:
+```ts
+logAiCall({ userId, model, inputTokens, outputTokens, meta })
+logAudioCall({ userId, service, durationSec, meta })
+```
+שעושה lookup מ-`service_pricing` ומכניס שורה ל-`usage_events` עם `cost_usd` ו-`billable_usd` נכונים.
+
+נחבר ל:
+- `merge-transcripts` (כיום cost_usd:0 — קריטי, gemini-2.5-pro יקר)
+- `cleanup-transcript` (כיום cost_usd:0)
+- `extract-action-items` (כיום ללא logging בכלל)
+- `auto-pipeline` (כל שלב — summary + extract)
+- `summarize-case` (להחליף את ה-hardcoded למקור הDB)
+- `transcribe-audio` (להעביר ל-DB lookup במקום קבוע)
+
+### 4. מסך ניהול תמחור חדש: `/admin/pricing`
+- טבלה עם כל ה-services + יחידה + מחיר נוכחי + markup.
+- עריכה inline + כפתור "שמור" שמוסיף שורה חדשה עם `effective_from = now()`.
+- היסטוריה לכל שירות (טאב "היסטוריית מחירים").
+- כפתור "טען מחירים מומלצים" שמאכלס מחירים עדכניים מ-Lovable AI Gateway documentation.
+
+### 5. שדרוג מסך Usage הקיים (`/usage`)
+- הוספת עמודה "**עלות גלם**" וגם "**לחיוב**" (עם markup).
+- הוספת **גרף עמודות חודשי** (recharts) — עלות לפי יוזר לאורך 12 חודשים.
+- פילטר "הצג רק יוזר X" (משולב עם בורר ה-impersonation).
+- כפתור "**צור חשבונית טיוטה לחודש זה**" → מייצר PDF לכל יוזר עם פירוט שירותים וסכום לחיוב.
+- אינדיקטור "המחירים עודכנו לאחרונה ב-X" + לינק ל-`/admin/pricing`.
+
+### 6. אינדיקטור עלות חי בעמוד יוזר
+ב-`/admin/overview` (הדשבורד-על שבנינו) — להוסיף עמודה "**עלות חודש**" שמראה כמה הוא צבר החודש. עוזר לאדמין לראות מי "בורח" עם הצריכה.
 
 ## פירוט טכני
 
 ### קבצים חדשים
-- `src/components/AdminUserSwitcher.tsx` — Combobox עם list+search ושימוש ב-`useActAsUser`+`setActAs`.
-- `src/pages/AdminOverview.tsx` — דשבורד הטבלה.
-- `src/hooks/useCurrentScopeLabel.ts` — מחזיר `{ isImpersonating, name }`.
-- `src/components/ScopeIndicator.tsx` — תווית קטנה "מציג: שם" עם כפתור יציאה.
+- `supabase/migrations/...sql` — `service_pricing` + עמודת `billable_usd` ב-`usage_events`.
+- `supabase/functions/_shared/usage-log.ts` — Helper מרכזי.
+- `src/pages/PricingAdmin.tsx` — מסך עריכת מחירים.
+- `src/lib/pricing.ts` — Hook `usePricing()` + helpers `formatCurrency`, `withMarkup`.
+- `src/components/UsageChart.tsx` — גרף recharts.
+- `src/lib/generateInvoicePdf.ts` — יצוא חשבונית לפי יוזר.
 
 ### קבצים לעריכה
-- `src/components/AppSidebar.tsx` — להוסיף `<AdminUserSwitcher />` ב-SidebarHeader (רק כש-`isAdmin`).
-- `src/config/adminMenu.ts` — להוסיף פריט "סקירת יוזרים" → `/admin/overview`.
-- `src/App.tsx` — להוסיף route `/admin/overview` עם `ProtectedRoute allow=["admin"]`.
-- `src/pages/RoleHome.tsx` — לוגיקת redirect אדמין → `/admin/overview` כשלא ב-impersonation.
-- דפי רשימה עיקריים (Recordings, Cases, Meetings, Tasks, TranscriptsPage) — להוסיף `<ScopeIndicator />` ב-header. (שינוי קוסמטי בלבד, לא נוגעים ב-queries).
+- כל 6 ה-edge functions שלעיל.
+- `src/pages/Usage.tsx` — עמודות חדשות + גרף + פילטר + כפתור חשבונית.
+- `src/pages/AdminOverview.tsx` — להוסיף עמודת "עלות חודש".
+- `src/config/adminMenu.ts` — להוסיף "ניהול תמחור".
+- `src/App.tsx` — להוסיף route `/admin/pricing`.
 
-### אין שינויי DB
-RLS כבר מטופל (admin policies + filter `.eq("user_id", scoped)` בכל דף). אין צורך במיגרציה.
+### שינויי DB
+1. `service_pricing` — חדש (RLS: admin only).
+2. `usage_events.billable_usd` — עמודה חדשה (nullable, ברירת מחדל `cost_usd`).
+3. Trigger קטן שמחשב `billable_usd` ב-INSERT אם לא סופק.
 
 ## למה זה פותר את הבעיה
-- בורר אחד בסיידבר = החלפת יוזר בקליק יחיד מכל מסך, בלי לאבד את ההקשר (workspace, דף נוכחי).
-- דשבורד-על = ראייה מקרוב של כל היוזרים בלי לבחור אחד.
-- ScopeIndicator = אדמין תמיד יודע בודאות אילו נתונים הוא רואה כרגע.
+- **מדויק**: כל קריאת AI/transcription רושמת את הטוקנים/שניות האמיתיים מה-response, כפול המחיר מה-DB.
+- **שקוף**: אדמין רואה ברגע אחד מי עלה כמה החודש, ויכול לערוך מחירים בלי deploy.
+- **ניתן לחיוב**: markup לכל שירות + יצוא חשבונית = מספר אמיתי שאפשר לשלוח ללקוח.
+- **היסטורי**: שינויי מחיר לא משפיעים על שורות עבר.
 
-## מחוץ ל-scope
-- אין שינוי בהפרדת ה-Drive (כבר מבודד).
-- אין שינוי במנגנון ה-RLS עצמו.
-- אין מצב "ראה הכול ביחד" (כל היוזרים בערבוביה) — סיכון בלבול גבוה, הוצא לשלב הבא אם תרצה.
+## מחוץ ל-scope (גל 2 אם תרצה)
+- חיובים אוטומטיים דרך Stripe — דורש דיון נפרד.
+- התראה ביוזר ש"קרוב למיצוי המכסה" — אפשר להוסיף אחרי שיהיה מנגנון מכסה.
+- מחירון לפי תיק/פגישה (rollup) במקום רק לפי יוזר.

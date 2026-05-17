@@ -1,6 +1,8 @@
 // Extract action items + follow-up meetings from a meeting summary/transcript using Lovable AI.
 // Returns structured tasks and calendar event suggestions.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/google-token.ts";
+import { logAiUsage } from "../_shared/usage-log.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -8,6 +10,21 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Identify caller for usage attribution
+    let userId: string | null = null;
+    try {
+      const authHeader = req.headers.get("Authorization");
+      if (authHeader) {
+        const sb = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_ANON_KEY")!,
+          { global: { headers: { Authorization: authHeader } } },
+        );
+        const { data } = await sb.auth.getUser();
+        userId = data.user?.id ?? null;
+      }
+    } catch (_) { /* ignore */ }
+
     const { transcript, summary, meeting_title, client_name } = await req.json() as {
       transcript?: string;
       summary?: string;
@@ -125,6 +142,16 @@ Deno.serve(async (req) => {
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) throw new Error("AI לא החזיר תוצאה תקינה");
     const args = JSON.parse(toolCall.function.arguments);
+
+    if (userId) {
+      await logAiUsage({
+        userId,
+        model: "google/gemini-2.5-flash",
+        usage: aiData.usage,
+        eventType: "action_items_extract",
+        meta: { tasks: args.tasks?.length ?? 0, follow_ups: args.follow_up_meetings?.length ?? 0 },
+      });
+    }
 
     return new Response(
       JSON.stringify({

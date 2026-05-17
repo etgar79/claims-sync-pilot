@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { logAiUsage } from "../_shared/usage-log.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -131,14 +132,12 @@ Deno.serve(async (req) => {
         .eq("user_id", user.id);
     }
 
-    await supabase.from("usage_events").insert({
-      user_id: user.id,
-      event_type: "transcript_cleanup",
-      service: "gemini-2.5-flash",
-      quantity: 1,
-      unit: "request",
-      cost_usd: 0,
-      metadata: { char_count: cleaned.length, quality_score: qualityScore, glossary_terms: glossaryRows?.length ?? 0 },
+    await logAiUsage({
+      userId: user.id,
+      model: "google/gemini-2.5-flash",
+      usage: aiData.usage,
+      eventType: "transcript_cleanup",
+      meta: { char_count: cleaned.length, quality_score: qualityScore, glossary_terms: glossaryRows?.length ?? 0 },
     });
 
     return new Response(JSON.stringify({

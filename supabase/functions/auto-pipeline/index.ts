@@ -2,6 +2,7 @@
 // Steps: 1) generate summary  2) extract action items  3) save to extracted_tasks
 // Updates pipeline_status on the source row.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { logAiUsage } from "../_shared/usage-log.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,7 +34,7 @@ async function callAi(system: string, user: string, model = "google/gemini-2.5-f
   });
   if (!res.ok) throw new Error(`AI ${res.status}: ${await res.text()}`);
   const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? "";
+  return { content: (data.choices?.[0]?.message?.content ?? "") as string, usage: data.usage, model };
 }
 
 async function extractTasks(text: string, contextHint: string) {
@@ -41,11 +42,12 @@ async function extractTasks(text: string, contextHint: string) {
   const sys = `אתה עוזר אישי. מהטקסט הבא, חלץ רק משימות מעשיות שמישהו צריך לבצע (action items).
 לכל משימה: title (קצר, פעולה), notes (אופציונלי), due (YYYY-MM-DD אם הוזכר; היום ${today}).
 אל תמציא. אם אין משימות — החזר מערך ריק. החזר רק JSON תקני.`;
+  const model = "google/gemini-2.5-flash";
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model,
       messages: [
         { role: "system", content: sys },
         { role: "user", content: `${contextHint}\n\nתוכן:\n${text}` },
@@ -81,7 +83,7 @@ async function extractTasks(text: string, contextHint: string) {
   if (!res.ok) throw new Error(`extract ${res.status}: ${await res.text()}`);
   const data = await res.json();
   const args = JSON.parse(data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments ?? "{}");
-  return (args.tasks ?? []) as Array<{ title: string; notes?: string; due?: string }>;
+  return { tasks: (args.tasks ?? []) as Array<{ title: string; notes?: string; due?: string }>, usage: data.usage, model };
 }
 
 Deno.serve(async (req) => {
@@ -161,11 +163,19 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const sysPrompt = tpl?.prompt || defaultPrompt;
 
-    const summary = await callAi(
+    const summaryResult = await callAi(
       sysPrompt,
       `${context ? `הקשר: ${context}\n\n` : ""}תמלול:\n${rec.transcript}`,
       "google/gemini-2.5-flash",
     );
+    const summary = summaryResult.content;
+    await logAiUsage({
+      userId: user.id,
+      model: summaryResult.model,
+      usage: summaryResult.usage,
+      eventType: "auto_pipeline_summary",
+      meta: { table, recording_id, workspace_kind },
+    });
 
     await admin.from(table).update({
       summary,
@@ -176,7 +186,15 @@ Deno.serve(async (req) => {
     // Extract tasks
     let tasks: Array<{ title: string; notes?: string; due?: string }> = [];
     try {
-      tasks = await extractTasks(summary || rec.transcript, context);
+      const ex = await extractTasks(summary || rec.transcript, context);
+      tasks = ex.tasks;
+      await logAiUsage({
+        userId: user.id,
+        model: ex.model,
+        usage: ex.usage,
+        eventType: "auto_pipeline_extract",
+        meta: { table, recording_id, tasks: tasks.length },
+      });
     } catch (e) {
       console.error("extract failed", e);
     }

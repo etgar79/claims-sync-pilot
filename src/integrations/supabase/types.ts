@@ -532,6 +532,45 @@ export type Database = {
         }
         Relationships: []
       }
+      service_pricing: {
+        Row: {
+          cost_per_unit_usd: number
+          created_at: string
+          effective_from: string
+          id: string
+          is_active: boolean
+          markup_pct: number
+          notes: string | null
+          service: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          cost_per_unit_usd?: number
+          created_at?: string
+          effective_from?: string
+          id?: string
+          is_active?: boolean
+          markup_pct?: number
+          notes?: string | null
+          service: string
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          cost_per_unit_usd?: number
+          created_at?: string
+          effective_from?: string
+          id?: string
+          is_active?: boolean
+          markup_pct?: number
+          notes?: string | null
+          service?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       summary_templates: {
         Row: {
           created_at: string
@@ -720,6 +759,7 @@ export type Database = {
       }
       usage_events: {
         Row: {
+          billable_usd: number
           cost_usd: number
           created_at: string
           event_type: string
@@ -731,6 +771,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          billable_usd?: number
           cost_usd?: number
           created_at?: string
           event_type: string
@@ -742,6 +783,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          billable_usd?: number
           cost_usd?: number
           created_at?: string
           event_type?: string

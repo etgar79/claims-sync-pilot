@@ -23,6 +23,7 @@ const Admin = lazy(() => import("./pages/Admin.tsx"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers.tsx"));
 const AdminOverview = lazy(() => import("./pages/AdminOverview.tsx"));
 const Usage = lazy(() => import("./pages/Usage.tsx"));
+const PricingAdmin = lazy(() => import("./pages/PricingAdmin.tsx"));
 const Auth = lazy(() => import("./pages/Auth.tsx"));
 const PhoneCallsPage = lazy(() => import("./pages/PhoneCallsPage.tsx"));
 const PhotosPage = lazy(() => import("./pages/PhotosPage.tsx"));
@@ -71,6 +72,7 @@ const App = () => (
               <Route path="/admin/overview" element={<ProtectedRoute allow={["admin"]}><AdminOverview /></ProtectedRoute>} />
               <Route path="/usage" element={<ProtectedRoute allow={["admin"]}><Usage /></ProtectedRoute>} />
               <Route path="/admin/logs" element={<ProtectedRoute allow={["admin"]}><LogsPage /></ProtectedRoute>} />
+              <Route path="/admin/pricing" element={<ProtectedRoute allow={["admin"]}><PricingAdmin /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
