@@ -270,11 +270,14 @@ const Usage = () => {
                 </div>
               </Card>
               <Card className="p-4 ring-2 ring-primary/30">
-                <div className="text-sm text-muted-foreground">לחיוב (כולל רווח)</div>
+                <div className="text-sm text-muted-foreground">לחיוב (כולל רווח{platformFee > 0 ? " + מנוי" : ""})</div>
                 <div className="text-2xl font-bold mt-1 flex items-center gap-2">
                   <Receipt className="h-5 w-5 text-green-600" />
                   {fmtUsd(totals.billable)}
                 </div>
+                {platformFee > 0 && (
+                  <div className="text-xs text-muted-foreground mt-1">+${platformFee.toFixed(2)}/יוזר/חודש דמי מנוי</div>
+                )}
               </Card>
               <Card className="p-4">
                 <div className="text-sm text-muted-foreground">פעולות</div>
