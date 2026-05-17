@@ -11,6 +11,7 @@ import { Loader2, Tag, Plus, Save, Trash2, Percent, Building2 } from "lucide-rea
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { serviceLabel } from "@/lib/serviceLabels";
+import { usdToIls, ilsToUsd, USD_TO_ILS } from "@/lib/currency";
 import { toast } from "sonner";
 
 interface PricingRow {
