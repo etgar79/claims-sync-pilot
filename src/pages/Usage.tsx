@@ -164,7 +164,7 @@ const Usage = () => {
   const fmtMin = (sec: number) => `${(sec / 60).toFixed(1)} דק'`;
 
   const exportCsv = () => {
-    const header = ["משתמש", "תאריך", "סוג", "שירות", "כמות", "יחידה", "עלות גלם (USD)", "לחיוב (USD)"];
+    const header = ["משתמש", "תאריך", "סוג", "שירות", "כמות", "יחידה", "עלות גלם (₪)", "לחיוב (₪)"];
     const rows = filteredEvents.map((e) => [
       profileMap.get(e.user_id) || e.user_id,
       new Date(e.created_at).toLocaleString("he-IL"),
@@ -172,8 +172,8 @@ const Usage = () => {
       serviceLabel(e.service),
       Number(e.quantity).toFixed(2),
       e.unit,
-      Number(e.cost_usd).toFixed(6),
-      Number(e.billable_usd ?? e.cost_usd).toFixed(6),
+      usdToIls(Number(e.cost_usd)).toFixed(4),
+      usdToIls(Number(e.billable_usd ?? e.cost_usd)).toFixed(4),
     ]);
     const csv = [header, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
