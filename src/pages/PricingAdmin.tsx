@@ -236,7 +236,7 @@ const PricingAdmin = () => {
                       return (
                         <div className="space-y-1">
                           <div className="text-muted-foreground text-xs">דמי מנוי ליוזר:</div>
-                          <div className="text-lg font-bold text-primary">${perUser.toFixed(2)}</div>
+                          <div className="text-lg font-bold text-primary">₪{perUser.toFixed(2)}</div>
                           <Button
                             size="sm" variant="outline" className="h-7 text-xs"
                             onClick={() => setPlatformFee(perUser.toFixed(2))}
