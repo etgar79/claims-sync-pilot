@@ -81,7 +81,7 @@ ${notes ? `הערות:\n${notes}\n` : ""}
 
       const aiData = await aiResp.json();
       const summary = aiData.choices?.[0]?.message?.content ?? "";
-      await logAiUsage(userData.user.id, aiData.usage, "meeting");
+      await logAiUsageWrapper(userData.user.id, aiData.usage, "meeting");
       return new Response(JSON.stringify({ summary }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -189,7 +189,7 @@ ${photoCaptions ? `תמונות בתיק:\n${photoCaptions}\n` : ""}
 
     const aiData = await aiResp.json();
     const summary = aiData.choices?.[0]?.message?.content ?? "";
-    await logAiUsage(userData.user.id, aiData.usage, "case");
+    await logAiUsageWrapper(userData.user.id, aiData.usage, "case");
 
     // Save summary to case
     const { error: updateErr } = await supabase
