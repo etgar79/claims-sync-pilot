@@ -256,24 +256,12 @@ async function logUsage(opts: {
   durationSec: number;
   meta?: Record<string, unknown>;
 }) {
-  try {
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-    const cost = (COST_PER_SECOND_USD[opts.service] ?? 0) * opts.durationSec;
-    await admin.from("usage_events").insert({
-      user_id: opts.userId,
-      event_type: "transcription",
-      service: opts.service,
-      quantity: opts.durationSec,
-      unit: "seconds",
-      cost_usd: cost,
-      metadata: opts.meta ?? null,
-    });
-  } catch (e) {
-    console.error("usage log failed:", e);
-  }
+  await logAudioUsage({
+    userId: opts.userId,
+    service: opts.service,
+    durationSec: opts.durationSec,
+    meta: opts.meta,
+  });
 }
 
 Deno.serve(async (req) => {
