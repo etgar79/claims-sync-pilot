@@ -184,11 +184,11 @@ const PricingAdmin = () => {
                 <h2 className="font-semibold">דמי מנוי קבועים על המערכת</h2>
               </div>
               <p className="text-sm text-muted-foreground mb-3">
-                סכום קבוע ב-USD שמתווסף לכל יוזר פעיל בכל חודש — כדי להחזיר עלויות תשתית קבועות. (לדוגמה: אם המערכת עולה $20/חודש ל-10 יוזרים, הגדר $1 כדי להחזיר חצי).
+                סכום קבוע ב-₪ שמתווסף לכל יוזר פעיל בכל חודש — כדי להחזיר עלויות תשתית קבועות. (לדוגמה: אם המערכת עולה ₪75/חודש ל-10 יוזרים, הגדר ₪3.75 כדי להחזיר חצי).
               </p>
               <div className="flex items-end gap-3">
                 <div>
-                  <Label className="text-xs">USD לכל יוזר פעיל / חודש</Label>
+                  <Label className="text-xs">₪ לכל יוזר פעיל / חודש</Label>
                   <Input
                     type="number"
                     step="0.01"
