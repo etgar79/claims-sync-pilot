@@ -40,11 +40,12 @@ const Usage = () => {
   const [range, setRange] = useState("30");
   const [userFilter, setUserFilter] = useState<string>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [platformFee, setPlatformFee] = useState(0);
 
   const load = async () => {
     setLoading(true);
     const since = new Date(Date.now() - RANGE_DAYS[range] * 86400_000).toISOString();
-    const [usageRes, profilesRes] = await Promise.all([
+    const [usageRes, profilesRes, settingsRes] = await Promise.all([
       supabase
         .from("usage_events")
         .select("*")
@@ -52,9 +53,11 @@ const Usage = () => {
         .order("created_at", { ascending: false })
         .limit(5000),
       supabase.from("profiles").select("user_id, display_name"),
+      supabase.from("app_settings").select("platform_monthly_fee_usd").eq("id", true).maybeSingle(),
     ]);
     setEvents(usageRes.data || []);
     setProfiles(profilesRes.data || []);
+    setPlatformFee(Number(settingsRes.data?.platform_monthly_fee_usd ?? 0));
     setLoading(false);
   };
 
