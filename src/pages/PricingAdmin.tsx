@@ -168,7 +168,7 @@ const PricingAdmin = () => {
               <Tag className="h-6 w-6" />
               <div>
                 <h1 className="text-2xl font-bold">ניהול תמחור</h1>
-                <p className="text-sm text-muted-foreground">מחירי שירותים, אחוזי רווח ודמי מנוי קבועים — שינויים מוחלים רטרואקטיבית על כל ההיסטוריה</p>
+                <p className="text-sm text-muted-foreground">מחירי שירותים, אחוזי רווח ודמי מנוי קבועים — הסכומים בש"ח (₪). שינויים מוחלים רטרואקטיבית על כל ההיסטוריה. שער המרה: 1$ ≈ ₪{USD_TO_ILS}</p>
               </div>
             </div>
             <Button onClick={() => setAdding(true)} variant="outline">
