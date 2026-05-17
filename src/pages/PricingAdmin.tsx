@@ -61,7 +61,7 @@ const PricingAdmin = () => {
     ]);
     if (pricingRes.error) toast.error("שגיאה בטעינה: " + pricingRes.error.message);
     setRows(pricingRes.data ?? []);
-    setPlatformFee(String(settingsRes.data?.platform_monthly_fee_usd ?? 0));
+    setPlatformFee(usdToIls(Number(settingsRes.data?.platform_monthly_fee_usd ?? 0)).toFixed(2));
     setLoading(false);
   };
 
