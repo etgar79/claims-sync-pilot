@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { Loader2, Calendar, Mic, FolderOpen, Users, Shield, DollarSign, ClipboardList, FileText, LogOut, Headphones } from "lucide-react";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useActiveWorkspace } from "@/hooks/useActiveWorkspace";
+import { useActAsUser } from "@/lib/actAs";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
@@ -14,7 +15,13 @@ import Index from "./Index";
 const RoleHome = () => {
   const { loading: rolesLoading, roles, isAdmin, displayName } = useUserRoles();
   const { workspace, loading: wsLoading, available, setWorkspace } = useActiveWorkspace();
+  const { isActing } = useActAsUser();
   const navigate = useNavigate();
+
+  // Admin not impersonating + admin workspace → go straight to the user overview
+  if (!rolesLoading && !wsLoading && isAdmin && !isActing && workspace === "admin") {
+    return <Navigate to="/admin/overview" replace />;
+  }
 
   if (rolesLoading || wsLoading) {
     return (
