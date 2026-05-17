@@ -139,8 +139,9 @@ const PricingAdmin = () => {
   };
 
   const savePlatformFee = async () => {
-    const fee = Number(platformFee);
-    if (Number.isNaN(fee) || fee < 0) return toast.error("מספר לא תקין");
+    const ils = Number(platformFee);
+    if (Number.isNaN(ils) || ils < 0) return toast.error("מספר לא תקין");
+    const fee = ilsToUsd(ils);
     setSavingFee(true);
     const { error } = await supabase
       .from("app_settings")
