@@ -90,8 +90,9 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
-  const [loading, setLoading] = useState<TranscriptionService | null>(null);
+  const [loading, setLoading] = useState<TranscriptionService | "turbo" | null>(null);
   const [chunkProgress, setChunkProgress] = useState<{ done: number; total: number } | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Send a single chunk (or full file) to the transcribe-audio edge function.
   async function transcribeOne(
