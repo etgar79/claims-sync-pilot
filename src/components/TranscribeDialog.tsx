@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Mic, Sparkles, Star, Zap, Loader2 } from "lucide-react";
+import { Mic, Sparkles, Star, Zap, Loader2, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -90,8 +90,9 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
-  const [loading, setLoading] = useState<TranscriptionService | null>(null);
+  const [loading, setLoading] = useState<TranscriptionService | "turbo" | null>(null);
   const [chunkProgress, setChunkProgress] = useState<{ done: number; total: number } | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Send a single chunk (or full file) to the transcribe-audio edge function.
   async function transcribeOne(
@@ -133,6 +134,195 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
     }
     throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
   }
+
+  // Try services in order until one succeeds for a single chunk/file.
+  async function transcribeOneWithFallback(
+    file: File | Blob,
+    order: TranscriptionService[],
+    token: string,
+    clientDuration?: number,
+  ): Promise<{ transcript: string; service: TranscriptionService; segments?: any[] | null }> {
+    let lastErr: unknown = null;
+    for (const svc of order) {
+      try {
+        const r: any = await transcribeOneWithRetry(file, svc, token, clientDuration);
+        return { transcript: r.transcript ?? "", service: (r.service as TranscriptionService) ?? svc, segments: r.segments ?? null };
+      } catch (e) {
+        lastErr = e;
+        console.warn(`[turbo] ${svc} failed, trying next:`, e);
+      }
+    }
+    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+  }
+
+  // Load the audio file (from prop, Drive, or URL). Shared by quick & turbo paths.
+  async function loadAudioFile(toastId: string): Promise<{ file: File; token: string }> {
+    let file: File | undefined = audioFile;
+    const driveMatch = audioUrl?.match(/\/file\/d\/([^/]+)|[?&]id=([^&]+)/);
+    const driveFileId = driveMatch ? (driveMatch[1] || driveMatch[2]) : null;
+    const { data: sess } = await supabase.auth.getSession();
+    const token = sess.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+    if (!file && (driveFileId || recordingId)) {
+      toast.loading("מוריד את קובץ האודיו...", { id: toastId });
+      if (!sess.session?.access_token) throw new Error("נדרשת התחברות");
+      const authToken = sess.session.access_token;
+      let blob: Blob | null = null;
+      let fname = "audio.mp3";
+      if (driveFileId && table === "recordings") {
+        try {
+          const ownRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-drive-api`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "download_file", fileId: driveFileId }),
+          });
+          if (ownRes.ok) {
+            blob = await ownRes.blob();
+            fname = decodeURIComponent(ownRes.headers.get("X-Filename") || fname);
+          }
+        } catch {/* fallthrough */}
+      }
+      if (!blob) {
+        const dlRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-transcriber-file`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ recordingId, driveFileId }),
+        });
+        if (!dlRes.ok) throw new Error(`הורדה מ-Drive נכשלה: ${await dlRes.text()}`);
+        blob = await dlRes.blob();
+        fname = decodeURIComponent(dlRes.headers.get("X-Filename") || fname);
+      }
+      file = new File([blob], fname, { type: blob.type || "audio/mpeg" });
+    } else if (!file && audioUrl) {
+      const res = await fetch(audioUrl);
+      const blob = await res.blob();
+      file = new File([blob], "audio.mp3", { type: blob.type || "audio/mpeg" });
+    }
+    if (!file) throw new Error("לא נמצא קובץ אודיו לתמלול");
+    return { file, token };
+  }
+
+  async function persistAndPipeline(transcript: string, segments: any[] | null, usedService: TranscriptionService) {
+    const { error: updErr } = await supabase
+      .from(table)
+      .update({ transcript, segments, transcript_status: "completed", transcription_service: usedService })
+      .eq("id", recordingId);
+    if (updErr) throw updErr;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && transcript) {
+      await supabase.from("transcript_versions").insert({
+        recording_id: recordingId,
+        user_id: user.id,
+        service: usedService,
+        transcript,
+        segments,
+        is_merged: false,
+      });
+    }
+    try {
+      const { triggerAutoPipeline } = await import("@/lib/autoPipeline");
+      triggerAutoPipeline({
+        recordingId,
+        table,
+        workspaceKind: table === "meeting_recordings" ? "architect" : "appraiser",
+      });
+    } catch {}
+  }
+
+  // ⚡ Turbo: always split into small chunks, parallel x4, per-chunk fallback across 3 services.
+  const handleTurbo = async () => {
+    setLoading("turbo");
+    setChunkProgress(null);
+    const toastId = `transcribe-${recordingId}`;
+    try {
+      toast.loading("⚡ מתחיל תמלול טורבו...", { id: toastId });
+      await supabase.from(table).update({ transcript_status: "processing" }).eq("id", recordingId);
+
+      const { file, token } = await loadAudioFile(toastId);
+      const clientDuration = await getAudioDuration(file);
+      const fallbackOrder: TranscriptionService[] = ["whisper", "elevenlabs", "lovable_ai"];
+
+      let finalTranscript = "";
+      let finalSegments: any[] | null = null;
+      let usedService: TranscriptionService = "whisper";
+      const failedChunks: number[] = [];
+
+      // Try to split. If decode fails (problematic m4a codec), send whole file to ElevenLabs.
+      let chunks: AudioChunk[] | null = null;
+      try {
+        toast.loading("מפצל לחלקים קטנים...", { id: toastId });
+        chunks = await splitAudioFile(file, {
+          targetSeconds: 300,
+          onProgress: (decoded, encoded, total) => {
+            if (decoded && total > 0) setChunkProgress({ done: encoded, total });
+          },
+        });
+      } catch (splitErr) {
+        console.warn("[turbo] split failed, falling back to whole-file ElevenLabs:", splitErr);
+        toast.loading("פיצול נכשל — שולח לתמלול בענן...", { id: toastId });
+        const r = await transcribeOneWithFallback(file, ["elevenlabs", "lovable_ai"], token, clientDuration);
+        await persistAndPipeline(r.transcript, r.segments ?? null, r.service);
+        toast.success("✨ תמלול טורבו הושלם", { id: toastId });
+        onCompleted?.(r.transcript, r.service);
+        setOpen(false);
+        return;
+      }
+
+      setChunkProgress({ done: 0, total: chunks.length });
+      toast.loading(`⚡ מתמלל ${chunks.length} חלקים במקביל...`, { id: toastId });
+
+      const results: ({ text: string; segments: any[] | null } | null)[] = new Array(chunks.length).fill(null);
+      const queue = [...chunks];
+      let completed = 0;
+      const concurrency = Math.min(4, chunks.length);
+      const workers = Array.from({ length: concurrency }, async () => {
+        while (queue.length > 0) {
+          const c = queue.shift();
+          if (!c) break;
+          try {
+            const r = await transcribeOneWithFallback(c.blob, fallbackOrder, token, c.endSec - c.startSec);
+            results[c.index] = { text: r.transcript, segments: r.segments ?? null };
+            usedService = r.service;
+          } catch (e) {
+            console.error(`[turbo] chunk ${c.index} failed all services:`, e);
+            results[c.index] = null;
+            failedChunks.push(c.index + 1);
+          } finally {
+            completed += 1;
+            setChunkProgress({ done: completed, total: chunks!.length });
+            toast.loading(`⚡ חלק ${completed}/${chunks!.length}`, { id: toastId });
+          }
+        }
+      });
+      await Promise.all(workers);
+
+      finalTranscript = results
+        .map((r, i) => (r == null ? `\n[חלק ${i + 1} לא תומלל]\n` : r.text))
+        .join("\n\n");
+      const { stitchChunkSegments } = await import("@/lib/stitchSegments");
+      const stitched = stitchChunkSegments(
+        results.map((r, idx) => ({ segments: r?.segments ?? null, startSec: chunks![idx].startSec || 0 })),
+      );
+      finalSegments = stitched.length ? stitched : null;
+
+      if (failedChunks.length === chunks.length) throw new Error("כל החלקים נכשלו בתמלול");
+
+      await persistAndPipeline(finalTranscript, finalSegments, usedService);
+      if (failedChunks.length > 0) {
+        toast.warning(`✨ תמלול טורבו הושלם חלקית. חלקים שנכשלו: ${failedChunks.join(", ")}`, { id: toastId });
+      } else {
+        toast.success("✨ תמלול טורבו הושלם בהצלחה", { id: toastId });
+      }
+      onCompleted?.(finalTranscript, usedService);
+      setOpen(false);
+    } catch (e: any) {
+      await supabase.from(table).update({ transcript_status: "failed" }).eq("id", recordingId);
+      toast.error(e?.message || "שגיאה בתמלול טורבו", { id: toastId });
+    } finally {
+      setLoading(null);
+      setChunkProgress(null);
+    }
+  };
 
   const handleSelect = async (service: TranscriptionService) => {
     setLoading(service);
@@ -357,6 +547,38 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
           </div>
         )}
 
+        {/* ⚡ Turbo button - hero option for large files */}
+        <button
+          onClick={handleTurbo}
+          disabled={loading !== null}
+          className="w-full text-right rounded-lg p-4 mt-2 transition-all disabled:opacity-50 flex items-center gap-3 bg-gradient-to-l from-primary to-primary/70 text-primary-foreground hover:shadow-lg hover:scale-[1.01]"
+        >
+          <div className="h-10 w-10 rounded-md bg-white/20 flex items-center justify-center shrink-0">
+            {loading === "turbo" ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Zap className="h-5 w-5" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm">⚡ תמלול טורבו</span>
+              <Badge className="bg-white/25 text-white border-0 text-[10px] py-0">מומלץ</Badge>
+            </div>
+            <p className="text-xs opacity-90 mt-0.5">מתאים לקבצים גדולים — פיצול חכם, מקביליות, וגיבוי אוטומטי</p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="w-full flex items-center justify-between text-xs text-muted-foreground mt-3 px-1 hover:text-foreground"
+        >
+          <span>אפשרויות מתקדמות (בחירת מנוע ידנית)</span>
+          <ChevronDown className={`h-3 w-3 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+        </button>
+
+        {showAdvanced && (
         <div className="space-y-2 mt-2">
           {SERVICES.map((svc) => (
             <button
@@ -387,6 +609,7 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
             </button>
           ))}
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
