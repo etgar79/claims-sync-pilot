@@ -547,6 +547,38 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
           </div>
         )}
 
+        {/* ⚡ Turbo button - hero option for large files */}
+        <button
+          onClick={handleTurbo}
+          disabled={loading !== null}
+          className="w-full text-right rounded-lg p-4 mt-2 transition-all disabled:opacity-50 flex items-center gap-3 bg-gradient-to-l from-primary to-primary/70 text-primary-foreground hover:shadow-lg hover:scale-[1.01]"
+        >
+          <div className="h-10 w-10 rounded-md bg-white/20 flex items-center justify-center shrink-0">
+            {loading === "turbo" ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Zap className="h-5 w-5" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm">⚡ תמלול טורבו</span>
+              <Badge className="bg-white/25 text-white border-0 text-[10px] py-0">מומלץ</Badge>
+            </div>
+            <p className="text-xs opacity-90 mt-0.5">מתאים לקבצים גדולים — פיצול חכם, מקביליות, וגיבוי אוטומטי</p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="w-full flex items-center justify-between text-xs text-muted-foreground mt-3 px-1 hover:text-foreground"
+        >
+          <span>אפשרויות מתקדמות (בחירת מנוע ידנית)</span>
+          <ChevronDown className={`h-3 w-3 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+        </button>
+
+        {showAdvanced && (
         <div className="space-y-2 mt-2">
           {SERVICES.map((svc) => (
             <button
