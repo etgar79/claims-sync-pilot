@@ -609,6 +609,7 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
             </button>
           ))}
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
