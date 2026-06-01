@@ -1,104 +1,42 @@
+## הבעיה
+בקובץ "הקלטת שיחה מרינה_260524_141148.m4a" התמלול נכשל. הסיבות הסבירות:
+- m4a דורש פענוח דרך Web Audio API לפני פיצול; בקבצים ארוכים (>30 דק') הפענוח כבד וקורס בדפדפן.
+- Lovable AI חסום ב-20MB, Whisper ב-25MB. הפיצול הנוכחי עובד אך עם concurrency=2 ו-fallback שמתחיל בשירותים שלא תומכים בגודל.
+- אם chunk אחד נכשל ב-retry כפול בלבד — הוא נופל ללא ניסיון בשירות חלופי ברמת ה-chunk.
 
-# תמחור אמיתי לפי משתמש
+## הפתרון: כפתור "⚡ תמלול טורבו"
 
-המטרה: מסך עלויות שמשקף **את העלות האמיתית** של כל יוזר — מבוסס על תוכן ה-API responses האמיתיים ולא על אומדנים, עם אפשרות להוסיף markup לחיוב.
+כפתור חדש בולט בראש `TranscribeDialog` (לפני 4 השירותים הקיימים) שמייצג מסלול אחד "שעובד תמיד" לקבצים גדולים.
 
-## הבעיות הקיימות (אבחון)
+### מה הוא עושה
+1. **פיצול חכם תמיד** — לא רק כש`needsSplitting` מחזיר true. גם קבצים של 10–18MB מפוצלים, כדי שיוכלו לרוץ במקביל ולהאיץ.
+2. **chunks קצרים יותר** — `targetSeconds=300` (5 דק') במקום 600, כדי שכל chunk יהיה ~9MB בלבד וירוץ ב-Whisper/Lovable AI ללא בעיות.
+3. **מקביליות 4** במקום 2 — מאיץ פי 2 על קבצים גדולים.
+4. **Fallback ברמת ה-chunk** — אם chunk נכשל ב-Whisper, מנסה אוטומטית ElevenLabs ואז Lovable AI לאותו chunk לפני שמוותר. זה הסעיף הקריטי שפותר את התקלה הנוכחית.
+5. **שירות בסיס: Whisper** — הכי יציב לעברית + תומך עד 25MB לכל chunk.
+6. **טיפול ב-m4a קשה** — אם `decodeAudio` נכשל (פורמט/codec בעייתי), נופל לשליחת הקובץ המלא לElevenLabs (תומך בקבצים גדולים מאוד דרך ה-API שלהם).
 
-הרצתי שאילתה על `usage_events`:
-- `whisper`: 71 פעולות, $2.87
-- `elevenlabs`: 18 פעולות, $1.07
-- `lovable_ai` (transcription): 103 פעולות, $0.62
-- `gemini-2.5-pro` (transcript_merge): 3 פעולות, **$0.00** ← לא מתועד
+### שינויי קוד
 
-### פערים שזיהיתי בקוד:
-| Edge function | מה רץ | מה מתועד | פער |
-|---|---|---|---|
-| `transcribe-audio` | OpenAI/ElevenLabs/Lovable AI | ✓ לפי שניות | תמחור lovable_ai לא מדויק |
-| `summarize-case` | gemini-2.5-flash | ✓ לפי טוקנים | מחיר מקודד בקוד, לא ניתן לעריכה |
-| `merge-transcripts` | **gemini-2.5-pro** (יקר!) | `cost_usd: 0` | **לא מתועד בכלל** |
-| `cleanup-transcript` | gemini-2.5-flash | `cost_usd: 0` | **לא מתועד בכלל** |
-| `extract-action-items` | gemini-2.5-flash | אין | **לא מתועד בכלל** |
-| `auto-pipeline` | רץ 2-3 קריאות gemini-flash | אין | **לא מתועד בכלל** |
+**1. `src/lib/audioSplitter.ts`**
+- חשיפת `TARGET_SECONDS` כפרמטר ב-`splitAudioFile` (כבר קיים דרך `opts.targetSeconds`) — אין שינוי.
 
-**שורה תחתונה:** הדשבורד מציג כיום פחות מ-50% מהעלות האמיתית, וגם החלק המתועד מבוסס על מחירים מקודדים שלא ניתן לעדכן.
+**2. `src/components/TranscribeDialog.tsx`**
+- הוספת state `turboMode`.
+- פונקציה חדשה `handleTurbo()`:
+  - מפעילה `splitAudioFile(file, { targetSeconds: 300 })` תמיד.
+  - workers = `Math.min(4, chunks.length)`.
+  - לכל chunk: `transcribeOneWithFallback(chunk, ["whisper", "elevenlabs", "lovable_ai"])` — מנסה את שלושת השירותים בסדר עד שאחד מצליח.
+  - אם `splitAudioFile` עצמו נכשל (codec) — שולחת את הקובץ המלא ישירות ל-ElevenLabs (אין מגבלת גודל קשיחה בקוד הקיים).
+- כפתור חדש בראש הדיאלוג עם עיצוב מודגש (gradient + אייקון Zap), label "⚡ תמלול טורבו — מומלץ לקבצים גדולים".
+- ה-4 השירותים הקיימים יורדים ל-section "אפשרויות מתקדמות" שמתקפלת.
 
-## מה נבנה
+**3. `supabase/functions/transcribe-audio/index.ts`**
+- ללא שינוי. ה-fallback מתבצע בצד הלקוח כדי שנדע איזה שירות הצליח על איזה chunk.
 
-### 1. טבלת מחירים גמישה ב-DB
-טבלה חדשה `service_pricing` שאדמין יכול לערוך מה-UI:
-- `service` (whisper / elevenlabs / lovable_ai / gemini-2.5-flash / gemini-2.5-pro / gpt-5 וכו')
-- `unit` (`seconds` | `input_tokens` | `output_tokens`)
-- `cost_per_unit_usd` (numeric, דיוק גבוה)
-- `markup_pct` (ברירת מחדל 0 — תוספת רווח לחיוב)
-- `effective_from` (timestamp — שינוי מחיר עתידי לא משפיע על שורות עבר)
+### למה זה יפתור את התקלה הספציפית
+הקובץ של מרינה (m4a, ~30+ דק'). היום: או שהפענוח נופל, או ש-chunk אחד נכשל ב-Whisper פעמיים ברצף (rate limit / timeout) וכל התמלול נכשל. עם הטורבו: chunks של 5 דק' (קלים יותר לפענוח/העלאה), מקביליות גבוהה, ושלושה שירותי גיבוי לכל chunk בודד — כמעט בלתי אפשרי שהכל ייכשל.
 
-Seed עם המחירים הנוכחיים. RLS: רק אדמין רואה ועורך.
-
-### 2. עמודת `billable_usd` ב-`usage_events`
-נוסיף עמודה מחושבת — `cost_usd * (1 + markup_pct/100)` בזמן ה-INSERT, שמורה בנפרד כדי שעדכון markup לא ישנה שורות עבר. כל המקום בקוד שמחשב עלות עכשיו ישתמש בערכים מ-`service_pricing` בזמן ריצה.
-
-### 3. עדכון כל ה-edge functions שחסרות logging
-Helper מרכזי חדש `supabase/functions/_shared/usage-log.ts`:
-```ts
-logAiCall({ userId, model, inputTokens, outputTokens, meta })
-logAudioCall({ userId, service, durationSec, meta })
-```
-שעושה lookup מ-`service_pricing` ומכניס שורה ל-`usage_events` עם `cost_usd` ו-`billable_usd` נכונים.
-
-נחבר ל:
-- `merge-transcripts` (כיום cost_usd:0 — קריטי, gemini-2.5-pro יקר)
-- `cleanup-transcript` (כיום cost_usd:0)
-- `extract-action-items` (כיום ללא logging בכלל)
-- `auto-pipeline` (כל שלב — summary + extract)
-- `summarize-case` (להחליף את ה-hardcoded למקור הDB)
-- `transcribe-audio` (להעביר ל-DB lookup במקום קבוע)
-
-### 4. מסך ניהול תמחור חדש: `/admin/pricing`
-- טבלה עם כל ה-services + יחידה + מחיר נוכחי + markup.
-- עריכה inline + כפתור "שמור" שמוסיף שורה חדשה עם `effective_from = now()`.
-- היסטוריה לכל שירות (טאב "היסטוריית מחירים").
-- כפתור "טען מחירים מומלצים" שמאכלס מחירים עדכניים מ-Lovable AI Gateway documentation.
-
-### 5. שדרוג מסך Usage הקיים (`/usage`)
-- הוספת עמודה "**עלות גלם**" וגם "**לחיוב**" (עם markup).
-- הוספת **גרף עמודות חודשי** (recharts) — עלות לפי יוזר לאורך 12 חודשים.
-- פילטר "הצג רק יוזר X" (משולב עם בורר ה-impersonation).
-- כפתור "**צור חשבונית טיוטה לחודש זה**" → מייצר PDF לכל יוזר עם פירוט שירותים וסכום לחיוב.
-- אינדיקטור "המחירים עודכנו לאחרונה ב-X" + לינק ל-`/admin/pricing`.
-
-### 6. אינדיקטור עלות חי בעמוד יוזר
-ב-`/admin/overview` (הדשבורד-על שבנינו) — להוסיף עמודה "**עלות חודש**" שמראה כמה הוא צבר החודש. עוזר לאדמין לראות מי "בורח" עם הצריכה.
-
-## פירוט טכני
-
-### קבצים חדשים
-- `supabase/migrations/...sql` — `service_pricing` + עמודת `billable_usd` ב-`usage_events`.
-- `supabase/functions/_shared/usage-log.ts` — Helper מרכזי.
-- `src/pages/PricingAdmin.tsx` — מסך עריכת מחירים.
-- `src/lib/pricing.ts` — Hook `usePricing()` + helpers `formatCurrency`, `withMarkup`.
-- `src/components/UsageChart.tsx` — גרף recharts.
-- `src/lib/generateInvoicePdf.ts` — יצוא חשבונית לפי יוזר.
-
-### קבצים לעריכה
-- כל 6 ה-edge functions שלעיל.
-- `src/pages/Usage.tsx` — עמודות חדשות + גרף + פילטר + כפתור חשבונית.
-- `src/pages/AdminOverview.tsx` — להוסיף עמודת "עלות חודש".
-- `src/config/adminMenu.ts` — להוסיף "ניהול תמחור".
-- `src/App.tsx` — להוסיף route `/admin/pricing`.
-
-### שינויי DB
-1. `service_pricing` — חדש (RLS: admin only).
-2. `usage_events.billable_usd` — עמודה חדשה (nullable, ברירת מחדל `cost_usd`).
-3. Trigger קטן שמחשב `billable_usd` ב-INSERT אם לא סופק.
-
-## למה זה פותר את הבעיה
-- **מדויק**: כל קריאת AI/transcription רושמת את הטוקנים/שניות האמיתיים מה-response, כפול המחיר מה-DB.
-- **שקוף**: אדמין רואה ברגע אחד מי עלה כמה החודש, ויכול לערוך מחירים בלי deploy.
-- **ניתן לחיוב**: markup לכל שירות + יצוא חשבונית = מספר אמיתי שאפשר לשלוח ללקוח.
-- **היסטורי**: שינויי מחיר לא משפיעים על שורות עבר.
-
-## מחוץ ל-scope (גל 2 אם תרצה)
-- חיובים אוטומטיים דרך Stripe — דורש דיון נפרד.
-- התראה ביוזר ש"קרוב למיצוי המכסה" — אפשר להוסיף אחרי שיהיה מנגנון מכסה.
-- מחירון לפי תיק/פגישה (rollup) במקום רק לפי יוזר.
+### מחוץ ל-scope
+- שינוי ארכיטקטורה ל-queue/background job (יקר; הפתרון מעל מספיק לקבצים עד שעה).
+- שינוי edge function (כל הלוגיקה נשארת בלקוח).
