@@ -324,6 +324,122 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
     }
   };
 
+  // 💎 Super: run 3 engines in parallel, then merge with Gemini for max quality.
+  const handleSuper = async () => {
+    setLoading("super");
+    setChunkProgress(null);
+    setSuperProgress({ done: 0, total: 3 });
+    const toastId = `transcribe-${recordingId}`;
+    try {
+      toast.loading("💎 מתחיל תמלול-על (3 מנועים)...", { id: toastId });
+      await supabase.from(table).update({ transcript_status: "processing" }).eq("id", recordingId);
+
+      const { file, token } = await loadAudioFile(toastId);
+      const clientDuration = await getAudioDuration(file);
+      const big = needsSplitting(file);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("נדרשת התחברות");
+
+      const engines: TranscriptionService[] = ["whisper", "elevenlabs", "ivrit_ai"];
+      let done = 0;
+
+      const runOne = async (svc: TranscriptionService): Promise<{ service: TranscriptionService; text: string } | null> => {
+        try {
+          let text = "";
+          if (big) {
+            const chunks = await splitAudioFile(file, { targetSeconds: 300 });
+            const parts = await Promise.all(
+              chunks.map(async (c) => {
+                try {
+                  const r: any = await transcribeOneWithRetry(c.blob, svc, token, c.endSec - c.startSec);
+                  return r.transcript ?? "";
+                } catch (e) {
+                  console.warn(`[super] ${svc} chunk ${c.index} failed`, e);
+                  return "";
+                }
+              }),
+            );
+            text = parts.join("\n\n").trim();
+          } else {
+            const r: any = await transcribeOneWithRetry(file, svc, token, clientDuration);
+            text = (r.transcript ?? "").trim();
+          }
+          if (!text) return null;
+          await supabase.from("transcript_versions").insert({
+            recording_id: recordingId, user_id: user.id, service: svc, transcript: text, is_merged: false,
+          });
+          return { service: svc, text };
+        } catch (e) {
+          console.error(`[super] engine ${svc} failed`, e);
+          return null;
+        } finally {
+          done += 1;
+          setSuperProgress({ done, total: engines.length });
+          toast.loading(`💎 הושלמו ${done}/${engines.length} מנועים...`, { id: toastId });
+        }
+      };
+
+      const results = (await Promise.all(engines.map(runOne))).filter(Boolean) as { service: TranscriptionService; text: string }[];
+      if (results.length === 0) throw new Error("כל המנועים נכשלו");
+
+      let finalTranscript = "";
+      let finalService: TranscriptionService | "merged" = "merged";
+      let qualityScore: number | null = null;
+      let qualityNotes: string | null = null;
+
+      if (results.length >= 2) {
+        toast.loading("💎 ממזג גרסאות ל-תמלול-על...", { id: toastId });
+        const workspaceKind = table === "meeting_recordings" ? "architect" : "appraiser";
+        const { data, error } = await supabase.functions.invoke("merge-transcripts", {
+          body: {
+            versions: results.map((v) => ({ service: v.service, text: v.text })),
+            language: "he",
+            workspace_kind: workspaceKind,
+          },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        finalTranscript = (data as any).merged_transcript as string;
+        qualityScore = (data as any).quality_score ?? null;
+        qualityNotes = (data as any).quality_notes ?? null;
+        await supabase.from("transcript_versions").insert({
+          recording_id: recordingId, user_id: user.id, service: "merged",
+          transcript: finalTranscript, is_merged: true,
+          source_version_ids: null, quality_score: qualityScore, quality_notes: qualityNotes,
+        });
+      } else {
+        finalTranscript = results[0].text;
+        finalService = results[0].service;
+      }
+
+      await supabase.from(table).update({
+        transcript: finalTranscript,
+        transcript_status: "completed",
+        transcription_service: finalService,
+        quality_score: qualityScore,
+        quality_notes: qualityNotes,
+      }).eq("id", recordingId);
+
+      try {
+        const { triggerAutoPipeline } = await import("@/lib/autoPipeline");
+        triggerAutoPipeline({
+          recordingId, table,
+          workspaceKind: table === "meeting_recordings" ? "architect" : "appraiser",
+        });
+      } catch {}
+
+      toast.success(results.length >= 2 ? "💎 תמלול-על הושלם בהצלחה" : "תמלול הושלם (מנוע יחיד הצליח)", { id: toastId });
+      onCompleted?.(finalTranscript, finalService as TranscriptionService);
+      setOpen(false);
+    } catch (e: any) {
+      await supabase.from(table).update({ transcript_status: "failed" }).eq("id", recordingId);
+      toast.error(e?.message || "שגיאה בתמלול-על", { id: toastId });
+    } finally {
+      setLoading(null);
+      setSuperProgress(null);
+    }
+  };
+
   const handleSelect = async (service: TranscriptionService) => {
     setLoading(service);
     setChunkProgress(null);
