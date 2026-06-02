@@ -19,36 +19,12 @@ interface ServiceOption {
   badge?: { label: string; icon: React.ReactNode; className: string };
 }
 
-// Generic, white-label tiers - no third-party brand names exposed to users.
+// Internal label lookup only — UI no longer exposes per-service buttons.
 const SERVICES: ServiceOption[] = [
-  {
-    id: "lovable_ai",
-    name: "AI מובנה",
-    tagline: "תמלול חכם ללא הגדרות נוספות ⭐",
-    pros: ["פועל מיידית — ללא צורך במפתחות API", "עברית מדויקת עם הבנת הקשר", "כלול במערכת"],
-    badge: { label: "מומלץ", icon: <Sparkles className="h-3 w-3" />, className: "bg-primary text-primary-foreground" },
-  },
-  {
-    id: "ivrit_ai",
-    name: "AI חסכוני",
-    tagline: "המחיר המשתלם ביותר 💰",
-    pros: ["הדיוק הטוב ביותר בעברית", "מבין סלנג ומונחים מקצועיים", "עלות מינימלית"],
-    badge: { label: "חסכוני", icon: <Star className="h-3 w-3" />, className: "bg-secondary text-secondary-foreground" },
-  },
-  {
-    id: "whisper",
-    name: "AI מהיר",
-    tagline: "תמלול מהיר ואמין",
-    pros: ["דיוק מצוין בעברית", "מהירות גבוהה במיוחד", "מתאים לרוב המקרים"],
-    badge: { label: "מהיר", icon: <Zap className="h-3 w-3" />, className: "bg-accent text-accent-foreground" },
-  },
-  {
-    id: "elevenlabs",
-    name: "AI איכות גבוהה",
-    tagline: "התמלול המתקדם ביותר ✨",
-    pros: ["זיהוי דוברים אוטומטי", "תיוג אירועי שמע", "חותמות זמן מדויקות"],
-    badge: { label: "איכות גבוהה", icon: <Sparkles className="h-3 w-3" />, className: "bg-secondary text-secondary-foreground" },
-  },
+  { id: "lovable_ai", name: "AI מובנה", tagline: "", pros: [] },
+  { id: "ivrit_ai", name: "AI חסכוני", tagline: "", pros: [] },
+  { id: "whisper", name: "AI מהיר", tagline: "", pros: [] },
+  { id: "elevenlabs", name: "AI איכות גבוהה", tagline: "", pros: [] },
 ];
 
 interface Props {
