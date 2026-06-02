@@ -1,42 +1,45 @@
-## הבעיה
-בקובץ "הקלטת שיחה מרינה_260524_141148.m4a" התמלול נכשל. הסיבות הסבירות:
-- m4a דורש פענוח דרך Web Audio API לפני פיצול; בקבצים ארוכים (>30 דק') הפענוח כבד וקורס בדפדפן.
-- Lovable AI חסום ב-20MB, Whisper ב-25MB. הפיצול הנוכחי עובד אך עם concurrency=2 ו-fallback שמתחיל בשירותים שלא תומכים בגודל.
-- אם chunk אחד נכשל ב-retry כפול בלבד — הוא נופל ללא ניסיון בשירות חלופי ברמת ה-chunk.
+## מטרה
+לצמצם את דיאלוג התמלול מ-5 כפתורים (טורבו + 4 ספקים) ל-**2 כפתורים בלבד**: ⚡ תמלול מהיר ו-💎 תמלול-על. בלי שינויי DB, בלי שינויי edge functions — שימוש מלא בקוד שכבר עובד.
 
-## הפתרון: כפתור "⚡ תמלול טורבו"
+## קובץ יחיד לעריכה
+`src/components/TranscribeDialog.tsx`
 
-כפתור חדש בולט בראש `TranscribeDialog` (לפני 4 השירותים הקיימים) שמייצג מסלול אחד "שעובד תמיד" לקבצים גדולים.
+## שינויים
 
-### מה הוא עושה
-1. **פיצול חכם תמיד** — לא רק כש`needsSplitting` מחזיר true. גם קבצים של 10–18MB מפוצלים, כדי שיוכלו לרוץ במקביל ולהאיץ.
-2. **chunks קצרים יותר** — `targetSeconds=300` (5 דק') במקום 600, כדי שכל chunk יהיה ~9MB בלבד וירוץ ב-Whisper/Lovable AI ללא בעיות.
-3. **מקביליות 4** במקום 2 — מאיץ פי 2 על קבצים גדולים.
-4. **Fallback ברמת ה-chunk** — אם chunk נכשל ב-Whisper, מנסה אוטומטית ElevenLabs ואז Lovable AI לאותו chunk לפני שמוותר. זה הסעיף הקריטי שפותר את התקלה הנוכחית.
-5. **שירות בסיס: Whisper** — הכי יציב לעברית + תומך עד 25MB לכל chunk.
-6. **טיפול ב-m4a קשה** — אם `decodeAudio` נכשל (פורמט/codec בעייתי), נופל לשליחת הקובץ המלא לElevenLabs (תומך בקבצים גדולים מאוד דרך ה-API שלהם).
+### 1. ניקוי import + state
+- מסירים `Star`, `ChevronDown` מה-imports, מוסיפים `Wand2`
+- מסירים את `showAdvanced` state
+- `loading` state משתנה ל-`TranscriptionService | "turbo" | "super" | null`
+- מסירים את מערך `SERVICES` (לא נחוץ יותר ב-UI החדש)
 
-### שינויי קוד
+### 2. שומרים כמו שהוא
+- `handleTurbo` (כפתור "תמלול מהיר") — כבר עובד מצוין: פיצול חכם, 4 workers מקבילים, fallback בין whisper/elevenlabs/lovable_ai לכל chunk
+- `handleSelect` — נשאר בקובץ כפונקציה פנימית למקרה ש-callers חיצוניים עוד משתמשים בה (לא נחשף ב-UI), או נמחק אם אינו בשימוש
 
-**1. `src/lib/audioSplitter.ts`**
-- חשיפת `TARGET_SECONDS` כפרמטר ב-`splitAudioFile` (כבר קיים דרך `opts.targetSeconds`) — אין שינוי.
+### 3. הוספת `handleSuper` חדש (תמלול-על)
+פונקציה אחת שמשתמשת בכל הקוד הקיים:
+- קוראת ל-`loadAudioFile()` הקיים
+- מריצה במקביל 3 מנועים: `whisper`, `elevenlabs`, `ivrit_ai`. לכל מנוע, אם הקובץ גדול → `splitAudioFile` עם chunks, אחרת קובץ שלם דרך `transcribeOneWithRetry`
+- שומרת כל גרסה ב-`transcript_versions` (בדיוק כמו `MergeTranscriptsDialog`)
+- אם לפחות 2 הצליחו → קוראת ל-edge function הקיים `merge-transcripts` עם הגרסאות
+- שומרת את ה-merged ב-`recordings.transcript` + `transcript_versions` (is_merged=true)
+- קוראת ל-`triggerAutoPipeline` (summary + extract tasks)
+- אם רק מנוע אחד הצליח → משתמשת בו ישירות בלי merge
 
-**2. `src/components/TranscribeDialog.tsx`**
-- הוספת state `turboMode`.
-- פונקציה חדשה `handleTurbo()`:
-  - מפעילה `splitAudioFile(file, { targetSeconds: 300 })` תמיד.
-  - workers = `Math.min(4, chunks.length)`.
-  - לכל chunk: `transcribeOneWithFallback(chunk, ["whisper", "elevenlabs", "lovable_ai"])` — מנסה את שלושת השירותים בסדר עד שאחד מצליח.
-  - אם `splitAudioFile` עצמו נכשל (codec) — שולחת את הקובץ המלא ישירות ל-ElevenLabs (אין מגבלת גודל קשיחה בקוד הקיים).
-- כפתור חדש בראש הדיאלוג עם עיצוב מודגש (gradient + אייקון Zap), label "⚡ תמלול טורבו — מומלץ לקבצים גדולים".
-- ה-4 השירותים הקיימים יורדים ל-section "אפשרויות מתקדמות" שמתקפלת.
+### 4. עדכון ה-UI ב-`DialogContent`
+מחליפים את כל הבלוק של הכפתור היחיד + section "אפשרויות מתקדמות" + 4 הכרטיסים, ב-2 כפתורים גדולים זה לצד זה (grid 2 columns):
 
-**3. `supabase/functions/transcribe-audio/index.ts`**
-- ללא שינוי. ה-fallback מתבצע בצד הלקוח כדי שנדע איזה שירות הצליח על איזה chunk.
+- **⚡ תמלול מהיר** (gradient primary) — "מהיר, חכם, מתאים לרוב המקרים"
+- **💎 תמלול-על** (gradient accent/secondary) — "איכות מקסימלית — משלב 3 מנועים. לאיכות שמע ירודה / פגישות חשובות"
 
-### למה זה יפתור את התקלה הספציפית
-הקובץ של מרינה (m4a, ~30+ דק'). היום: או שהפענוח נופל, או ש-chunk אחד נכשל ב-Whisper פעמיים ברצף (rate limit / timeout) וכל התמלול נכשל. עם הטורבו: chunks של 5 דק' (קלים יותר לפענוח/העלאה), מקביליות גבוהה, ושלושה שירותי גיבוי לכל chunk בודד — כמעט בלתי אפשרי שהכל ייכשל.
+ה-progress bar הקיים נשאר ועובד לשני הכפתורים.
 
-### מחוץ ל-scope
-- שינוי ארכיטקטורה ל-queue/background job (יקר; הפתרון מעל מספיק לקבצים עד שעה).
-- שינוי edge function (כל הלוגיקה נשארת בלקוח).
+## מה לא משתנה
+- `transcribe-audio` edge function — בלי שינוי
+- `merge-transcripts` edge function — בלי שינוי
+- `audioSplitter.ts`, `stitchSegments.ts`, `autoPipeline.ts` — בלי שינוי
+- DB schema, RLS, תמחור, `usage_events` — בלי שינוי
+- כל מסכי הקריאה (`RecordingCard`, `useTranscribeAll`, וכו') ממשיכים להפעיל `TranscribeDialog` בדיוק כמו היום
+
+## תוצאה למשתמש
+2 כפתורים ברורים בלבד. אין יותר צורך לבחור ספק. "תמלול מהיר" פותר 95% מהמקרים כולל קבצים גדולים בעייתיים. "תמלול-על" הוא הביטוח לאיכות מקסימלית.

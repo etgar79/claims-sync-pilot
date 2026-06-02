@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Mic, Sparkles, Star, Zap, Loader2, ChevronDown } from "lucide-react";
+import { Mic, Zap, Loader2, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -19,36 +19,12 @@ interface ServiceOption {
   badge?: { label: string; icon: React.ReactNode; className: string };
 }
 
-// Generic, white-label tiers - no third-party brand names exposed to users.
+// Internal label lookup only — UI no longer exposes per-service buttons.
 const SERVICES: ServiceOption[] = [
-  {
-    id: "lovable_ai",
-    name: "AI מובנה",
-    tagline: "תמלול חכם ללא הגדרות נוספות ⭐",
-    pros: ["פועל מיידית — ללא צורך במפתחות API", "עברית מדויקת עם הבנת הקשר", "כלול במערכת"],
-    badge: { label: "מומלץ", icon: <Sparkles className="h-3 w-3" />, className: "bg-primary text-primary-foreground" },
-  },
-  {
-    id: "ivrit_ai",
-    name: "AI חסכוני",
-    tagline: "המחיר המשתלם ביותר 💰",
-    pros: ["הדיוק הטוב ביותר בעברית", "מבין סלנג ומונחים מקצועיים", "עלות מינימלית"],
-    badge: { label: "חסכוני", icon: <Star className="h-3 w-3" />, className: "bg-secondary text-secondary-foreground" },
-  },
-  {
-    id: "whisper",
-    name: "AI מהיר",
-    tagline: "תמלול מהיר ואמין",
-    pros: ["דיוק מצוין בעברית", "מהירות גבוהה במיוחד", "מתאים לרוב המקרים"],
-    badge: { label: "מהיר", icon: <Zap className="h-3 w-3" />, className: "bg-accent text-accent-foreground" },
-  },
-  {
-    id: "elevenlabs",
-    name: "AI איכות גבוהה",
-    tagline: "התמלול המתקדם ביותר ✨",
-    pros: ["זיהוי דוברים אוטומטי", "תיוג אירועי שמע", "חותמות זמן מדויקות"],
-    badge: { label: "איכות גבוהה", icon: <Sparkles className="h-3 w-3" />, className: "bg-secondary text-secondary-foreground" },
-  },
+  { id: "lovable_ai", name: "AI מובנה", tagline: "", pros: [] },
+  { id: "ivrit_ai", name: "AI חסכוני", tagline: "", pros: [] },
+  { id: "whisper", name: "AI מהיר", tagline: "", pros: [] },
+  { id: "elevenlabs", name: "AI איכות גבוהה", tagline: "", pros: [] },
 ];
 
 interface Props {
@@ -90,9 +66,9 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
-  const [loading, setLoading] = useState<TranscriptionService | "turbo" | null>(null);
+  const [loading, setLoading] = useState<TranscriptionService | "turbo" | "super" | null>(null);
   const [chunkProgress, setChunkProgress] = useState<{ done: number; total: number } | null>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [superProgress, setSuperProgress] = useState<{ done: number; total: number } | null>(null);
 
   // Send a single chunk (or full file) to the transcribe-audio edge function.
   async function transcribeOne(
@@ -324,6 +300,122 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
     }
   };
 
+  // 💎 Super: run 3 engines in parallel, then merge with Gemini for max quality.
+  const handleSuper = async () => {
+    setLoading("super");
+    setChunkProgress(null);
+    setSuperProgress({ done: 0, total: 3 });
+    const toastId = `transcribe-${recordingId}`;
+    try {
+      toast.loading("💎 מתחיל תמלול-על (3 מנועים)...", { id: toastId });
+      await supabase.from(table).update({ transcript_status: "processing" }).eq("id", recordingId);
+
+      const { file, token } = await loadAudioFile(toastId);
+      const clientDuration = await getAudioDuration(file);
+      const big = needsSplitting(file);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("נדרשת התחברות");
+
+      const engines: TranscriptionService[] = ["whisper", "elevenlabs", "ivrit_ai"];
+      let done = 0;
+
+      const runOne = async (svc: TranscriptionService): Promise<{ service: TranscriptionService; text: string } | null> => {
+        try {
+          let text = "";
+          if (big) {
+            const chunks = await splitAudioFile(file, { targetSeconds: 300 });
+            const parts = await Promise.all(
+              chunks.map(async (c) => {
+                try {
+                  const r: any = await transcribeOneWithRetry(c.blob, svc, token, c.endSec - c.startSec);
+                  return r.transcript ?? "";
+                } catch (e) {
+                  console.warn(`[super] ${svc} chunk ${c.index} failed`, e);
+                  return "";
+                }
+              }),
+            );
+            text = parts.join("\n\n").trim();
+          } else {
+            const r: any = await transcribeOneWithRetry(file, svc, token, clientDuration);
+            text = (r.transcript ?? "").trim();
+          }
+          if (!text) return null;
+          await supabase.from("transcript_versions").insert({
+            recording_id: recordingId, user_id: user.id, service: svc, transcript: text, is_merged: false,
+          });
+          return { service: svc, text };
+        } catch (e) {
+          console.error(`[super] engine ${svc} failed`, e);
+          return null;
+        } finally {
+          done += 1;
+          setSuperProgress({ done, total: engines.length });
+          toast.loading(`💎 הושלמו ${done}/${engines.length} מנועים...`, { id: toastId });
+        }
+      };
+
+      const results = (await Promise.all(engines.map(runOne))).filter(Boolean) as { service: TranscriptionService; text: string }[];
+      if (results.length === 0) throw new Error("כל המנועים נכשלו");
+
+      let finalTranscript = "";
+      let finalService: TranscriptionService | "merged" = "merged";
+      let qualityScore: number | null = null;
+      let qualityNotes: string | null = null;
+
+      if (results.length >= 2) {
+        toast.loading("💎 ממזג גרסאות ל-תמלול-על...", { id: toastId });
+        const workspaceKind = table === "meeting_recordings" ? "architect" : "appraiser";
+        const { data, error } = await supabase.functions.invoke("merge-transcripts", {
+          body: {
+            versions: results.map((v) => ({ service: v.service, text: v.text })),
+            language: "he",
+            workspace_kind: workspaceKind,
+          },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        finalTranscript = (data as any).merged_transcript as string;
+        qualityScore = (data as any).quality_score ?? null;
+        qualityNotes = (data as any).quality_notes ?? null;
+        await supabase.from("transcript_versions").insert({
+          recording_id: recordingId, user_id: user.id, service: "merged",
+          transcript: finalTranscript, is_merged: true,
+          source_version_ids: null, quality_score: qualityScore, quality_notes: qualityNotes,
+        });
+      } else {
+        finalTranscript = results[0].text;
+        finalService = results[0].service;
+      }
+
+      await supabase.from(table).update({
+        transcript: finalTranscript,
+        transcript_status: "completed",
+        transcription_service: finalService,
+        quality_score: qualityScore,
+        quality_notes: qualityNotes,
+      }).eq("id", recordingId);
+
+      try {
+        const { triggerAutoPipeline } = await import("@/lib/autoPipeline");
+        triggerAutoPipeline({
+          recordingId, table,
+          workspaceKind: table === "meeting_recordings" ? "architect" : "appraiser",
+        });
+      } catch {}
+
+      toast.success(results.length >= 2 ? "💎 תמלול-על הושלם בהצלחה" : "תמלול הושלם (מנוע יחיד הצליח)", { id: toastId });
+      onCompleted?.(finalTranscript, finalService as TranscriptionService);
+      setOpen(false);
+    } catch (e: any) {
+      await supabase.from(table).update({ transcript_status: "failed" }).eq("id", recordingId);
+      toast.error(e?.message || "שגיאה בתמלול-על", { id: toastId });
+    } finally {
+      setLoading(null);
+      setSuperProgress(null);
+    }
+  };
+
   const handleSelect = async (service: TranscriptionService) => {
     setLoading(service);
     setChunkProgress(null);
@@ -547,69 +639,53 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
           </div>
         )}
 
-        {/* ⚡ Turbo button - hero option for large files */}
-        <button
-          onClick={handleTurbo}
-          disabled={loading !== null}
-          className="w-full text-right rounded-lg p-4 mt-2 transition-all disabled:opacity-50 flex items-center gap-3 bg-gradient-to-l from-primary to-primary/70 text-primary-foreground hover:shadow-lg hover:scale-[1.01]"
-        >
-          <div className="h-10 w-10 rounded-md bg-white/20 flex items-center justify-center shrink-0">
-            {loading === "turbo" ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Zap className="h-5 w-5" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm">⚡ תמלול טורבו</span>
-              <Badge className="bg-white/25 text-white border-0 text-[10px] py-0">מומלץ</Badge>
+        {superProgress && superProgress.total > 0 && (
+          <div className="mt-3 p-3 rounded-lg bg-muted/40 border space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium">תמלול-על — {superProgress.done}/{superProgress.total} מנועים הסתיימו</span>
+              <span className="text-muted-foreground">{Math.round((superProgress.done / superProgress.total) * 100)}%</span>
             </div>
-            <p className="text-xs opacity-90 mt-0.5">מתאים לקבצים גדולים — פיצול חכם, מקביליות, וגיבוי אוטומטי</p>
+            <Progress value={(superProgress.done / superProgress.total) * 100} />
           </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setShowAdvanced((v) => !v)}
-          className="w-full flex items-center justify-between text-xs text-muted-foreground mt-3 px-1 hover:text-foreground"
-        >
-          <span>אפשרויות מתקדמות (בחירת מנוע ידנית)</span>
-          <ChevronDown className={`h-3 w-3 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
-        </button>
-
-        {showAdvanced && (
-        <div className="space-y-2 mt-2">
-          {SERVICES.map((svc) => (
-            <button
-              key={svc.id}
-              onClick={() => handleSelect(svc.id)}
-              disabled={loading !== null}
-              className="w-full text-right border rounded-lg p-3 hover:border-primary hover:bg-muted/30 transition-all disabled:opacity-50 flex items-center gap-3"
-            >
-              <div className="h-9 w-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                {loading === svc.id ? (
-                  <Loader2 className="h-4 w-4 text-primary animate-spin" />
-                ) : (
-                  <Mic className="h-4 w-4 text-primary" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{svc.name}</span>
-                  {svc.badge && (
-                    <Badge className={`gap-1 text-[10px] py-0 ${svc.badge.className}`}>
-                      {svc.badge.icon}
-                      {svc.badge.label}
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{svc.tagline}</p>
-              </div>
-            </button>
-          ))}
-        </div>
         )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+          {/* ⚡ Fast: single best engine + fallback, chunking for large files */}
+          <button
+            onClick={handleTurbo}
+            disabled={loading !== null}
+            className="text-right rounded-lg p-4 transition-all disabled:opacity-50 flex flex-col gap-2 bg-gradient-to-br from-primary to-primary/70 text-primary-foreground hover:shadow-lg hover:scale-[1.01]"
+          >
+            <div className="flex items-center gap-2">
+              <div className="h-9 w-9 rounded-md bg-white/20 flex items-center justify-center shrink-0">
+                {loading === "turbo" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Zap className="h-5 w-5" />}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm">⚡ תמלול מהיר</span>
+                <Badge className="bg-white/25 text-white border-0 text-[10px] py-0">מומלץ</Badge>
+              </div>
+            </div>
+            <p className="text-xs opacity-90 leading-snug">מהיר, חכם, מתאים לרוב המקרים — כולל קבצים גדולים</p>
+          </button>
+
+          {/* 💎 Super: 3 engines in parallel + Gemini merge */}
+          <button
+            onClick={handleSuper}
+            disabled={loading !== null}
+            className="text-right rounded-lg p-4 transition-all disabled:opacity-50 flex flex-col gap-2 bg-gradient-to-br from-accent to-accent/60 text-accent-foreground hover:shadow-lg hover:scale-[1.01] border border-accent-foreground/10"
+          >
+            <div className="flex items-center gap-2">
+              <div className="h-9 w-9 rounded-md bg-foreground/10 flex items-center justify-center shrink-0">
+                {loading === "super" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm">💎 תמלול-על</span>
+                <Badge variant="secondary" className="text-[10px] py-0">איכות מקס׳</Badge>
+              </div>
+            </div>
+            <p className="text-xs opacity-90 leading-snug">משלב 3 מנועים לאיכות מקסימלית — לפגישות חשובות / שמע ירוד</p>
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );
