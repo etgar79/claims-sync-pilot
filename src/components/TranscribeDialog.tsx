@@ -639,69 +639,53 @@ export function TranscribeDialog({ recordingId, audioUrl, audioFile, table = "re
           </div>
         )}
 
-        {/* ⚡ Turbo button - hero option for large files */}
-        <button
-          onClick={handleTurbo}
-          disabled={loading !== null}
-          className="w-full text-right rounded-lg p-4 mt-2 transition-all disabled:opacity-50 flex items-center gap-3 bg-gradient-to-l from-primary to-primary/70 text-primary-foreground hover:shadow-lg hover:scale-[1.01]"
-        >
-          <div className="h-10 w-10 rounded-md bg-white/20 flex items-center justify-center shrink-0">
-            {loading === "turbo" ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Zap className="h-5 w-5" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm">⚡ תמלול טורבו</span>
-              <Badge className="bg-white/25 text-white border-0 text-[10px] py-0">מומלץ</Badge>
+        {superProgress && superProgress.total > 0 && (
+          <div className="mt-3 p-3 rounded-lg bg-muted/40 border space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium">תמלול-על — {superProgress.done}/{superProgress.total} מנועים הסתיימו</span>
+              <span className="text-muted-foreground">{Math.round((superProgress.done / superProgress.total) * 100)}%</span>
             </div>
-            <p className="text-xs opacity-90 mt-0.5">מתאים לקבצים גדולים — פיצול חכם, מקביליות, וגיבוי אוטומטי</p>
+            <Progress value={(superProgress.done / superProgress.total) * 100} />
           </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setShowAdvanced((v) => !v)}
-          className="w-full flex items-center justify-between text-xs text-muted-foreground mt-3 px-1 hover:text-foreground"
-        >
-          <span>אפשרויות מתקדמות (בחירת מנוע ידנית)</span>
-          <ChevronDown className={`h-3 w-3 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
-        </button>
-
-        {showAdvanced && (
-        <div className="space-y-2 mt-2">
-          {SERVICES.map((svc) => (
-            <button
-              key={svc.id}
-              onClick={() => handleSelect(svc.id)}
-              disabled={loading !== null}
-              className="w-full text-right border rounded-lg p-3 hover:border-primary hover:bg-muted/30 transition-all disabled:opacity-50 flex items-center gap-3"
-            >
-              <div className="h-9 w-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                {loading === svc.id ? (
-                  <Loader2 className="h-4 w-4 text-primary animate-spin" />
-                ) : (
-                  <Mic className="h-4 w-4 text-primary" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{svc.name}</span>
-                  {svc.badge && (
-                    <Badge className={`gap-1 text-[10px] py-0 ${svc.badge.className}`}>
-                      {svc.badge.icon}
-                      {svc.badge.label}
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{svc.tagline}</p>
-              </div>
-            </button>
-          ))}
-        </div>
         )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+          {/* ⚡ Fast: single best engine + fallback, chunking for large files */}
+          <button
+            onClick={handleTurbo}
+            disabled={loading !== null}
+            className="text-right rounded-lg p-4 transition-all disabled:opacity-50 flex flex-col gap-2 bg-gradient-to-br from-primary to-primary/70 text-primary-foreground hover:shadow-lg hover:scale-[1.01]"
+          >
+            <div className="flex items-center gap-2">
+              <div className="h-9 w-9 rounded-md bg-white/20 flex items-center justify-center shrink-0">
+                {loading === "turbo" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Zap className="h-5 w-5" />}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm">⚡ תמלול מהיר</span>
+                <Badge className="bg-white/25 text-white border-0 text-[10px] py-0">מומלץ</Badge>
+              </div>
+            </div>
+            <p className="text-xs opacity-90 leading-snug">מהיר, חכם, מתאים לרוב המקרים — כולל קבצים גדולים</p>
+          </button>
+
+          {/* 💎 Super: 3 engines in parallel + Gemini merge */}
+          <button
+            onClick={handleSuper}
+            disabled={loading !== null}
+            className="text-right rounded-lg p-4 transition-all disabled:opacity-50 flex flex-col gap-2 bg-gradient-to-br from-accent to-accent/60 text-accent-foreground hover:shadow-lg hover:scale-[1.01] border border-accent-foreground/10"
+          >
+            <div className="flex items-center gap-2">
+              <div className="h-9 w-9 rounded-md bg-foreground/10 flex items-center justify-center shrink-0">
+                {loading === "super" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm">💎 תמלול-על</span>
+                <Badge variant="secondary" className="text-[10px] py-0">איכות מקס׳</Badge>
+              </div>
+            </div>
+            <p className="text-xs opacity-90 leading-snug">משלב 3 מנועים לאיכות מקסימלית — לפגישות חשובות / שמע ירוד</p>
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );
